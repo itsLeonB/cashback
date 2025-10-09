@@ -7,7 +7,7 @@ import (
 	"github.com/rotisserie/eris"
 )
 
-func fromProfileProto(p *profile.ProfileResponse) (Profile, error) {
+func FromProfileProto(p *profile.ProfileResponse) (Profile, error) {
 	if p == nil {
 		return Profile{}, eris.New("profile response is nil")
 	}

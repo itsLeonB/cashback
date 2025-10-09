@@ -8,16 +8,17 @@ import (
 )
 
 type Services struct {
-	Auth           service.AuthService
-	Profile        service.ProfileService
-	Friendship     service.FriendshipService
-	TransferMethod service.TransferMethodService
-	Debt           service.DebtService
-	FriendDetails  service.FriendDetailsService
-	GroupExpense   service.GroupExpenseService
-	ExpenseItem    service.ExpenseItemService
-	OtherFee       service.OtherFeeService
-	ExpenseBill    service.ExpenseBillService
+	Auth              service.AuthService
+	Profile           service.ProfileService
+	Friendship        service.FriendshipService
+	FriendshipRequest service.FriendshipRequestService
+	TransferMethod    service.TransferMethodService
+	Debt              service.DebtService
+	FriendDetails     service.FriendDetailsService
+	GroupExpense      service.GroupExpenseService
+	ExpenseItem       service.ExpenseItemService
+	OtherFee          service.OtherFeeService
+	ExpenseBill       service.ExpenseBillService
 }
 
 func ProvideServices(
@@ -43,6 +44,8 @@ func ProvideServices(
 	friendshipService := service.NewFriendshipService(
 		clients.Friendship,
 	)
+
+	friendshipRequestService := service.NewFriendshipRequestService(clients.FriendshipRequest)
 
 	transferMethodService := service.NewTransferMethodService(clients.TransferMethod)
 
@@ -84,6 +87,7 @@ func ProvideServices(
 		authService,
 		profileService,
 		friendshipService,
+		friendshipRequestService,
 		transferMethodService,
 		debtService,
 		friendDetailsService,

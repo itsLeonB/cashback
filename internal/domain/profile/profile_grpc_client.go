@@ -52,7 +52,7 @@ func (pc *profileClient) Get(ctx context.Context, id uuid.UUID) (Profile, error)
 		return Profile{}, err
 	}
 
-	return fromProfileProto(response.GetProfile())
+	return FromProfileProto(response.GetProfile())
 }
 
 func (pc *profileClient) Create(ctx context.Context, req CreateRequest) (Profile, error) {
@@ -73,7 +73,7 @@ func (pc *profileClient) Create(ctx context.Context, req CreateRequest) (Profile
 		return Profile{}, err
 	}
 
-	return fromProfileProto(response.GetProfile())
+	return FromProfileProto(response.GetProfile())
 }
 
 func (pc *profileClient) GetByIDs(ctx context.Context, ids uuid.UUIDs) ([]Profile, error) {
@@ -90,7 +90,7 @@ func (pc *profileClient) GetByIDs(ctx context.Context, ids uuid.UUIDs) ([]Profil
 		return nil, err
 	}
 
-	return ezutil.MapSliceWithError(response.GetProfiles(), fromProfileProto)
+	return ezutil.MapSliceWithError(response.GetProfiles(), FromProfileProto)
 }
 
 func (pc *profileClient) Update(ctx context.Context, req UpdateRequest) (Profile, error) {
@@ -108,5 +108,5 @@ func (pc *profileClient) Update(ctx context.Context, req UpdateRequest) (Profile
 		return Profile{}, err
 	}
 
-	return fromProfileProto(response.GetProfile())
+	return FromProfileProto(response.GetProfile())
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/itsLeonB/orcashtrator/internal/appconstant"
 	"github.com/itsLeonB/orcashtrator/internal/dto"
 	"github.com/itsLeonB/orcashtrator/internal/service"
+	"github.com/itsLeonB/orcashtrator/internal/util"
 )
 
 type ProfileHandler struct {
@@ -58,5 +59,25 @@ func (ph *ProfileHandler) HandleUpdate() gin.HandlerFunc {
 		}
 
 		return http.StatusOK, appconstant.MsgUpdateData, response, nil
+	})
+}
+
+func (ph *ProfileHandler) HandleSearch() gin.HandlerFunc {
+	return ginkgo.WrapHandler(func(ctx *gin.Context) (int, string, any, error) {
+		profileID, err := util.GetProfileID(ctx)
+		if err != nil {
+			return 0, "", nil, err
+		}
+		request, err := ginkgo.BindRequest[dto.SearchRequest](ctx, binding.Query)
+		if err != nil {
+			return 0, "", nil, err
+		}
+
+		response, err := ph.profileService.Search(ctx, profileID, request.Query)
+		if err != nil {
+			return 0, "", nil, err
+		}
+
+		return http.StatusOK, appconstant.MsgGetData, response, nil
 	})
 }

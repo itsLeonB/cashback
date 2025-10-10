@@ -7,6 +7,7 @@ import (
 	"github.com/itsLeonB/orcashtrator/internal/domain/profile"
 	"github.com/itsLeonB/orcashtrator/internal/dto"
 	"github.com/itsLeonB/orcashtrator/internal/mapper"
+	"github.com/itsLeonB/orcashtrator/internal/util"
 )
 
 type profileServiceGrpc struct {
@@ -56,4 +57,31 @@ func (ps *profileServiceGrpc) Update(ctx context.Context, id uuid.UUID, name str
 	}
 
 	return mapper.ProfileToResponse(updatedProfile), nil
+}
+
+func (ps *profileServiceGrpc) Search(ctx context.Context, profileID uuid.UUID, input string) ([]dto.ProfileResponse, error) {
+	if util.IsValidEmail(input) {
+		profile, err := ps.profileClient.GetByEmail(ctx, input)
+		if err != nil {
+			return nil, err
+		}
+		if profile.ID == profileID {
+			return []dto.ProfileResponse{}, nil
+		}
+		return []dto.ProfileResponse{mapper.ProfileToResponse(profile)}, nil
+	}
+
+	profiles, err := ps.profileClient.SearchByName(ctx, input, 10)
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make([]dto.ProfileResponse, 0, len(profiles))
+	for _, profile := range profiles {
+		if profile.ID != profileID {
+			responses = append(responses, mapper.ProfileToResponse(profile))
+		}
+	}
+
+	return responses, nil
 }

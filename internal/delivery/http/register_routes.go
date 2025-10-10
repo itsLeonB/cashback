@@ -36,13 +36,15 @@ func registerRoutes(router *gin.Engine, configs config.Config, logger ezutil.Log
 	profileRoutes.GET("", handlers.Profile.HandleProfile())
 	profileRoutes.PATCH("", handlers.Profile.HandleUpdate())
 
+	protectedRoutes.POST(fmt.Sprintf("/profiles/:%s", appconstant.ContextProfileID.String()), handlers.FriendshipRequest.HandleSend())
+	protectedRoutes.GET("/profiles", handlers.Profile.HandleSearch())
+
 	friendshipRoutes := protectedRoutes.Group("/friendships")
 	friendshipRoutes.POST("", handlers.Friendship.HandleCreateAnonymousFriendship())
 	friendshipRoutes.GET("", handlers.Friendship.HandleGetAll())
 	friendshipRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextFriendshipID), handlers.Friendship.HandleGetDetails())
 
 	receivedFriendRequestRoute := fmt.Sprintf("/%s/:%s", appconstant.ReceivedFriendRequest, appconstant.ContextFriendRequestID)
-	protectedRoutes.POST(fmt.Sprintf("/profiles/:%s", appconstant.ContextProfileID.String()), handlers.FriendshipRequest.HandleSend())
 	friendRequestRoutes := protectedRoutes.Group("/friend-requests")
 	friendRequestRoutes.GET(fmt.Sprintf("/:%s", appconstant.PathFriendRequestType), handlers.FriendshipRequest.HandleGetAll())
 	friendRequestRoutes.DELETE(fmt.Sprintf("/%s/:%s", appconstant.SentFriendRequest, appconstant.ContextFriendRequestID), handlers.FriendshipRequest.HandleCancel())

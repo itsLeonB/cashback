@@ -17,6 +17,8 @@ type ProfileClient interface {
 	Create(ctx context.Context, req CreateRequest) (Profile, error)
 	GetByIDs(ctx context.Context, ids uuid.UUIDs) ([]Profile, error)
 	Update(ctx context.Context, req UpdateRequest) (Profile, error)
+	GetByEmail(ctx context.Context, email string) (Profile, error)
+	SearchByName(ctx context.Context, query string, limit int) ([]Profile, error)
 }
 
 type profileClient struct {
@@ -109,4 +111,27 @@ func (pc *profileClient) Update(ctx context.Context, req UpdateRequest) (Profile
 	}
 
 	return FromProfileProto(response.GetProfile())
+}
+
+func (pc *profileClient) GetByEmail(ctx context.Context, email string) (Profile, error) {
+	request := profile.GetByEmailRequest{
+		Email: email,
+	}
+	response, err := pc.client.GetByEmail(ctx, &request)
+	if err != nil {
+		return Profile{}, err
+	}
+	return FromProfileProto(response.GetProfile())
+}
+
+func (pc *profileClient) SearchByName(ctx context.Context, query string, limit int) ([]Profile, error) {
+	request := profile.SearchByNameRequest{
+		Query: query,
+		Limit: int64(limit),
+	}
+	response, err := pc.client.SearchByName(ctx, &request)
+	if err != nil {
+		return nil, err
+	}
+	return ezutil.MapSliceWithError(response.GetProfiles(), FromProfileProto)
 }

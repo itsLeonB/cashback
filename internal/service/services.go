@@ -23,6 +23,7 @@ type ProfileService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (dto.ProfileResponse, error)
 	GetNames(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error)
 	Update(ctx context.Context, id uuid.UUID, name string) (dto.ProfileResponse, error)
+	Search(ctx context.Context, profileID uuid.UUID, input string) ([]dto.ProfileResponse, error)
 }
 
 type FriendshipService interface {

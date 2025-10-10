@@ -11,7 +11,6 @@ type Request struct {
 	ID        uuid.UUID
 	Sender    profile.Profile
 	Recipient profile.Profile
-	Message   string
 	CreatedAt time.Time
 	BlockedAt time.Time
 }

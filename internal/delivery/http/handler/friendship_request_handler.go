@@ -1,10 +1,10 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
 	"github.com/google/uuid"
 	"github.com/itsLeonB/ginkgo"
 	"github.com/itsLeonB/orcashtrator/internal/appconstant"
@@ -32,11 +32,7 @@ func (frh *FriendshipRequestHandler) HandleSend() gin.HandlerFunc {
 		if err != nil {
 			return 0, "", nil, err
 		}
-		request, err := ginkgo.BindRequest[dto.NewFriendshipRequest](ctx, binding.JSON)
-		if err != nil {
-			return 0, "", nil, err
-		}
-		if err = frh.svc.Send(ctx, userProfileID, friendProfileID, request.Message); err != nil {
+		if err = frh.svc.Send(ctx, userProfileID, friendProfileID); err != nil {
 			return 0, "", nil, err
 		}
 		return http.StatusCreated, appconstant.MsgInsertData, nil, nil
@@ -103,16 +99,20 @@ func (frh *FriendshipRequestHandler) HandleBlock() gin.HandlerFunc {
 		if err != nil {
 			return 0, "", nil, err
 		}
+
 		command := ctx.Query("command")
 		switch command {
 		case "block":
 			err = frh.svc.Block(ctx, userProfileID, requestID)
 		case "unblock":
 			err = frh.svc.Unblock(ctx, userProfileID, requestID)
+		default:
+			return 0, "", nil, ungerr.BadRequestError(fmt.Sprintf("unknown command: %s", command))
 		}
 		if err != nil {
 			return 0, "", nil, err
 		}
+
 		return http.StatusOK, appconstant.MsgUpdateData, nil, nil
 	})
 }

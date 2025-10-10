@@ -10,17 +10,6 @@ import (
 	"github.com/itsLeonB/orcashtrator/internal/mapper"
 )
 
-type FriendshipRequestService interface {
-	Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID, message string) error
-	GetAllSent(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error)
-	Cancel(ctx context.Context, userProfileID, reqID uuid.UUID) error
-	GetAllReceived(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error)
-	Ignore(ctx context.Context, userProfileID, reqID uuid.UUID) error
-	Block(ctx context.Context, userProfileID, reqID uuid.UUID) error
-	Unblock(ctx context.Context, userProfileID, reqID uuid.UUID) error
-	Accept(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipResponse, error)
-}
-
 type friendshipRequestServiceImpl struct {
 	requestClient friendship.RequestClient
 }
@@ -29,8 +18,8 @@ func NewFriendshipRequestService(requestClient friendship.RequestClient) Friends
 	return &friendshipRequestServiceImpl{requestClient}
 }
 
-func (frs *friendshipRequestServiceImpl) Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID, message string) error {
-	return frs.requestClient.Send(ctx, userProfileID, friendProfileID, message)
+func (frs *friendshipRequestServiceImpl) Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID) error {
+	return frs.requestClient.Send(ctx, userProfileID, friendProfileID)
 }
 
 func (frs *friendshipRequestServiceImpl) GetAllSent(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error) {

@@ -32,7 +32,6 @@ func fromRequestProto(r *friendship.Request) (Request, error) {
 		ID:        id,
 		Sender:    sender,
 		Recipient: recipient,
-		Message:   r.GetMessage(),
 		CreatedAt: ezutil.FromProtoTime(r.GetCreatedAt()),
 		BlockedAt: ezutil.FromProtoTime(r.GetBlockedAt()),
 	}, nil

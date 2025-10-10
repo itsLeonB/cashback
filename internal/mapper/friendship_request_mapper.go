@@ -19,11 +19,10 @@ func friendshipRequestToResponse(fr friendship.Request, userProfileID uuid.UUID)
 		SenderName:       fr.Sender.Name,
 		RecipientAvatar:  fr.Recipient.Avatar,
 		RecipientName:    fr.Recipient.Name,
-		Message:          fr.Message,
 		CreatedAt:        fr.CreatedAt,
 		BlockedAt:        fr.BlockedAt,
-		IsSentByUser:     fr.Sender.ID == userProfileID,
-		IsReceivedByUser: fr.Recipient.ID == userProfileID,
+		IsSentByUser:     fr.Sender.ID == userProfileID || fr.Recipient.ID != userProfileID,
+		IsReceivedByUser: fr.Recipient.ID == userProfileID || fr.Sender.ID != userProfileID,
 		IsBlocked:        !fr.BlockedAt.IsZero(),
 	}
 }

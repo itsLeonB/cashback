@@ -10,7 +10,7 @@ import (
 )
 
 type RequestClient interface {
-	Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID, message string) error
+	Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID) error
 	GetAllSent(ctx context.Context, userProfileID uuid.UUID) ([]Request, error)
 	Cancel(ctx context.Context, userProfileID, reqID uuid.UUID) error
 	GetAllReceived(ctx context.Context, userProfileID uuid.UUID) ([]Request, error)
@@ -28,11 +28,10 @@ func NewRequestClient(conn *grpc.ClientConn) RequestClient {
 	return &requestClient{friendship.NewRequestServiceClient(conn)}
 }
 
-func (rc *requestClient) Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID, message string) error {
+func (rc *requestClient) Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID) error {
 	request := friendship.SendRequest{
 		UserProfileId:   userProfileID.String(),
 		FriendProfileId: friendProfileID.String(),
-		Message:         message,
 	}
 	_, err := rc.client.Send(ctx, &request)
 	return err

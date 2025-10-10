@@ -66,10 +66,6 @@ func (fc *friendshipClient) GetAll(ctx context.Context, profileID uuid.UUID) ([]
 		return nil, err
 	}
 
-	if response.GetFriendships() == nil {
-		return nil, eris.New("friendships is nil")
-	}
-
 	return ezutil.MapSliceWithError(response.GetFriendships(), fromFriendshipProto)
 }
 

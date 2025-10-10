@@ -36,8 +36,8 @@ func registerRoutes(router *gin.Engine, configs config.Config, logger ezutil.Log
 	profileRoutes.GET("", handlers.Profile.HandleProfile())
 	profileRoutes.PATCH("", handlers.Profile.HandleUpdate())
 
-	protectedRoutes.POST(fmt.Sprintf("/profiles/:%s", appconstant.ContextProfileID.String()), handlers.FriendshipRequest.HandleSend())
 	protectedRoutes.GET("/profiles", handlers.Profile.HandleSearch())
+	protectedRoutes.POST(fmt.Sprintf("/profiles/:%s/friend-requests", appconstant.ContextProfileID.String()), handlers.FriendshipRequest.HandleSend())
 
 	friendshipRoutes := protectedRoutes.Group("/friendships")
 	friendshipRoutes.POST("", handlers.Friendship.HandleCreateAnonymousFriendship())

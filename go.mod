@@ -10,7 +10,7 @@ require (
 	github.com/hibiken/asynq v0.25.1
 	github.com/itsLeonB/audit v0.1.0
 	github.com/itsLeonB/billsplittr-protos v0.4.0
-	github.com/itsLeonB/cocoon-protos v1.6.0-pre2
+	github.com/itsLeonB/cocoon-protos v1.6.0-pre4
 	github.com/itsLeonB/drex-protos v0.1.0
 	github.com/itsLeonB/ezutil/v2 v2.2.0
 	github.com/itsLeonB/ginkgo v0.3.0

@@ -14,13 +14,14 @@ type NewAnonymousFriendshipRequest struct {
 }
 
 type FriendshipResponse struct {
-	ID          uuid.UUID                  `json:"id"`
-	Type        appconstant.FriendshipType `json:"type"`
-	ProfileID   uuid.UUID                  `json:"profileId"`
-	ProfileName string                     `json:"profileName"`
-	CreatedAt   time.Time                  `json:"createdAt"`
-	UpdatedAt   time.Time                  `json:"updatedAt"`
-	DeletedAt   time.Time                  `json:"deletedAt,omitzero"`
+	ID            uuid.UUID                  `json:"id"`
+	Type          appconstant.FriendshipType `json:"type"`
+	ProfileID     uuid.UUID                  `json:"profileId"`
+	ProfileName   string                     `json:"profileName"`
+	ProfileAvatar string                     `json:"profileAvatar"`
+	CreatedAt     time.Time                  `json:"createdAt"`
+	UpdatedAt     time.Time                  `json:"updatedAt"`
+	DeletedAt     time.Time                  `json:"deletedAt,omitzero"`
 }
 
 type FriendshipWithProfile struct {

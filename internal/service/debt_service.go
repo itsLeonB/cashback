@@ -37,15 +37,12 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 	if req.UserProfileID == req.FriendProfileID {
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("cannot do self transactions")
 	}
-	isFriends, isAnonymous, err := ds.friendshipService.IsFriends(ctx, req.UserProfileID, req.FriendProfileID)
+	isFriends, _, err := ds.friendshipService.IsFriends(ctx, req.UserProfileID, req.FriendProfileID)
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
 	if !isFriends {
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("both profiles are not friends")
-	}
-	if !isAnonymous {
-		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("flow is forbidden for non-anonymous friendships")
 	}
 
 	request := debt.RecordNewTransactionRequest{
@@ -78,9 +75,7 @@ func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, gro
 	if !groupExpense.IsConfirmed {
 		return ungerr.UnprocessableEntityError("group expense is not confirmed")
 	}
-	// if !groupExpense.IsParticipantsConfirmed {
-	// 	return ungerr.UnprocessableEntityError("participants are not confirmed")
-	// }
+
 	if len(groupExpense.Participants) < 1 {
 		return ungerr.UnprocessableEntityError("no participants to process")
 	}

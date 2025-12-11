@@ -85,3 +85,13 @@ func (ps *profileServiceGrpc) Search(ctx context.Context, profileID uuid.UUID, i
 
 	return responses, nil
 }
+
+func (ps *profileServiceGrpc) Associate(ctx context.Context, userProfileID, realProfileID, anonProfileID uuid.UUID) error {
+	request := profile.AssociateRequest{
+		UserProfileID: userProfileID,
+		RealProfileID: realProfileID,
+		AnonProfileID: anonProfileID,
+	}
+
+	return ps.profileClient.Associate(ctx, request)
+}

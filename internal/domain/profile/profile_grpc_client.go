@@ -19,6 +19,7 @@ type ProfileClient interface {
 	Update(ctx context.Context, req UpdateRequest) (Profile, error)
 	GetByEmail(ctx context.Context, email string) (Profile, error)
 	SearchByName(ctx context.Context, query string, limit int) ([]Profile, error)
+	Associate(ctx context.Context, req AssociateRequest) error
 }
 
 type profileClient struct {
@@ -134,4 +135,14 @@ func (pc *profileClient) SearchByName(ctx context.Context, query string, limit i
 		return nil, err
 	}
 	return ezutil.MapSliceWithError(response.GetProfiles(), FromProfileProto)
+}
+
+func (pc *profileClient) Associate(ctx context.Context, req AssociateRequest) error {
+	request := &profile.AssociateRequest{
+		UserProfileId: req.UserProfileID.String(),
+		RealProfileId: req.RealProfileID.String(),
+		AnonProfileId: req.AnonProfileID.String(),
+	}
+	_, err := pc.client.Associate(ctx, request)
+	return err
 }

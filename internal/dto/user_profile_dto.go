@@ -25,3 +25,8 @@ type UpdateProfileRequest struct {
 type SearchRequest struct {
 	Query string `form:"query" binding:"required,min=3,max=255"`
 }
+
+type AssociateProfileRequest struct {
+	RealProfileID uuid.UUID `json:"realProfileId" binding:"required"`
+	AnonProfileID uuid.UUID `json:"anonProfileId" binding:"required"`
+}

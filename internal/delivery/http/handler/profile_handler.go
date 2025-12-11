@@ -81,3 +81,23 @@ func (ph *ProfileHandler) HandleSearch() gin.HandlerFunc {
 		return http.StatusOK, appconstant.MsgGetData, response, nil
 	})
 }
+
+func (ph *ProfileHandler) HandleAssociate() gin.HandlerFunc {
+	return ginkgo.WrapHandler(func(ctx *gin.Context) (int, string, any, error) {
+		profileID, err := util.GetProfileID(ctx)
+		if err != nil {
+			return 0, "", nil, err
+		}
+
+		request, err := ginkgo.BindRequest[dto.AssociateProfileRequest](ctx, binding.JSON)
+		if err != nil {
+			return 0, "", nil, err
+		}
+
+		if err := ph.profileService.Associate(ctx, profileID, request.RealProfileID, request.AnonProfileID); err != nil {
+			return 0, "", nil, err
+		}
+
+		return http.StatusOK, appconstant.MsgUpdateData, nil, nil
+	})
+}

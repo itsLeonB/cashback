@@ -24,6 +24,7 @@ type ProfileService interface {
 	GetNames(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error)
 	Update(ctx context.Context, id uuid.UUID, name string) (dto.ProfileResponse, error)
 	Search(ctx context.Context, profileID uuid.UUID, input string) ([]dto.ProfileResponse, error)
+	Associate(ctx context.Context, userProfileID, realProfileID, anonProfileID uuid.UUID) error
 }
 
 type FriendshipService interface {

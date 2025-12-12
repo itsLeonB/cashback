@@ -8,13 +8,14 @@ import (
 )
 
 type Friendship struct {
-	ID          uuid.UUID
-	Type        appconstant.FriendshipType
-	ProfileID   uuid.UUID
-	ProfileName string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	DeletedAt   time.Time
+	ID            uuid.UUID
+	Type          appconstant.FriendshipType
+	ProfileID     uuid.UUID
+	ProfileName   string
+	ProfileAvatar string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	DeletedAt     time.Time
 }
 
 type FriendDetails struct {

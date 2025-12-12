@@ -24,17 +24,18 @@ import (
 )
 
 type Clients struct {
-	conns          []*grpc.ClientConn
-	Auth           auth.AuthClient
-	Profile        profile.ProfileClient
-	Friendship     friendship.FriendshipClient
-	TransferMethod debt.TransferMethodClient
-	Debt           debt.DebtClient
-	GroupExpense   groupexpense.GroupExpenseClient
-	ExpenseItem    expenseitem.ExpenseItemClient
-	OtherFee       otherfee.OtherFeeClient
-	ExpenseBill    expensebill.ExpenseBillClient
-	ImageUpload    imageupload.ImageUploadClient
+	conns             []*grpc.ClientConn
+	Auth              auth.AuthClient
+	Profile           profile.ProfileClient
+	Friendship        friendship.FriendshipClient
+	FriendshipRequest friendship.RequestClient
+	TransferMethod    debt.TransferMethodClient
+	Debt              debt.DebtClient
+	GroupExpense      groupexpense.GroupExpenseClient
+	ExpenseItem       expenseitem.ExpenseItemClient
+	OtherFee          otherfee.OtherFeeClient
+	ExpenseBill       expensebill.ExpenseBillClient
+	ImageUpload       imageupload.ImageUploadClient
 }
 
 func ProvideClients(configs config.Config, validate *validator.Validate, logger ezutil.Logger) *Clients {
@@ -92,6 +93,7 @@ func ProvideClients(configs config.Config, validate *validator.Validate, logger 
 		auth.NewAuthClient(validate, cocoonConn),
 		profile.NewProfileClient(validate, cocoonConn),
 		friendship.NewFriendshipClient(validate, cocoonConn),
+		friendship.NewRequestClient(cocoonConn),
 		debt.NewTransferMethodClient(drexConn),
 		debt.NewDebtClient(validate, drexConn),
 		groupexpense.NewGroupExpenseClient(validate, billsplittrConn),

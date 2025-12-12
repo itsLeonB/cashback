@@ -18,15 +18,18 @@ import (
 type debtServiceImpl struct {
 	debtClient        debt.DebtClient
 	friendshipService FriendshipService
+	profileService    ProfileService
 }
 
 func NewDebtService(
 	debtClient debt.DebtClient,
 	friendshipService FriendshipService,
+	profileService ProfileService,
 ) DebtService {
 	return &debtServiceImpl{
 		debtClient,
 		friendshipService,
+		profileService,
 	}
 }
 
@@ -37,15 +40,12 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 	if req.UserProfileID == req.FriendProfileID {
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("cannot do self transactions")
 	}
-	isFriends, isAnonymous, err := ds.friendshipService.IsFriends(ctx, req.UserProfileID, req.FriendProfileID)
+	isFriends, _, err := ds.friendshipService.IsFriends(ctx, req.UserProfileID, req.FriendProfileID)
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
 	if !isFriends {
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("both profiles are not friends")
-	}
-	if !isAnonymous {
-		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("flow is forbidden for non-anonymous friendships")
 	}
 
 	request := debt.RecordNewTransactionRequest{
@@ -78,9 +78,7 @@ func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, gro
 	if !groupExpense.IsConfirmed {
 		return ungerr.UnprocessableEntityError("group expense is not confirmed")
 	}
-	// if !groupExpense.IsParticipantsConfirmed {
-	// 	return ungerr.UnprocessableEntityError("participants are not confirmed")
-	// }
+
 	if len(groupExpense.Participants) < 1 {
 		return ungerr.UnprocessableEntityError("no participants to process")
 	}
@@ -102,15 +100,34 @@ func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, gro
 }
 
 func (ds *debtServiceImpl) GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
-	request := debt.GetAllByProfileIDsRequest{
-		UserProfileID:   userProfileID,
-		FriendProfileID: friendProfileID,
-	}
-
-	transactions, err := ds.debtClient.GetAllByProfileIDs(ctx, request)
+	friendProfile, err := ds.profileService.GetByID(ctx, friendProfileID)
 	if err != nil {
-		return nil, eris.Wrap(err, appconstant.ErrServiceClient)
+		return nil, err
 	}
 
-	return ezutil.MapSlice(transactions, mapper.DebtTransactionToResponse), nil
+	associatedProfileIDs := []uuid.UUID{friendProfileID}
+	if friendProfile.IsAnonymous {
+		if friendProfile.RealProfileID != uuid.Nil {
+			associatedProfileIDs = append(associatedProfileIDs, friendProfile.RealProfileID)
+		}
+	} else {
+		associatedProfileIDs = append(associatedProfileIDs, friendProfile.AssociatedAnonProfileIDs...)
+	}
+
+	allTransactions := make([]debt.Transaction, 0)
+	for _, profileID := range associatedProfileIDs {
+		request := debt.GetAllByProfileIDsRequest{
+			UserProfileID:   userProfileID,
+			FriendProfileID: profileID,
+		}
+
+		transactions, err := ds.debtClient.GetAllByProfileIDs(ctx, request)
+		if err != nil {
+			return nil, eris.Wrap(err, appconstant.ErrServiceClient)
+		}
+
+		allTransactions = append(allTransactions, transactions...)
+	}
+
+	return ezutil.MapSlice(allTransactions, mapper.DebtTransactionToResponse), nil
 }

@@ -108,10 +108,6 @@ func (ac *authClient) OAuth2Login(ctx context.Context, req OAuthLoginRequest) (L
 }
 
 func (ac *authClient) VerifyToken(ctx context.Context, token string) (bool, map[string]any, error) {
-	if token == "" {
-		return false, nil, ungerr.BadRequestError("token is empty")
-	}
-
 	request := &auth.VerifyTokenRequest{Token: token}
 
 	data, err := ac.client.VerifyToken(ctx, request)
@@ -128,10 +124,6 @@ func (ac *authClient) VerifyToken(ctx context.Context, token string) (bool, map[
 }
 
 func (ac *authClient) GetOAuth2URL(ctx context.Context, provider string) (string, error) {
-	if provider == "" {
-		return "", ungerr.BadRequestError("provider is empty")
-	}
-
 	request := auth.GetOAuth2UrlRequest{Provider: provider}
 	response, err := ac.client.GetOAuth2Url(ctx, &request)
 	if err != nil {
@@ -142,10 +134,6 @@ func (ac *authClient) GetOAuth2URL(ctx context.Context, provider string) (string
 }
 
 func (ac *authClient) VerifyRegistration(ctx context.Context, token string) (LoginResponse, error) {
-	if token == "" {
-		return LoginResponse{}, ungerr.BadRequestError("token is empty")
-	}
-
 	request := auth.VerifyRegistrationRequest{Token: token}
 
 	response, err := ac.client.VerifyRegistration(ctx, &request)
@@ -157,13 +145,6 @@ func (ac *authClient) VerifyRegistration(ctx context.Context, token string) (Log
 }
 
 func (ac *authClient) SendPasswordReset(ctx context.Context, resetURL, email string) error {
-	if resetURL == "" {
-		return ungerr.BadRequestError("reset url is empty")
-	}
-	if email == "" {
-		return ungerr.BadRequestError("email is empty")
-	}
-
 	request := auth.SendResetPasswordRequest{
 		ResetUrl: resetURL,
 		Email:    email,
@@ -174,13 +155,6 @@ func (ac *authClient) SendPasswordReset(ctx context.Context, resetURL, email str
 }
 
 func (ac *authClient) ResetPassword(ctx context.Context, token, newPassword string) (LoginResponse, error) {
-	if token == "" {
-		return LoginResponse{}, ungerr.BadRequestError("token is empty")
-	}
-	if newPassword == "" {
-		return LoginResponse{}, ungerr.BadRequestError("new password is empty")
-	}
-
 	request := auth.ResetPasswordRequest{
 		Token:       token,
 		NewPassword: newPassword,

@@ -23,12 +23,25 @@ type ProfileService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (dto.ProfileResponse, error)
 	GetNames(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error)
 	Update(ctx context.Context, id uuid.UUID, name string) (dto.ProfileResponse, error)
+	Search(ctx context.Context, profileID uuid.UUID, input string) ([]dto.ProfileResponse, error)
+	Associate(ctx context.Context, userProfileID, realProfileID, anonProfileID uuid.UUID) error
 }
 
 type FriendshipService interface {
 	CreateAnonymous(ctx context.Context, request dto.NewAnonymousFriendshipRequest) (dto.FriendshipResponse, error)
 	GetAll(ctx context.Context, profileID uuid.UUID) ([]dto.FriendshipResponse, error)
 	IsFriends(ctx context.Context, profileID1, profileID2 uuid.UUID) (bool, bool, error)
+}
+
+type FriendshipRequestService interface {
+	Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID) error
+	GetAllSent(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error)
+	Cancel(ctx context.Context, userProfileID, reqID uuid.UUID) error
+	GetAllReceived(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error)
+	Ignore(ctx context.Context, userProfileID, reqID uuid.UUID) error
+	Block(ctx context.Context, userProfileID, reqID uuid.UUID) error
+	Unblock(ctx context.Context, userProfileID, reqID uuid.UUID) error
+	Accept(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipResponse, error)
 }
 
 type FriendDetailsService interface {

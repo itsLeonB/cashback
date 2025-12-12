@@ -36,12 +36,13 @@ func MapToFriendDetailsResponse(
 
 func FriendshipToResponse(fs friendship.Friendship) dto.FriendshipResponse {
 	return dto.FriendshipResponse{
-		ID:          fs.ID,
-		Type:        fs.Type,
-		ProfileID:   fs.ProfileID,
-		ProfileName: fs.ProfileName,
-		CreatedAt:   fs.CreatedAt,
-		UpdatedAt:   fs.UpdatedAt,
-		DeletedAt:   fs.DeletedAt,
+		ID:            fs.ID,
+		Type:          fs.Type,
+		ProfileID:     fs.ProfileID,
+		ProfileName:   fs.ProfileName,
+		ProfileAvatar: fs.ProfileAvatar,
+		CreatedAt:     fs.CreatedAt,
+		UpdatedAt:     fs.UpdatedAt,
+		DeletedAt:     fs.DeletedAt,
 	}
 }

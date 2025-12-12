@@ -40,12 +40,13 @@ func fromFriendshipProto(f *friendship.FriendshipResponse) (Friendship, error) {
 	}
 
 	return Friendship{
-		ID:          id,
-		Type:        friendshipType,
-		ProfileID:   profileID,
-		ProfileName: f.GetProfileName(),
-		CreatedAt:   ezutil.FromProtoTime(f.GetCreatedAt()),
-		UpdatedAt:   ezutil.FromProtoTime(f.GetUpdatedAt()),
-		DeletedAt:   ezutil.FromProtoTime(f.GetDeletedAt()),
+		ID:            id,
+		Type:          friendshipType,
+		ProfileID:     profileID,
+		ProfileName:   f.GetProfileName(),
+		ProfileAvatar: f.GetProfileAvatar(),
+		CreatedAt:     ezutil.FromProtoTime(f.GetCreatedAt()),
+		UpdatedAt:     ezutil.FromProtoTime(f.GetUpdatedAt()),
+		DeletedAt:     ezutil.FromProtoTime(f.GetDeletedAt()),
 	}, nil
 }

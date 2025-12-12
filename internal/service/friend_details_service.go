@@ -15,15 +15,18 @@ import (
 type friendDetailsServiceImpl struct {
 	friendshipClient friendship.FriendshipClient
 	debtSvc          DebtService
+	profileSvc       ProfileService
 }
 
 func NewFriendDetailsService(
 	friendshipClient friendship.FriendshipClient,
 	debtSvc DebtService,
+	profileSvc ProfileService,
 ) FriendDetailsService {
 	return &friendDetailsServiceImpl{
 		friendshipClient,
 		debtSvc,
+		profileSvc,
 	}
 }
 
@@ -47,6 +50,30 @@ func (fds *friendDetailsServiceImpl) GetDetails(ctx context.Context, profileID, 
 	friendProfileID := response.ProfileID2
 	if ezutil.CompareUUID(profileID, response.ProfileID2) == 0 {
 		friendProfileID = response.ProfileID1
+	}
+
+	friendProfile, err := fds.profileSvc.GetByID(ctx, friendProfileID)
+	if err != nil {
+		return dto.FriendDetailsResponse{}, err
+	}
+
+	if friendProfile.RealProfileID != uuid.Nil {
+		realFriendships, err := fds.friendshipClient.GetAll(ctx, friendProfile.RealProfileID)
+		if err != nil {
+			return dto.FriendDetailsResponse{}, err
+		}
+
+		var realFriendshipID uuid.UUID
+		for _, realFriendship := range realFriendships {
+			if ezutil.CompareUUID(realFriendship.ProfileID, profileID) == 0 {
+				realFriendshipID = realFriendship.ID
+				break
+			}
+		}
+
+		return dto.FriendDetailsResponse{
+			RedirectToRealFriendship: realFriendshipID,
+		}, nil
 	}
 
 	debtTransactions, err := fds.debtSvc.GetAllByProfileIDs(ctx, profileID, friendProfileID)

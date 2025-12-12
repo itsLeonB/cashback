@@ -59,8 +59,9 @@ type FriendStats struct {
 }
 
 type FriendDetailsResponse struct {
-	Friend       FriendDetails             `json:"friend"`
-	Balance      FriendBalance             `json:"balance"`
-	Transactions []DebtTransactionResponse `json:"transactions"`
-	Stats        FriendStats               `json:"stats"`
+	Friend                   FriendDetails             `json:"friend"`
+	Balance                  FriendBalance             `json:"balance"`
+	Transactions             []DebtTransactionResponse `json:"transactions"`
+	Stats                    FriendStats               `json:"stats"`
+	RedirectToRealFriendship uuid.UUID                 `json:"redirectToRealFriendship,omitzero"`
 }

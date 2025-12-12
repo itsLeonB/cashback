@@ -18,15 +18,18 @@ import (
 type debtServiceImpl struct {
 	debtClient        debt.DebtClient
 	friendshipService FriendshipService
+	profileService    ProfileService
 }
 
 func NewDebtService(
 	debtClient debt.DebtClient,
 	friendshipService FriendshipService,
+	profileService ProfileService,
 ) DebtService {
 	return &debtServiceImpl{
 		debtClient,
 		friendshipService,
+		profileService,
 	}
 }
 
@@ -97,15 +100,34 @@ func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, gro
 }
 
 func (ds *debtServiceImpl) GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
-	request := debt.GetAllByProfileIDsRequest{
-		UserProfileID:   userProfileID,
-		FriendProfileID: friendProfileID,
-	}
-
-	transactions, err := ds.debtClient.GetAllByProfileIDs(ctx, request)
+	friendProfile, err := ds.profileService.GetByID(ctx, friendProfileID)
 	if err != nil {
-		return nil, eris.Wrap(err, appconstant.ErrServiceClient)
+		return nil, err
 	}
 
-	return ezutil.MapSlice(transactions, mapper.DebtTransactionToResponse), nil
+	associatedProfileIDs := []uuid.UUID{friendProfileID}
+	if friendProfile.IsAnonymous {
+		if friendProfile.RealProfileID != uuid.Nil {
+			associatedProfileIDs = append(associatedProfileIDs, friendProfile.RealProfileID)
+		}
+	} else {
+		associatedProfileIDs = append(associatedProfileIDs, friendProfile.AssociatedAnonProfileIDs...)
+	}
+
+	allTransactions := make([]debt.Transaction, 0)
+	for _, profileID := range associatedProfileIDs {
+		request := debt.GetAllByProfileIDsRequest{
+			UserProfileID:   userProfileID,
+			FriendProfileID: profileID,
+		}
+
+		transactions, err := ds.debtClient.GetAllByProfileIDs(ctx, request)
+		if err != nil {
+			return nil, eris.Wrap(err, appconstant.ErrServiceClient)
+		}
+
+		allTransactions = append(allTransactions, transactions...)
+	}
+
+	return ezutil.MapSlice(allTransactions, mapper.DebtTransactionToResponse), nil
 }

@@ -52,9 +52,14 @@ func ProvideServices(
 	debtService := service.NewDebtService(
 		clients.Debt,
 		friendshipService,
+		profileService,
 	)
 
-	friendDetailsService := service.NewFriendDetailsService(clients.Friendship, debtService)
+	friendDetailsService := service.NewFriendDetailsService(
+		clients.Friendship,
+		debtService,
+		profileService,
+	)
 
 	groupExpenseService := service.NewGroupExpenseService(
 		friendshipService,

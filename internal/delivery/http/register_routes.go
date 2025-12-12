@@ -25,8 +25,8 @@ func registerRoutes(router *gin.Engine, configs config.Config, logger ezutil.Log
 			{
 				authRoutes.POST("/register", handlers.Auth.HandleRegister())
 				authRoutes.POST("/login", handlers.Auth.HandleInternalLogin())
-				authRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextProvider), handlers.Auth.HandleOAuth2Login())
-				authRoutes.GET(fmt.Sprintf("/:%s/callback", appconstant.ContextProvider), handlers.Auth.HandleOAuth2Callback())
+				authRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextProvider.String()), handlers.Auth.HandleOAuth2Login())
+				authRoutes.GET(fmt.Sprintf("/:%s/callback", appconstant.ContextProvider.String()), handlers.Auth.HandleOAuth2Callback())
 				authRoutes.GET("/verify-registration", handlers.Auth.HandleVerifyRegistration())
 				authRoutes.POST("/password-reset", handlers.Auth.HandleSendPasswordReset())
 				authRoutes.PATCH("/reset-password", handlers.Auth.HandleResetPassword())

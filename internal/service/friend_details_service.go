@@ -10,6 +10,7 @@ import (
 	"github.com/itsLeonB/orcashtrator/internal/dto"
 	"github.com/itsLeonB/orcashtrator/internal/mapper"
 	"github.com/itsLeonB/ungerr"
+	"github.com/rotisserie/eris"
 )
 
 type friendDetailsServiceImpl struct {
@@ -69,6 +70,9 @@ func (fds *friendDetailsServiceImpl) GetDetails(ctx context.Context, profileID, 
 				realFriendshipID = realFriendship.ID
 				break
 			}
+		}
+		if realFriendshipID == uuid.Nil {
+			return dto.FriendDetailsResponse{}, eris.Errorf("real friendship not found. friendProfileID: %s", friendProfileID)
 		}
 
 		return dto.FriendDetailsResponse{

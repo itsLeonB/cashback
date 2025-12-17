@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hibiken/asynq v0.25.1
 	github.com/itsLeonB/audit v0.1.0
-	github.com/itsLeonB/billsplittr-protos v0.5.1-pre4
+	github.com/itsLeonB/billsplittr-protos v0.5.1-pre5
 	github.com/itsLeonB/cocoon-protos v1.7.0
 	github.com/itsLeonB/drex-protos v0.2.1
 	github.com/itsLeonB/ezutil/v2 v2.2.0

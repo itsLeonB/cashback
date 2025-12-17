@@ -8,12 +8,14 @@ import (
 )
 
 type NewExpenseBillRequest struct {
-	CreatorProfileID uuid.UUID
-	PayerProfileID   uuid.UUID
 	ImageReader      io.ReadCloser
-	ContentType      string
-	Filename         string
-	FileSize         int64
+	CreatorProfileID uuid.UUID
+	// Deprecated: will be deferred to other API
+	PayerProfileID uuid.UUID
+	GroupExpenseID uuid.UUID
+	ContentType    string
+	Filename       string
+	FileSize       int64
 }
 
 type ExpenseBillResponse struct {

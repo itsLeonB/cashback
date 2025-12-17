@@ -12,6 +12,7 @@ func toExpenseBillProto(bill ExpenseBill) *expensebill.ExpenseBill {
 	return &expensebill.ExpenseBill{
 		CreatorProfileId: bill.CreatorProfileID.String(),
 		PayerProfileId:   bill.PayerProfileID.String(),
+		GroupExpenseId:   bill.GroupExpenseID.String(),
 		ObjectKey:        bill.ObjectKey,
 	}
 }

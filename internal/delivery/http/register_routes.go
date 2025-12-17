@@ -106,6 +106,7 @@ func registerRoutes(router *gin.Engine, configs config.Config, logger ezutil.Log
 		protectedRoutes := v2.Group("/", middlewares.auth)
 		{
 			protectedRoutes.POST("/group-expenses", handlers.GroupExpense.HandleCreateDraftV2())
+			protectedRoutes.POST(fmt.Sprintf("/group-expenses/:%s/bills", appconstant.ContextGroupExpenseID.String()), handlers.ExpenseBill.HandleSaveV2())
 		}
 	}
 }

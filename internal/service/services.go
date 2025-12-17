@@ -66,6 +66,7 @@ type GroupExpenseService interface {
 	GetDetails(ctx context.Context, id, userProfileID uuid.UUID) (dto.GroupExpenseResponse, error)
 	ConfirmDraft(ctx context.Context, id, userProfileID uuid.UUID) (dto.GroupExpenseResponse, error)
 	CreateDraftV2(ctx context.Context, userProfileID uuid.UUID, description string) (dto.ExpenseResponseV2, error)
+	Delete(ctx context.Context, userProfileID, id uuid.UUID) error
 }
 
 type ExpenseItemService interface {

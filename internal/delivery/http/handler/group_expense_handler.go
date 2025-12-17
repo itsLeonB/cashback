@@ -13,19 +13,19 @@ import (
 	"github.com/itsLeonB/orcashtrator/internal/util"
 )
 
-type GroupExpenseHandler struct {
+type groupExpenseHandler struct {
 	groupExpenseService service.GroupExpenseService
 }
 
-func NewGroupExpenseHandler(
+func newGroupExpenseHandler(
 	groupExpenseService service.GroupExpenseService,
-) *GroupExpenseHandler {
-	return &GroupExpenseHandler{
+) *groupExpenseHandler {
+	return &groupExpenseHandler{
 		groupExpenseService,
 	}
 }
 
-func (geh *GroupExpenseHandler) HandleCreateDraft() gin.HandlerFunc {
+func (geh *groupExpenseHandler) HandleCreateDraft() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userProfileID, err := util.GetProfileID(ctx)
 		if err != nil {
@@ -54,7 +54,7 @@ func (geh *GroupExpenseHandler) HandleCreateDraft() gin.HandlerFunc {
 	}
 }
 
-func (geh *GroupExpenseHandler) HandleGetAllCreated() gin.HandlerFunc {
+func (geh *groupExpenseHandler) HandleGetAllCreated() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userProfileID, err := util.GetProfileID(ctx)
 		if err != nil {
@@ -75,7 +75,7 @@ func (geh *GroupExpenseHandler) HandleGetAllCreated() gin.HandlerFunc {
 	}
 }
 
-func (geh *GroupExpenseHandler) HandleGetDetails() gin.HandlerFunc {
+func (geh *groupExpenseHandler) HandleGetDetails() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userProfileID, err := util.GetProfileID(ctx)
 		if err != nil {
@@ -102,7 +102,7 @@ func (geh *GroupExpenseHandler) HandleGetDetails() gin.HandlerFunc {
 	}
 }
 
-func (geh *GroupExpenseHandler) HandleConfirmDraft() gin.HandlerFunc {
+func (geh *groupExpenseHandler) HandleConfirmDraft() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userProfileID, err := util.GetProfileID(ctx)
 		if err != nil {
@@ -129,7 +129,7 @@ func (geh *GroupExpenseHandler) HandleConfirmDraft() gin.HandlerFunc {
 	}
 }
 
-func (geh *GroupExpenseHandler) HandleCreateDraftV2() gin.HandlerFunc {
+func (geh *groupExpenseHandler) HandleCreateDraftV2() gin.HandlerFunc {
 	return ginkgo.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := util.GetProfileID(ctx)
 		if err != nil {
@@ -142,5 +142,21 @@ func (geh *GroupExpenseHandler) HandleCreateDraftV2() gin.HandlerFunc {
 		}
 
 		return geh.groupExpenseService.CreateDraftV2(ctx, userProfileID, req.Description)
+	})
+}
+
+func (geh *groupExpenseHandler) HandleDelete() gin.HandlerFunc {
+	return ginkgo.Handler(http.StatusNoContent, func(ctx *gin.Context) (any, error) {
+		userProfileID, err := util.GetProfileID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		expenseID, err := ginkgo.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, geh.groupExpenseService.Delete(ctx, userProfileID, expenseID)
 	})
 }

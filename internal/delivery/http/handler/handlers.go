@@ -12,7 +12,7 @@ type Handlers struct {
 	Profile           *ProfileHandler
 	TransferMethod    *TransferMethodHandler
 	Debt              *DebtHandler
-	GroupExpense      *GroupExpenseHandler
+	GroupExpense      *groupExpenseHandler
 	ExpenseItem       *ExpenseItemHandler
 	OtherFee          *OtherFeeHandler
 	ExpenseBill       *ExpenseBillHandler
@@ -26,7 +26,7 @@ func ProvideHandlers(logger ezutil.Logger, services *provider.Services) *Handler
 		NewProfileHandler(services.Profile),
 		NewTransferMethodHandler(services.TransferMethod),
 		NewDebtHandler(services.Debt),
-		NewGroupExpenseHandler(services.GroupExpense),
+		newGroupExpenseHandler(services.GroupExpense),
 		NewExpenseItemHandler(services.ExpenseItem),
 		NewOtherFeeHandler(services.OtherFee),
 		NewExpenseBillHandler(logger, services.ExpenseBill),

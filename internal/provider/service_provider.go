@@ -66,6 +66,7 @@ func ProvideServices(
 		debtService,
 		profileService,
 		clients.GroupExpense,
+		clients.ExpenseV1,
 		clients.ExpenseV2,
 	)
 

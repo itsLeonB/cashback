@@ -5,6 +5,7 @@ import (
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
+	expenseV1 "github.com/itsLeonB/billsplittr-protos/gen/go/groupexpense/v1"
 	expenseV2 "github.com/itsLeonB/billsplittr-protos/gen/go/groupexpense/v2"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/orcashtrator/internal/appconstant"
@@ -22,6 +23,7 @@ type groupExpenseServiceImpl struct {
 	debtService        DebtService
 	profileService     ProfileService
 	groupExpenseClient groupexpense.GroupExpenseClient
+	expenseClientV1    expenseV1.GroupExpenseServiceClient
 	expenseClientV2    expenseV2.GroupExpenseServiceClient
 }
 
@@ -30,6 +32,7 @@ func NewGroupExpenseService(
 	debtService DebtService,
 	profileService ProfileService,
 	groupExpenseClient groupexpense.GroupExpenseClient,
+	expenseClientV1 expenseV1.GroupExpenseServiceClient,
 	expenseClientV2 expenseV2.GroupExpenseServiceClient,
 ) GroupExpenseService {
 	return &groupExpenseServiceImpl{
@@ -37,6 +40,7 @@ func NewGroupExpenseService(
 		debtService,
 		profileService,
 		groupExpenseClient,
+		expenseClientV1,
 		expenseClientV2,
 	}
 }
@@ -195,6 +199,15 @@ func (ges *groupExpenseServiceImpl) CreateDraftV2(ctx context.Context, userProfi
 		Description:      expense.Description,
 		Status:           status,
 	}, nil
+}
+
+func (ges *groupExpenseServiceImpl) Delete(ctx context.Context, userProfileID, id uuid.UUID) error {
+	req := &expenseV1.DeleteRequest{
+		Id:        id.String(),
+		ProfileId: userProfileID.String(),
+	}
+	_, err := ges.expenseClientV1.Delete(ctx, req)
+	return err
 }
 
 func (ges *groupExpenseServiceImpl) validateRequest(request dto.NewGroupExpenseRequest) error {

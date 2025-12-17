@@ -67,9 +67,9 @@ type ExpenseResponseV2 struct {
 	Status           appconstant.ExpenseStatus `json:"status"`
 
 	// Relationships
-	Items        []ExpenseItemResponse        `json:"items,omitempty"`
-	OtherFees    []OtherFeeResponse           `json:"otherFees,omitempty"`
-	Participants []ExpenseParticipantResponse `json:"participants,omitempty"`
+	Items        []ExpenseItemResponse        `json:"items"`
+	OtherFees    []OtherFeeResponse           `json:"otherFees"`
+	Participants []ExpenseParticipantResponse `json:"participants"`
 }
 
 type Participant struct {

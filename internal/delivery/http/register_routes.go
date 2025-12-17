@@ -103,8 +103,9 @@ func registerRoutes(router *gin.Engine, configs config.Config, logger ezutil.Log
 		}
 
 		v2 := apiRoutes.Group("/v2")
+		protectedRoutes := v2.Group("/", middlewares.auth)
 		{
-			v2.POST("/group-expenses", handlers.GroupExpense.HandleCreateDraftV2())
+			protectedRoutes.POST("/group-expenses", handlers.GroupExpense.HandleCreateDraftV2())
 		}
 	}
 }

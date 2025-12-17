@@ -128,3 +128,19 @@ func (geh *GroupExpenseHandler) HandleConfirmDraft() gin.HandlerFunc {
 		)
 	}
 }
+
+func (geh *GroupExpenseHandler) HandleCreateDraftV2() gin.HandlerFunc {
+	return ginkgo.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
+		userProfileID, err := util.GetProfileID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		req, err := util.BindJSON[dto.NewDraftRequest](ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return geh.groupExpenseService.CreateDraftV2(ctx, userProfileID, req.Description)
+	})
+}

@@ -25,6 +25,7 @@ type ProfileService interface {
 	Update(ctx context.Context, id uuid.UUID, name string) (dto.ProfileResponse, error)
 	Search(ctx context.Context, profileID uuid.UUID, input string) ([]dto.ProfileResponse, error)
 	Associate(ctx context.Context, userProfileID, realProfileID, anonProfileID uuid.UUID) error
+	GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]dto.ProfileResponse, error)
 }
 
 type FriendshipService interface {
@@ -64,6 +65,7 @@ type GroupExpenseService interface {
 	GetAllCreated(ctx context.Context, userProfileID uuid.UUID) ([]dto.GroupExpenseResponse, error)
 	GetDetails(ctx context.Context, id, userProfileID uuid.UUID) (dto.GroupExpenseResponse, error)
 	ConfirmDraft(ctx context.Context, id, userProfileID uuid.UUID) (dto.GroupExpenseResponse, error)
+	CreateDraftV2(ctx context.Context, userProfileID uuid.UUID, description string) (dto.ExpenseResponseV2, error)
 }
 
 type ExpenseItemService interface {

@@ -95,3 +95,17 @@ func (ps *profileServiceGrpc) Associate(ctx context.Context, userProfileID, real
 
 	return ps.profileClient.Associate(ctx, request)
 }
+
+func (ps *profileServiceGrpc) GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]dto.ProfileResponse, error) {
+	profiles, err := ps.profileClient.GetByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	profilesMap := make(map[uuid.UUID]dto.ProfileResponse, len(profiles))
+	for _, profile := range profiles {
+		profilesMap[profile.ID] = mapper.ProfileToResponse(profile)
+	}
+
+	return profilesMap, nil
+}

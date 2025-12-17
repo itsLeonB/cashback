@@ -66,6 +66,7 @@ func ProvideServices(
 		debtService,
 		profileService,
 		clients.GroupExpense,
+		clients.ExpenseV2,
 	)
 
 	expenseItemSvc := service.NewExpenseItemService(

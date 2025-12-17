@@ -21,3 +21,12 @@ func ProfileToResponse(response profile.Profile) dto.ProfileResponse {
 		RealProfileID:            response.RealProfileID,
 	}
 }
+
+func ProfileResponseToParticipant(resp dto.ProfileResponse, userProfileID uuid.UUID) dto.Participant {
+	return dto.Participant{
+		ProfileID: resp.ID,
+		Name:      resp.Name,
+		Avatar:    resp.Avatar,
+		IsUser:    userProfileID == resp.ID,
+	}
+}

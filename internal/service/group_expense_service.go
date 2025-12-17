@@ -3,13 +3,17 @@ package service
 import (
 	"context"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
+	expenseV2 "github.com/itsLeonB/billsplittr-protos/gen/go/groupexpense/v2"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/orcashtrator/internal/appconstant"
+	"github.com/itsLeonB/orcashtrator/internal/domain"
 	"github.com/itsLeonB/orcashtrator/internal/domain/groupexpense"
 	"github.com/itsLeonB/orcashtrator/internal/dto"
 	"github.com/itsLeonB/orcashtrator/internal/mapper"
 	"github.com/itsLeonB/ungerr"
+	"github.com/rotisserie/eris"
 	"github.com/shopspring/decimal"
 )
 
@@ -18,6 +22,7 @@ type groupExpenseServiceImpl struct {
 	debtService        DebtService
 	profileService     ProfileService
 	groupExpenseClient groupexpense.GroupExpenseClient
+	expenseClientV2    expenseV2.GroupExpenseServiceClient
 }
 
 func NewGroupExpenseService(
@@ -25,12 +30,14 @@ func NewGroupExpenseService(
 	debtService DebtService,
 	profileService ProfileService,
 	groupExpenseClient groupexpense.GroupExpenseClient,
+	expenseClientV2 expenseV2.GroupExpenseServiceClient,
 ) GroupExpenseService {
 	return &groupExpenseServiceImpl{
 		friendshipService,
 		debtService,
 		profileService,
 		groupExpenseClient,
+		expenseClientV2,
 	}
 }
 
@@ -131,6 +138,63 @@ func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, userPr
 	}
 
 	return mapper.GroupExpenseToResponse(groupExpense, userProfileID, namesByProfileIDs), nil
+}
+
+func (ges *groupExpenseServiceImpl) CreateDraftV2(ctx context.Context, userProfileID uuid.UUID, description string) (dto.ExpenseResponseV2, error) {
+	req := &expenseV2.CreateDraftRequest{
+		CreatorProfileId: userProfileID.String(),
+		Description:      description,
+	}
+
+	resp, err := ges.expenseClientV2.CreateDraft(ctx, req)
+	if err != nil {
+		return dto.ExpenseResponseV2{}, err
+	}
+
+	expense := resp.GetGroupExpense()
+	if expense == nil {
+		return dto.ExpenseResponseV2{}, eris.New("response is nil")
+	}
+
+	metadata, err := domain.FromAuditMetadataProto(expense.GetAuditMetadata())
+	if err != nil {
+		return dto.ExpenseResponseV2{}, err
+	}
+
+	creatorProfileID, err := ezutil.Parse[uuid.UUID](expense.CreatorProfileId)
+	if err != nil {
+		return dto.ExpenseResponseV2{}, err
+	}
+
+	payerProfileID, err := ezutil.Parse[uuid.UUID](expense.PayerProfileId)
+	if err != nil {
+		return dto.ExpenseResponseV2{}, err
+	}
+
+	profileIDs := mapset.NewSet(userProfileID, creatorProfileID, payerProfileID)
+	profileMap, err := ges.profileService.GetByIDs(ctx, profileIDs.ToSlice())
+	if err != nil {
+		return dto.ExpenseResponseV2{}, err
+	}
+
+	status, err := mapper.FromExpenseStatusProto(expense.GetStatus())
+	if err != nil {
+		return dto.ExpenseResponseV2{}, err
+	}
+
+	return dto.ExpenseResponseV2{
+		ID:               metadata.ID,
+		CreatedAt:        metadata.CreatedAt,
+		UpdatedAt:        metadata.UpdatedAt,
+		DeletedAt:        metadata.DeletedAt,
+		Creator:          mapper.ProfileResponseToParticipant(profileMap[creatorProfileID], userProfileID),
+		Payer:            mapper.ProfileResponseToParticipant(profileMap[payerProfileID], userProfileID),
+		TotalAmount:      decimal.Zero,
+		ItemsTotalAmount: decimal.Zero,
+		FeesTotalAmount:  decimal.Zero,
+		Description:      expense.Description,
+		Status:           status,
+	}, nil
 }
 
 func (ges *groupExpenseServiceImpl) validateRequest(request dto.NewGroupExpenseRequest) error {

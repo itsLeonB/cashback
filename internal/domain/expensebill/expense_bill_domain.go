@@ -7,7 +7,7 @@ import (
 
 type ExpenseBill struct {
 	CreatorProfileID uuid.UUID `validate:"required"`
-	PayerProfileID   uuid.UUID `validate:"required"`
+	PayerProfileID   uuid.UUID
 	GroupExpenseID   uuid.UUID
 	ObjectKey        string `validate:"required"`
 	domain.AuditMetadata

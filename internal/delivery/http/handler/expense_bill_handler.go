@@ -163,7 +163,7 @@ func (geh *ExpenseBillHandler) HandleSaveV2() gin.HandlerFunc {
 			return nil, err
 		}
 
-		expenseID, err := ginkgo.GetAndParseFromContext[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
+		expenseID, err := ginkgo.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
 		if err != nil {
 			return nil, err
 		}

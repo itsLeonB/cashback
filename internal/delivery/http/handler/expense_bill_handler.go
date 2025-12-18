@@ -192,7 +192,7 @@ func (geh *ExpenseBillHandler) HandleSaveV2() gin.HandlerFunc {
 			FileSize:         fileHeader.Size,
 		}
 
-		response, err := geh.expenseBillService.Save(ctx, &request)
+		response, err := geh.expenseBillService.SaveV2(ctx, &request)
 		if err != nil {
 			return nil, err
 		}

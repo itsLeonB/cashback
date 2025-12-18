@@ -40,9 +40,10 @@ type GroupExpenseResponse struct {
 	DeletedAt             time.Time                 `json:"deletedAt,omitzero"`
 
 	// Relationships
-	Items        []ExpenseItemResponse        `json:"items,omitempty"`
-	OtherFees    []OtherFeeResponse           `json:"otherFees,omitempty"`
-	Participants []ExpenseParticipantResponse `json:"participants,omitempty"`
+	Items        []ExpenseItemResponse        `json:"items"`
+	OtherFees    []OtherFeeResponse           `json:"otherFees"`
+	Participants []ExpenseParticipantResponse `json:"participants"`
+	Bill         ExpenseBillResponse          `json:"bill"`
 }
 
 type ExpenseParticipantResponse struct {

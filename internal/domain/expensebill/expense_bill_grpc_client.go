@@ -52,7 +52,7 @@ func (ebc *expenseBillClient) Save(ctx context.Context, req ExpenseBill) (Expens
 		return ExpenseBill{}, err
 	}
 
-	return fromExpenseBillProto(response.GetExpenseBill())
+	return FromExpenseBillProto(response.GetExpenseBill())
 }
 
 func (ebc *expenseBillClient) GetAllCreated(ctx context.Context, creatorProfileID uuid.UUID) ([]ExpenseBill, error) {
@@ -65,7 +65,7 @@ func (ebc *expenseBillClient) GetAllCreated(ctx context.Context, creatorProfileI
 		return nil, err
 	}
 
-	return ezutil.MapSliceWithError(response.GetExpenseBills(), fromExpenseBillProto)
+	return ezutil.MapSliceWithError(response.GetExpenseBills(), FromExpenseBillProto)
 }
 
 func (ebc *expenseBillClient) Get(ctx context.Context, id uuid.UUID) (ExpenseBill, error) {
@@ -78,7 +78,7 @@ func (ebc *expenseBillClient) Get(ctx context.Context, id uuid.UUID) (ExpenseBil
 		return ExpenseBill{}, err
 	}
 
-	return fromExpenseBillProto(response.GetExpenseBill())
+	return FromExpenseBillProto(response.GetExpenseBill())
 }
 
 func (ebc *expenseBillClient) Delete(ctx context.Context, profileID, id uuid.UUID) error {

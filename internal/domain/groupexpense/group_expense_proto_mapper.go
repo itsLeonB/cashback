@@ -6,6 +6,7 @@ import (
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/orcashtrator/internal/appconstant"
 	"github.com/itsLeonB/orcashtrator/internal/domain"
+	"github.com/itsLeonB/orcashtrator/internal/domain/expensebill"
 	"github.com/itsLeonB/orcashtrator/internal/domain/expenseitem"
 	"github.com/itsLeonB/orcashtrator/internal/domain/otherfee"
 	"github.com/rotisserie/eris"
@@ -51,6 +52,11 @@ func fromGroupExpenseProto(ge *groupexpense.GroupExpenseResponse) (GroupExpense,
 		return GroupExpense{}, err
 	}
 
+	bill, err := expensebill.FromExpenseBillProto(ge.GetExpenseBill())
+	if err != nil {
+		return GroupExpense{}, err
+	}
+
 	return GroupExpense{
 		CreatorProfileID:        creatorProfileID,
 		PayerProfileID:          payerProfileID,
@@ -66,20 +72,19 @@ func fromGroupExpenseProto(ge *groupexpense.GroupExpenseResponse) (GroupExpense,
 		OtherFees:               fees,
 		Participants:            participants,
 		AuditMetadata:           metadata,
+		Bill:                    bill,
 	}, nil
 }
 
-func fromExpenseStatusProto(status groupexpense.GroupExpenseResponse_ExpenseStatus) (appconstant.ExpenseStatus, error) {
+func fromExpenseStatusProto(status groupexpense.GroupExpenseResponse_Status) (appconstant.ExpenseStatus, error) {
 	switch status {
-	case groupexpense.GroupExpenseResponse_EXPENSE_STATUS_UNSPECIFIED:
+	case groupexpense.GroupExpenseResponse_STATUS_UNSPECIFIED:
 		return "", eris.New("unspecified expense status enum")
-	case groupexpense.GroupExpenseResponse_EXPENSE_STATUS_DRAFT:
+	case groupexpense.GroupExpenseResponse_STATUS_DRAFT:
 		return appconstant.DraftExpense, nil
-	case groupexpense.GroupExpenseResponse_EXPENSE_STATUS_PROCESSING_BILL:
-		return appconstant.ProcessingBillExpense, nil
-	case groupexpense.GroupExpenseResponse_EXPENSE_STATUS_READY:
+	case groupexpense.GroupExpenseResponse_STATUS_READY:
 		return appconstant.ReadyExpense, nil
-	case groupexpense.GroupExpenseResponse_EXPENSE_STATUS_CONFIRMED:
+	case groupexpense.GroupExpenseResponse_STATUS_CONFIRMED:
 		return appconstant.ConfirmedExpense, nil
 	default:
 		return "", eris.Errorf("unknown expense status enum: %s", status.String())

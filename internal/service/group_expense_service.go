@@ -16,6 +16,7 @@ import (
 	"github.com/itsLeonB/ungerr"
 	"github.com/rotisserie/eris"
 	"github.com/shopspring/decimal"
+	"golang.org/x/sync/errgroup"
 )
 
 type groupExpenseServiceImpl struct {
@@ -25,6 +26,7 @@ type groupExpenseServiceImpl struct {
 	groupExpenseClient groupexpense.GroupExpenseClient
 	expenseClientV1    expenseV1.GroupExpenseServiceClient
 	expenseClientV2    expenseV2.GroupExpenseServiceClient
+	billSvc            ExpenseBillService
 }
 
 func NewGroupExpenseService(
@@ -34,6 +36,7 @@ func NewGroupExpenseService(
 	groupExpenseClient groupexpense.GroupExpenseClient,
 	expenseClientV1 expenseV1.GroupExpenseServiceClient,
 	expenseClientV2 expenseV2.GroupExpenseServiceClient,
+	billSvc ExpenseBillService,
 ) GroupExpenseService {
 	return &groupExpenseServiceImpl{
 		friendshipService,
@@ -42,6 +45,7 @@ func NewGroupExpenseService(
 		groupExpenseClient,
 		expenseClientV1,
 		expenseClientV2,
+		billSvc,
 	}
 }
 
@@ -113,12 +117,29 @@ func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProf
 		return dto.GroupExpenseResponse{}, err
 	}
 
-	namesByProfileIDs, err := ges.profileService.GetNames(ctx, groupExpense.ProfileIDs())
-	if err != nil {
+	var eg errgroup.Group
+	var billResponse dto.ExpenseBillResponse
+	var namesByProfileIDs map[uuid.UUID]string
+
+	eg.Go(func() error {
+		bill, err := ges.billSvc.MapToURL(ctx, groupExpense.Bill)
+		billResponse = bill
+		return err
+	})
+
+	eg.Go(func() error {
+		names, err := ges.profileService.GetNames(ctx, groupExpense.ProfileIDs())
+		namesByProfileIDs = names
+		return err
+	})
+
+	if err = eg.Wait(); err != nil {
 		return dto.GroupExpenseResponse{}, err
 	}
 
-	return mapper.GroupExpenseToResponse(groupExpense, userProfileID, namesByProfileIDs), nil
+	expenseResponse := mapper.GroupExpenseToResponse(groupExpense, userProfileID, namesByProfileIDs)
+	expenseResponse.Bill = billResponse
+	return expenseResponse, nil
 }
 
 func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, userProfileID uuid.UUID) (dto.GroupExpenseResponse, error) {

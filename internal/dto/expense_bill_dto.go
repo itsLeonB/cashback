@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/orcashtrator/internal/appconstant"
 )
 
 type NewExpenseBillRequest struct {
@@ -19,15 +20,16 @@ type NewExpenseBillRequest struct {
 }
 
 type ExpenseBillResponse struct {
-	ID                 uuid.UUID `json:"id"`
-	CreatorProfileID   uuid.UUID `json:"creatorProfileId"`
-	PayerProfileID     uuid.UUID `json:"payerProfileId"`
-	ImageURL           string    `json:"imageUrl"`
-	CreatedAt          time.Time `json:"createdAt"`
-	UpdatedAt          time.Time `json:"updatedAt"`
-	DeletedAt          time.Time `json:"deletedAt,omitzero"`
-	IsCreatedByUser    bool      `json:"isCreatedByUser"`
-	IsPaidByUser       bool      `json:"isPaidByUser"`
-	CreatorProfileName string    `json:"creatorProfileName"`
-	PayerProfileName   string    `json:"payerProfileName"`
+	ID                 uuid.UUID              `json:"id"`
+	CreatorProfileID   uuid.UUID              `json:"creatorProfileId"`
+	PayerProfileID     uuid.UUID              `json:"payerProfileId"`
+	ImageURL           string                 `json:"imageUrl"`
+	Status             appconstant.BillStatus `json:"status"`
+	CreatedAt          time.Time              `json:"createdAt"`
+	UpdatedAt          time.Time              `json:"updatedAt"`
+	DeletedAt          time.Time              `json:"deletedAt,omitzero"`
+	IsCreatedByUser    bool                   `json:"isCreatedByUser"`
+	IsPaidByUser       bool                   `json:"isPaidByUser"`
+	CreatorProfileName string                 `json:"creatorProfileName"`
+	PayerProfileName   string                 `json:"payerProfileName"`
 }

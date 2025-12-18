@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/orcashtrator/internal/domain/expensebill"
 	"github.com/itsLeonB/orcashtrator/internal/domain/groupexpense"
 	"github.com/itsLeonB/orcashtrator/internal/dto"
 )
@@ -89,4 +90,5 @@ type ExpenseBillService interface {
 	Get(ctx context.Context, profileID, id uuid.UUID) (dto.ExpenseBillResponse, error)
 	Delete(ctx context.Context, profileID, id uuid.UUID) error
 	SaveV2(ctx context.Context, req *dto.NewExpenseBillRequest) (dto.ExpenseBillResponse, error)
+	MapToURL(ctx context.Context, bill expensebill.ExpenseBill) (dto.ExpenseBillResponse, error)
 }

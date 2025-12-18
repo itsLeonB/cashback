@@ -112,6 +112,15 @@ func (ebs *expenseBillServiceImpl) Get(ctx context.Context, profileID, id uuid.U
 	return mapper.ExpenseBillToResponse(bill, imageURL, profileID, namesByProfileIDs), nil
 }
 
+func (ebs *expenseBillServiceImpl) MapToURL(ctx context.Context, bill expensebill.ExpenseBill) (dto.ExpenseBillResponse, error) {
+	imageURL, err := ebs.imageUploadClient.GetURL(ctx, ebs.objectKeyToFileID(bill.ObjectKey))
+	if err != nil {
+		return dto.ExpenseBillResponse{}, err
+	}
+
+	return mapper.ExpenseBillToResponse(bill, imageURL, uuid.Nil, make(map[uuid.UUID]string)), nil
+}
+
 func (ebs *expenseBillServiceImpl) Delete(ctx context.Context, profileID, id uuid.UUID) error {
 	bill, err := ebs.expenseBillClient.Get(ctx, id)
 	if err != nil {

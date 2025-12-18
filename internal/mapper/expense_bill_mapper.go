@@ -17,6 +17,7 @@ func ExpenseBillToResponse(
 		CreatorProfileID:   bill.CreatorProfileID,
 		PayerProfileID:     bill.PayerProfileID,
 		ImageURL:           url,
+		Status:             bill.Status,
 		CreatedAt:          bill.CreatedAt,
 		UpdatedAt:          bill.UpdatedAt,
 		DeletedAt:          bill.DeletedAt,

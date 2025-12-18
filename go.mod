@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hibiken/asynq v0.25.1
 	github.com/itsLeonB/audit v0.1.0
-	github.com/itsLeonB/billsplittr-protos v0.5.1-pre5
+	github.com/itsLeonB/billsplittr-protos v0.5.1-pre6
 	github.com/itsLeonB/cocoon-protos v1.7.0
 	github.com/itsLeonB/drex-protos v0.2.1
 	github.com/itsLeonB/ezutil/v2 v2.2.0
@@ -24,6 +24,7 @@ require (
 	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/mock v0.6.0
+	golang.org/x/sync v0.16.0
 	golang.org/x/text v0.28.0
 	google.golang.org/grpc v1.75.1
 )

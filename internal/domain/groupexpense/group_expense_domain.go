@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/orcashtrator/internal/appconstant"
 	"github.com/itsLeonB/orcashtrator/internal/domain"
+	"github.com/itsLeonB/orcashtrator/internal/domain/expensebill"
 	"github.com/itsLeonB/orcashtrator/internal/domain/expenseitem"
 	"github.com/itsLeonB/orcashtrator/internal/domain/otherfee"
 	"github.com/shopspring/decimal"
@@ -29,6 +30,7 @@ type GroupExpense struct {
 	Items        []expenseitem.ExpenseItem
 	OtherFees    []otherfee.OtherFee
 	Participants []ExpenseParticipant
+	Bill         expensebill.ExpenseBill
 }
 
 func (ge GroupExpense) ProfileIDs() []uuid.UUID {

@@ -159,17 +159,15 @@ func ExpenseParticipantToData(participant groupexpense.ExpenseParticipant) (debt
 	}, nil
 }
 
-func FromExpenseStatusProto(status expense.GroupExpenseResponse_ExpenseStatus) (appconstant.ExpenseStatus, error) {
+func FromExpenseStatusProto(status expense.GroupExpenseResponse_Status) (appconstant.ExpenseStatus, error) {
 	switch status {
-	case expense.GroupExpenseResponse_EXPENSE_STATUS_UNSPECIFIED:
+	case expense.GroupExpenseResponse_STATUS_UNSPECIFIED:
 		return "", eris.New("unspecified expense status")
-	case expense.GroupExpenseResponse_EXPENSE_STATUS_DRAFT:
+	case expense.GroupExpenseResponse_STATUS_DRAFT:
 		return appconstant.DraftExpense, nil
-	case expense.GroupExpenseResponse_EXPENSE_STATUS_PROCESSING_BILL:
-		return appconstant.ProcessingBillExpense, nil
-	case expense.GroupExpenseResponse_EXPENSE_STATUS_READY:
+	case expense.GroupExpenseResponse_STATUS_READY:
 		return appconstant.ReadyExpense, nil
-	case expense.GroupExpenseResponse_EXPENSE_STATUS_CONFIRMED:
+	case expense.GroupExpenseResponse_STATUS_CONFIRMED:
 		return appconstant.ConfirmedExpense, nil
 	default:
 		return "", eris.Errorf("unknown expense status enum: %s", status.String())

@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/billsplittr-protos/gen/go/groupexpense/v1"
 	"github.com/itsLeonB/ezutil/v2"
+	"github.com/itsLeonB/orcashtrator/internal/appconstant"
 	"github.com/itsLeonB/orcashtrator/internal/domain"
 	"github.com/itsLeonB/orcashtrator/internal/domain/expenseitem"
 	"github.com/itsLeonB/orcashtrator/internal/domain/otherfee"
@@ -45,19 +46,44 @@ func fromGroupExpenseProto(ge *groupexpense.GroupExpenseResponse) (GroupExpense,
 		return GroupExpense{}, err
 	}
 
+	status, err := fromExpenseStatusProto(ge.GetStatus())
+	if err != nil {
+		return GroupExpense{}, err
+	}
+
 	return GroupExpense{
 		CreatorProfileID:        creatorProfileID,
 		PayerProfileID:          payerProfileID,
 		TotalAmount:             ezutil.MoneyToDecimal(ge.GetTotalAmount()),
 		Subtotal:                ezutil.MoneyToDecimal(ge.GetSubtotal()),
+		ItemsTotal:              ezutil.MoneyToDecimal(ge.GetItemsTotal()),
+		FeesTotal:               ezutil.MoneyToDecimal(ge.GetFeesTotal()),
 		Description:             ge.GetDescription(),
 		IsConfirmed:             ge.GetIsConfirmed(),
 		IsParticipantsConfirmed: ge.GetIsParticipantsConfirmed(),
+		Status:                  status,
 		Items:                   items,
 		OtherFees:               fees,
 		Participants:            participants,
 		AuditMetadata:           metadata,
 	}, nil
+}
+
+func fromExpenseStatusProto(status groupexpense.GroupExpenseResponse_ExpenseStatus) (appconstant.ExpenseStatus, error) {
+	switch status {
+	case groupexpense.GroupExpenseResponse_EXPENSE_STATUS_UNSPECIFIED:
+		return "", eris.New("unspecified expense status enum")
+	case groupexpense.GroupExpenseResponse_EXPENSE_STATUS_DRAFT:
+		return appconstant.DraftExpense, nil
+	case groupexpense.GroupExpenseResponse_EXPENSE_STATUS_PROCESSING_BILL:
+		return appconstant.ProcessingBillExpense, nil
+	case groupexpense.GroupExpenseResponse_EXPENSE_STATUS_READY:
+		return appconstant.ReadyExpense, nil
+	case groupexpense.GroupExpenseResponse_EXPENSE_STATUS_CONFIRMED:
+		return appconstant.ConfirmedExpense, nil
+	default:
+		return "", eris.Errorf("unknown expense status enum: %s", status.String())
+	}
 }
 
 func fromExpenseParticipantProto(ep *groupexpense.ExpenseParticipantResponse) (ExpenseParticipant, error) {

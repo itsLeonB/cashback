@@ -20,7 +20,7 @@ func toExpenseBillProto(bill ExpenseBill) *expensebill.ExpenseBill {
 
 func FromExpenseBillProto(bill *expensebill.ExpenseBillResponse) (ExpenseBill, error) {
 	if bill == nil {
-		return ExpenseBill{}, eris.New("expense bill response is nil")
+		return ExpenseBill{}, nil
 	}
 
 	data := bill.GetExpenseBill()

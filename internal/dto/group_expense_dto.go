@@ -44,6 +44,7 @@ type GroupExpenseResponse struct {
 	OtherFees    []OtherFeeResponse           `json:"otherFees"`
 	Participants []ExpenseParticipantResponse `json:"participants"`
 	Bill         ExpenseBillResponse          `json:"bill"`
+	BillExists   bool                         `json:"billExists"`
 }
 
 type ExpenseParticipantResponse struct {

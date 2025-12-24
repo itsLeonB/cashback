@@ -82,7 +82,7 @@ func (ges *groupExpenseServiceImpl) CreateDraft(ctx context.Context, request dto
 		return dto.GroupExpenseResponse{}, err
 	}
 
-	return mapper.GroupExpenseToResponse(insertedGroupExpense, request.CreatorProfileID, namesByProfileIDs), nil
+	return mapper.GroupExpenseToResponse(insertedGroupExpense, request.CreatorProfileID, namesByProfileIDs, dto.ExpenseBillResponse{}), nil
 }
 
 func (ges *groupExpenseServiceImpl) GetAllCreated(ctx context.Context, userProfileID uuid.UUID) ([]dto.GroupExpenseResponse, error) {
@@ -105,7 +105,7 @@ func (ges *groupExpenseServiceImpl) GetAllCreated(ctx context.Context, userProfi
 	}
 
 	mapFunc := func(groupExpense groupexpense.GroupExpense) dto.GroupExpenseResponse {
-		return mapper.GroupExpenseToResponse(groupExpense, userProfileID, namesByProfileIDs)
+		return mapper.GroupExpenseToResponse(groupExpense, userProfileID, namesByProfileIDs, dto.ExpenseBillResponse{})
 	}
 
 	return ezutil.MapSlice(groupExpenses, mapFunc), nil
@@ -137,8 +137,7 @@ func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProf
 		return dto.GroupExpenseResponse{}, err
 	}
 
-	expenseResponse := mapper.GroupExpenseToResponse(groupExpense, userProfileID, namesByProfileIDs)
-	expenseResponse.Bill = billResponse
+	expenseResponse := mapper.GroupExpenseToResponse(groupExpense, userProfileID, namesByProfileIDs, billResponse)
 	return expenseResponse, nil
 }
 
@@ -162,7 +161,7 @@ func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, userPr
 		return dto.GroupExpenseResponse{}, err
 	}
 
-	return mapper.GroupExpenseToResponse(groupExpense, userProfileID, namesByProfileIDs), nil
+	return mapper.GroupExpenseToResponse(groupExpense, userProfileID, namesByProfileIDs, dto.ExpenseBillResponse{}), nil
 }
 
 func (ges *groupExpenseServiceImpl) CreateDraftV2(ctx context.Context, userProfileID uuid.UUID, description string) (dto.ExpenseResponseV2, error) {

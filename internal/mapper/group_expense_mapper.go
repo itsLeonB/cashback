@@ -28,7 +28,12 @@ func GroupExpenseRequestToEntity(request dto.NewGroupExpenseRequest) groupexpens
 	}
 }
 
-func GroupExpenseToResponse(groupExpense groupexpense.GroupExpense, userProfileID uuid.UUID, namesByProfileID map[uuid.UUID]string) dto.GroupExpenseResponse {
+func GroupExpenseToResponse(
+	groupExpense groupexpense.GroupExpense,
+	userProfileID uuid.UUID,
+	namesByProfileID map[uuid.UUID]string,
+	billResponse dto.ExpenseBillResponse,
+) dto.GroupExpenseResponse {
 	return dto.GroupExpenseResponse{
 		ID:                    groupExpense.ID,
 		PayerProfileID:        groupExpense.PayerProfileID,
@@ -50,6 +55,8 @@ func GroupExpenseToResponse(groupExpense groupexpense.GroupExpense, userProfileI
 		UpdatedAt:             groupExpense.UpdatedAt,
 		DeletedAt:             groupExpense.DeletedAt,
 		Participants:          ezutil.MapSlice(groupExpense.Participants, getExpenseParticipantSimpleMapper(userProfileID, namesByProfileID)),
+		Bill:                  billResponse,
+		BillExists:            billResponse.ID != uuid.Nil,
 	}
 }
 

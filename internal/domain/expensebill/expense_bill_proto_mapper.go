@@ -63,10 +63,16 @@ func fromBillStatusProto(status expensebill.ExpenseBill_Status) (appconstant.Bil
 		return "", eris.New("unspecified expense bill status enum")
 	case expensebill.ExpenseBill_STATUS_PENDING:
 		return appconstant.PendingBill, nil
+	case expensebill.ExpenseBill_STATUS_EXTRACTED:
+		return appconstant.ExtractedBill, nil
+	case expensebill.ExpenseBill_STATUS_FAILED_EXTRACTING:
+		return appconstant.FailedExtracting, nil
 	case expensebill.ExpenseBill_STATUS_PARSED:
 		return appconstant.ParsedBill, nil
-	case expensebill.ExpenseBill_STATUS_FAILED:
-		return appconstant.FailedBill, nil
+	case expensebill.ExpenseBill_STATUS_FAILED_PARSING:
+		return appconstant.FailedParsingBill, nil
+	case expensebill.ExpenseBill_STATUS_NOT_DETECTED:
+		return appconstant.NotDetectedBill, nil
 	default:
 		return "", eris.Errorf("unknown expense bill status enum: %s", status.String())
 	}

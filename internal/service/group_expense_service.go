@@ -244,6 +244,9 @@ func (ges *groupExpenseServiceImpl) SyncParticipants(ctx context.Context, req dt
 	}
 
 	for _, participantProfileID := range req.ParticipantProfileIDs {
+		if participantProfileID == req.UserProfileID {
+			continue
+		}
 		isFriends, _, err := ges.friendshipService.IsFriends(ctx, req.UserProfileID, participantProfileID)
 		if err != nil {
 			return err

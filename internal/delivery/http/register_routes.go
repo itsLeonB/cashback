@@ -73,6 +73,8 @@ func registerRoutes(router *gin.Engine, configs config.Config, logger ezutil.Log
 					groupExpenseRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextGroupExpenseID), handlers.GroupExpense.HandleGetDetails())
 					groupExpenseRoutes.PATCH(fmt.Sprintf("/:%s/confirmed", appconstant.ContextGroupExpenseID), handlers.GroupExpense.HandleConfirmDraft())
 					groupExpenseRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextGroupExpenseID), handlers.GroupExpense.HandleDelete())
+					groupExpenseRoutes.GET("/fee-calculation-methods", handlers.OtherFee.HandleGetFeeCalculationMethods())
+					groupExpenseRoutes.PUT(fmt.Sprintf("/:%s/participants", appconstant.ContextGroupExpenseID.String()), handlers.GroupExpense.HandleSyncParticipants())
 				}
 
 				expenseItemRoute := fmt.Sprintf("/:%s", appconstant.ContextExpenseItemID)
@@ -90,8 +92,6 @@ func registerRoutes(router *gin.Engine, configs config.Config, logger ezutil.Log
 					otherFeeRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextOtherFeeID), handlers.OtherFee.HandleUpdate())
 					otherFeeRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextOtherFeeID), handlers.OtherFee.HandleRemove())
 				}
-
-				groupExpenseRoutes.GET("/fee-calculation-methods", handlers.OtherFee.HandleGetFeeCalculationMethods())
 
 				expenseBillRoutes := groupExpenseRoutes.Group("/bills")
 				{

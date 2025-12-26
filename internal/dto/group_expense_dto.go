@@ -84,3 +84,10 @@ type Participant struct {
 type NewDraftRequest struct {
 	Description string `json:"description"`
 }
+
+type ExpenseParticipantsRequest struct {
+	ParticipantProfileIDs []uuid.UUID `json:"participantProfileIds" binding:"required,min=1"`
+	PayerProfileID        uuid.UUID   `json:"payerProfileId" binding:"required"`
+	UserProfileID         uuid.UUID   `json:"-"`
+	GroupExpenseID        uuid.UUID   `json:"-"`
+}

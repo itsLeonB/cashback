@@ -160,3 +160,27 @@ func (geh *groupExpenseHandler) HandleDelete() gin.HandlerFunc {
 		return nil, geh.groupExpenseService.Delete(ctx, userProfileID, expenseID)
 	})
 }
+
+func (geh *groupExpenseHandler) HandleSyncParticipants() gin.HandlerFunc {
+	return ginkgo.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+		userProfileID, err := util.GetProfileID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		expenseID, err := ginkgo.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
+		if err != nil {
+			return nil, err
+		}
+
+		req, err := ginkgo.BindJSON[dto.ExpenseParticipantsRequest](ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		req.UserProfileID = userProfileID
+		req.GroupExpenseID = expenseID
+
+		return nil, geh.groupExpenseService.SyncParticipants(ctx, req)
+	})
+}

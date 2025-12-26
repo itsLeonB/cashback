@@ -13,6 +13,7 @@ import (
 	"github.com/itsLeonB/orcashtrator/internal/domain/groupexpense"
 	"github.com/itsLeonB/orcashtrator/internal/dto"
 	"github.com/itsLeonB/orcashtrator/internal/mapper"
+	"github.com/itsLeonB/orcashtrator/internal/util"
 	"github.com/itsLeonB/ungerr"
 	"github.com/rotisserie/eris"
 	"github.com/shopspring/decimal"
@@ -227,6 +228,43 @@ func (ges *groupExpenseServiceImpl) Delete(ctx context.Context, userProfileID, i
 		ProfileId: userProfileID.String(),
 	}
 	_, err := ges.expenseClientV1.Delete(ctx, req)
+	return err
+}
+
+func (ges *groupExpenseServiceImpl) SyncParticipants(ctx context.Context, req dto.ExpenseParticipantsRequest) error {
+	participantSet := mapset.NewSet[uuid.UUID]()
+	for _, pid := range req.ParticipantProfileIDs {
+		participantSet.Add(pid)
+	}
+	if participantSet.Cardinality() != len(req.ParticipantProfileIDs) {
+		return ungerr.UnprocessableEntityError("duplicate participant profile IDs given")
+	}
+	if !participantSet.Contains(req.PayerProfileID) {
+		return ungerr.UnprocessableEntityError("payer profile ID must be one of the participant profile IDs")
+	}
+
+	for _, participantProfileID := range req.ParticipantProfileIDs {
+		isFriends, _, err := ges.friendshipService.IsFriends(ctx, req.UserProfileID, participantProfileID)
+		if err != nil {
+			return err
+		}
+		if !isFriends {
+			return ungerr.UnprocessableEntityError(appconstant.ErrNotFriends)
+		}
+	}
+
+	if !participantSet.Contains(req.UserProfileID) {
+		participantSet.Add(req.UserProfileID)
+	}
+
+	request := &expenseV1.SyncParticipantsRequest{
+		ParticipantProfileIds: ezutil.MapSlice(participantSet.ToSlice(), util.ToString),
+		PayerProfileId:        req.PayerProfileID.String(),
+		UserProfileId:         req.UserProfileID.String(),
+		GroupExpenseId:        req.GroupExpenseID.String(),
+	}
+
+	_, err := ges.expenseClientV1.SyncParticipants(ctx, request)
 	return err
 }
 

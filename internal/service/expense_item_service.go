@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	expenseitemV1 "github.com/itsLeonB/billsplittr-protos/gen/go/expenseitem/v1"
+	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/orcashtrator/internal/appconstant"
 	"github.com/itsLeonB/orcashtrator/internal/domain/expenseitem"
 	"github.com/itsLeonB/orcashtrator/internal/dto"
@@ -14,15 +16,18 @@ import (
 type expenseItemServiceImpl struct {
 	profileService    ProfileService
 	expenseItemClient expenseitem.ExpenseItemClient
+	clientV1          expenseitemV1.ExpenseItemServiceClient
 }
 
 func NewExpenseItemService(
 	profileService ProfileService,
 	expenseItemClient expenseitem.ExpenseItemClient,
+	clientV1 expenseitemV1.ExpenseItemServiceClient,
 ) ExpenseItemService {
 	return &expenseItemServiceImpl{
 		profileService,
 		expenseItemClient,
+		clientV1,
 	}
 }
 
@@ -108,4 +113,16 @@ func (ges *expenseItemServiceImpl) Remove(ctx context.Context, groupExpenseID, e
 	}
 
 	return ges.expenseItemClient.Remove(ctx, request)
+}
+
+func (ges *expenseItemServiceImpl) SyncParticipants(ctx context.Context, req dto.SyncItemParticipantsRequest) error {
+	request := &expenseitemV1.SyncParticipantsRequest{
+		ProfileId:    req.ProfileID.String(),
+		ItemId:       req.ID.String(),
+		ExpenseId:    req.GroupExpenseID.String(),
+		Participants: ezutil.MapSlice(req.Participants, mapper.ToItemParticipantProto),
+	}
+
+	_, err := ges.clientV1.SyncParticipants(ctx, request)
+	return err
 }

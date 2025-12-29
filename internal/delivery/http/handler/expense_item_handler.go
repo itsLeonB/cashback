@@ -165,3 +165,34 @@ func (geh *ExpenseItemHandler) HandleRemove() gin.HandlerFunc {
 		ctx.JSON(http.StatusNoContent, nil)
 	}
 }
+
+func (geh *ExpenseItemHandler) HandleSyncParticipants() gin.HandlerFunc {
+	return ginkgo.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+		userProfileID, err := util.GetProfileID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		groupExpenseID, err := ginkgo.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
+		if err != nil {
+			_ = ctx.Error(err)
+			return nil, err
+		}
+
+		expenseItemID, err := ginkgo.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextExpenseItemID.String())
+		if err != nil {
+			return nil, err
+		}
+
+		request, err := ginkgo.BindJSON[dto.SyncItemParticipantsRequest](ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		request.ProfileID = userProfileID
+		request.ID = expenseItemID
+		request.GroupExpenseID = groupExpenseID
+
+		return nil, geh.expenseItemSvc.SyncParticipants(ctx, request)
+	})
+}

@@ -46,3 +46,10 @@ type NewExpenseItemRequest struct {
 	Amount         decimal.Decimal `json:"amount" binding:"required"`
 	Quantity       int             `json:"quantity" binding:"required,min=1"`
 }
+
+type SyncItemParticipantsRequest struct {
+	ProfileID      uuid.UUID                `json:"-"`
+	ID             uuid.UUID                `json:"-"`
+	GroupExpenseID uuid.UUID                `json:"-"`
+	Participants   []ItemParticipantRequest `json:"participants" binding:"dive"`
+}

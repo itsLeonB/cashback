@@ -77,13 +77,14 @@ func registerRoutes(router *gin.Engine, configs config.Config, logger ezutil.Log
 					groupExpenseRoutes.PUT(fmt.Sprintf("/:%s/participants", appconstant.ContextGroupExpenseID.String()), handlers.GroupExpense.HandleSyncParticipants())
 				}
 
-				expenseItemRoute := fmt.Sprintf("/:%s", appconstant.ContextExpenseItemID)
 				expenseItemRoutes := groupExpenseRoutes.Group(fmt.Sprintf("/:%s/items", appconstant.ContextGroupExpenseID))
 				{
+					expenseItemRoute := fmt.Sprintf("/:%s", appconstant.ContextExpenseItemID)
 					expenseItemRoutes.POST("", handlers.ExpenseItem.HandleAdd())
 					expenseItemRoutes.GET(expenseItemRoute, handlers.ExpenseItem.HandleGetDetails())
 					expenseItemRoutes.PUT(expenseItemRoute, handlers.ExpenseItem.HandleUpdate())
 					expenseItemRoutes.DELETE(expenseItemRoute, handlers.ExpenseItem.HandleRemove())
+					expenseItemRoutes.PUT(expenseItemRoute+"/participants", handlers.ExpenseItem.HandleSyncParticipants())
 				}
 
 				otherFeeRoutes := groupExpenseRoutes.Group(fmt.Sprintf("/:%s/fees", appconstant.ContextGroupExpenseID))

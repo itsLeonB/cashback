@@ -84,6 +84,7 @@ func ProvideServices(
 	expenseItemSvc := service.NewExpenseItemService(
 		profileService,
 		clients.ExpenseItem,
+		clients.ItemV1,
 	)
 
 	otherFeeSvc := service.NewOtherFeeService(

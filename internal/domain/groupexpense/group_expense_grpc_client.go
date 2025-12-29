@@ -110,6 +110,7 @@ func (gec *groupExpenseClient) ConfirmDraft(ctx context.Context, req ConfirmDraf
 	request := &groupexpense.ConfirmDraftRequest{
 		Id:        req.ID.String(),
 		ProfileId: req.ProfileID.String(),
+		DryRun:    req.DryRun,
 	}
 
 	response, err := gec.client.ConfirmDraft(ctx, request)

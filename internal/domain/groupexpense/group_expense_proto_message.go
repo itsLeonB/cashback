@@ -20,4 +20,5 @@ type CreateDraftRequest struct {
 type ConfirmDraftRequest struct {
 	ID        uuid.UUID `validate:"required"`
 	ProfileID uuid.UUID `validate:"required"`
+	DryRun    bool
 }

@@ -142,10 +142,11 @@ func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProf
 	return expenseResponse, nil
 }
 
-func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, userProfileID uuid.UUID) (dto.GroupExpenseResponse, error) {
+func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, userProfileID uuid.UUID, dryRun bool) (dto.GroupExpenseResponse, error) {
 	request := groupexpense.ConfirmDraftRequest{
 		ID:        id,
 		ProfileID: userProfileID,
+		DryRun:    dryRun,
 	}
 
 	groupExpense, err := ges.groupExpenseClient.ConfirmDraft(ctx, request)
@@ -153,8 +154,10 @@ func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, userPr
 		return dto.GroupExpenseResponse{}, err
 	}
 
-	if err = ges.debtService.ProcessConfirmedGroupExpense(ctx, groupExpense); err != nil {
-		return dto.GroupExpenseResponse{}, err
+	if !dryRun {
+		if err = ges.debtService.ProcessConfirmedGroupExpense(ctx, groupExpense); err != nil {
+			return dto.GroupExpenseResponse{}, err
+		}
 	}
 
 	profilesByID, err := ges.profileService.GetByIDs(ctx, groupExpense.ProfileIDs())

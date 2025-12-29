@@ -116,7 +116,12 @@ func (geh *groupExpenseHandler) HandleConfirmDraft() gin.HandlerFunc {
 			return
 		}
 
-		response, err := geh.groupExpenseService.ConfirmDraft(ctx, groupExpenseID, userProfileID)
+		var dryRun bool
+		if ctx.Query("dry-run") == "true" {
+			dryRun = true
+		}
+
+		response, err := geh.groupExpenseService.ConfirmDraft(ctx, groupExpenseID, userProfileID, dryRun)
 		if err != nil {
 			_ = ctx.Error(err)
 			return

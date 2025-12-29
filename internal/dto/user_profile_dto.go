@@ -32,3 +32,10 @@ type AssociateProfileRequest struct {
 	RealProfileID uuid.UUID `json:"realProfileId" binding:"required"`
 	AnonProfileID uuid.UUID `json:"anonProfileId" binding:"required"`
 }
+
+type SimpleProfile struct {
+	ID     uuid.UUID `json:"id"`
+	Name   string    `json:"name"`
+	Avatar string    `json:"avatar"`
+	IsUser bool      `json:"isUser"`
+}

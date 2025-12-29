@@ -78,12 +78,12 @@ func (ges *groupExpenseServiceImpl) CreateDraft(ctx context.Context, request dto
 		return dto.GroupExpenseResponse{}, err
 	}
 
-	namesByProfileIDs, err := ges.profileService.GetNames(ctx, insertedGroupExpense.ProfileIDs())
+	profilesByID, err := ges.profileService.GetByIDs(ctx, insertedGroupExpense.ProfileIDs())
 	if err != nil {
 		return dto.GroupExpenseResponse{}, err
 	}
 
-	return mapper.GroupExpenseToResponse(insertedGroupExpense, request.CreatorProfileID, namesByProfileIDs, dto.ExpenseBillResponse{}), nil
+	return mapper.GroupExpenseToResponse(insertedGroupExpense, request.CreatorProfileID, profilesByID, dto.ExpenseBillResponse{}), nil
 }
 
 func (ges *groupExpenseServiceImpl) GetAllCreated(ctx context.Context, userProfileID uuid.UUID) ([]dto.GroupExpenseResponse, error) {
@@ -97,16 +97,16 @@ func (ges *groupExpenseServiceImpl) GetAllCreated(ctx context.Context, userProfi
 		profileIDs = append(profileIDs, groupExpense.ProfileIDs()...)
 	}
 
-	namesByProfileIDs := make(map[uuid.UUID]string, len(profileIDs))
+	profilesByID := make(map[uuid.UUID]dto.ProfileResponse, len(profileIDs))
 	if len(profileIDs) > 0 {
-		namesByProfileIDs, err = ges.profileService.GetNames(ctx, profileIDs)
+		profilesByID, err = ges.profileService.GetByIDs(ctx, profileIDs)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	mapFunc := func(groupExpense groupexpense.GroupExpense) dto.GroupExpenseResponse {
-		return mapper.GroupExpenseToResponse(groupExpense, userProfileID, namesByProfileIDs, dto.ExpenseBillResponse{})
+		return mapper.GroupExpenseToResponse(groupExpense, userProfileID, profilesByID, dto.ExpenseBillResponse{})
 	}
 
 	return ezutil.MapSlice(groupExpenses, mapFunc), nil
@@ -120,7 +120,7 @@ func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProf
 
 	var eg errgroup.Group
 	var billResponse dto.ExpenseBillResponse
-	var namesByProfileIDs map[uuid.UUID]string
+	var profilesByID map[uuid.UUID]dto.ProfileResponse
 
 	eg.Go(func() error {
 		bill, err := ges.billSvc.MapToURL(ctx, groupExpense.Bill)
@@ -129,8 +129,8 @@ func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProf
 	})
 
 	eg.Go(func() error {
-		names, err := ges.profileService.GetNames(ctx, groupExpense.ProfileIDs())
-		namesByProfileIDs = names
+		profiles, err := ges.profileService.GetByIDs(ctx, groupExpense.ProfileIDs())
+		profilesByID = profiles
 		return err
 	})
 
@@ -138,7 +138,7 @@ func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProf
 		return dto.GroupExpenseResponse{}, err
 	}
 
-	expenseResponse := mapper.GroupExpenseToResponse(groupExpense, userProfileID, namesByProfileIDs, billResponse)
+	expenseResponse := mapper.GroupExpenseToResponse(groupExpense, userProfileID, profilesByID, billResponse)
 	return expenseResponse, nil
 }
 
@@ -157,12 +157,12 @@ func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, userPr
 		return dto.GroupExpenseResponse{}, err
 	}
 
-	namesByProfileIDs, err := ges.profileService.GetNames(ctx, groupExpense.ProfileIDs())
+	profilesByID, err := ges.profileService.GetByIDs(ctx, groupExpense.ProfileIDs())
 	if err != nil {
 		return dto.GroupExpenseResponse{}, err
 	}
 
-	return mapper.GroupExpenseToResponse(groupExpense, userProfileID, namesByProfileIDs, dto.ExpenseBillResponse{}), nil
+	return mapper.GroupExpenseToResponse(groupExpense, userProfileID, profilesByID, dto.ExpenseBillResponse{}), nil
 }
 
 func (ges *groupExpenseServiceImpl) CreateDraftV2(ctx context.Context, userProfileID uuid.UUID, description string) (dto.ExpenseResponseV2, error) {

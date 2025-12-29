@@ -9,10 +9,8 @@ import (
 )
 
 type FeeParticipantResponse struct {
-	ProfileName string          `json:"profileName"`
-	ProfileID   uuid.UUID       `json:"profileId"`
+	Profile     SimpleProfile   `json:"profile"`
 	ShareAmount decimal.Decimal `json:"shareAmount"`
-	IsUser      bool            `json:"isUser"`
 }
 
 type FeeCalculationMethodInfo struct {

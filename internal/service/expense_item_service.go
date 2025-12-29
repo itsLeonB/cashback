@@ -44,12 +44,12 @@ func (ges *expenseItemServiceImpl) Add(ctx context.Context, req dto.NewExpenseIt
 
 	profileIDs := []uuid.UUID{req.UserProfileID}
 	profileIDs = append(profileIDs, expenseItem.ProfileIDs()...)
-	namesByProfileID, err := ges.profileService.GetNames(ctx, profileIDs)
+	profilesByID, err := ges.profileService.GetByIDs(ctx, profileIDs)
 	if err != nil {
 		return dto.ExpenseItemResponse{}, err
 	}
 
-	return mapper.ExpenseItemToResponse(expenseItem, req.UserProfileID, namesByProfileID), nil
+	return mapper.ExpenseItemToResponse(expenseItem, req.UserProfileID, profilesByID), nil
 }
 
 func (ges *expenseItemServiceImpl) GetDetails(ctx context.Context, groupExpenseID, expenseItemID, userProfileID uuid.UUID) (dto.ExpenseItemResponse, error) {
@@ -65,12 +65,12 @@ func (ges *expenseItemServiceImpl) GetDetails(ctx context.Context, groupExpenseI
 
 	profileIDs := []uuid.UUID{userProfileID}
 	profileIDs = append(profileIDs, expenseItem.ProfileIDs()...)
-	namesByProfileID, err := ges.profileService.GetNames(ctx, profileIDs)
+	profilesByID, err := ges.profileService.GetByIDs(ctx, profileIDs)
 	if err != nil {
 		return dto.ExpenseItemResponse{}, err
 	}
 
-	return mapper.ExpenseItemToResponse(expenseItem, userProfileID, namesByProfileID), nil
+	return mapper.ExpenseItemToResponse(expenseItem, userProfileID, profilesByID), nil
 }
 
 func (ges *expenseItemServiceImpl) Update(ctx context.Context, req dto.UpdateExpenseItemRequest) (dto.ExpenseItemResponse, error) {
@@ -92,12 +92,12 @@ func (ges *expenseItemServiceImpl) Update(ctx context.Context, req dto.UpdateExp
 
 	profileIDs := []uuid.UUID{req.UserProfileID}
 	profileIDs = append(profileIDs, expenseItem.ProfileIDs()...)
-	namesByProfileID, err := ges.profileService.GetNames(ctx, profileIDs)
+	profilesByID, err := ges.profileService.GetByIDs(ctx, profileIDs)
 	if err != nil {
 		return dto.ExpenseItemResponse{}, err
 	}
 
-	return mapper.ExpenseItemToResponse(expenseItem, req.UserProfileID, namesByProfileID), nil
+	return mapper.ExpenseItemToResponse(expenseItem, req.UserProfileID, profilesByID), nil
 }
 
 func (ges *expenseItemServiceImpl) Remove(ctx context.Context, groupExpenseID, expenseItemID, userProfileID uuid.UUID) error {

@@ -8,10 +8,8 @@ import (
 )
 
 type ItemParticipantResponse struct {
-	ProfileName string          `json:"profileName"`
-	ProfileID   uuid.UUID       `json:"profileId"`
-	Share       decimal.Decimal `json:"share"`
-	IsUser      bool            `json:"isUser"`
+	Profile    SimpleProfile   `json:"profile"`
+	ShareRatio decimal.Decimal `json:"shareRatio"`
 }
 
 type ExpenseItemResponse struct {

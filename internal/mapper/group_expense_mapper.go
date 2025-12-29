@@ -31,42 +31,38 @@ func GroupExpenseRequestToEntity(request dto.NewGroupExpenseRequest) groupexpens
 func GroupExpenseToResponse(
 	groupExpense groupexpense.GroupExpense,
 	userProfileID uuid.UUID,
-	namesByProfileID map[uuid.UUID]string,
+	profilesByID map[uuid.UUID]dto.ProfileResponse,
 	billResponse dto.ExpenseBillResponse,
 ) dto.GroupExpenseResponse {
 	return dto.GroupExpenseResponse{
 		ID:                    groupExpense.ID,
-		PayerProfileID:        groupExpense.PayerProfileID,
-		PayerName:             namesByProfileID[groupExpense.PayerProfileID],
-		PaidByUser:            groupExpense.PayerProfileID == userProfileID,
 		TotalAmount:           groupExpense.TotalAmount,
 		ItemsTotalAmount:      groupExpense.ItemsTotal,
 		FeesTotalAmount:       groupExpense.FeesTotal,
 		Description:           groupExpense.Description,
-		Items:                 ezutil.MapSlice(groupExpense.Items, getExpenseItemSimpleMapper(userProfileID, namesByProfileID)),
-		OtherFees:             ezutil.MapSlice(groupExpense.OtherFees, getOtherFeeSimpleMapper(userProfileID, namesByProfileID)),
-		CreatorProfileID:      groupExpense.CreatorProfileID,
-		CreatorName:           namesByProfileID[groupExpense.CreatorProfileID],
-		CreatedByUser:         groupExpense.CreatorProfileID == userProfileID,
 		Confirmed:             groupExpense.IsConfirmed,
 		ParticipantsConfirmed: groupExpense.IsParticipantsConfirmed,
 		Status:                groupExpense.Status,
 		CreatedAt:             groupExpense.CreatedAt,
 		UpdatedAt:             groupExpense.UpdatedAt,
 		DeletedAt:             groupExpense.DeletedAt,
-		Participants:          ezutil.MapSlice(groupExpense.Participants, getExpenseParticipantSimpleMapper(userProfileID, namesByProfileID)),
+		Payer:                 SimpleProfileMapper(userProfileID)(profilesByID[groupExpense.PayerProfileID]),
+		Creator:               SimpleProfileMapper(userProfileID)(profilesByID[groupExpense.CreatorProfileID]),
+		Items:                 ezutil.MapSlice(groupExpense.Items, getExpenseItemSimpleMapper(userProfileID, profilesByID)),
+		OtherFees:             ezutil.MapSlice(groupExpense.OtherFees, getOtherFeeSimpleMapper(userProfileID, profilesByID)),
+		Participants:          ezutil.MapSlice(groupExpense.Participants, getExpenseParticipantSimpleMapper(userProfileID, profilesByID)),
 		Bill:                  billResponse,
 		BillExists:            billResponse.ID != uuid.Nil,
 	}
 }
 
-func getExpenseItemSimpleMapper(userProfileID uuid.UUID, namesByProfileID map[uuid.UUID]string) func(item expenseitem.ExpenseItem) dto.ExpenseItemResponse {
+func getExpenseItemSimpleMapper(userProfileID uuid.UUID, profilesByID map[uuid.UUID]dto.ProfileResponse) func(item expenseitem.ExpenseItem) dto.ExpenseItemResponse {
 	return func(item expenseitem.ExpenseItem) dto.ExpenseItemResponse {
-		return ExpenseItemToResponse(item, userProfileID, namesByProfileID)
+		return ExpenseItemToResponse(item, userProfileID, profilesByID)
 	}
 }
 
-func ExpenseItemToResponse(item expenseitem.ExpenseItem, userProfileID uuid.UUID, namesByProfileID map[uuid.UUID]string) dto.ExpenseItemResponse {
+func ExpenseItemToResponse(item expenseitem.ExpenseItem, userProfileID uuid.UUID, profilesByID map[uuid.UUID]dto.ProfileResponse) dto.ExpenseItemResponse {
 	return dto.ExpenseItemResponse{
 		ID:             item.ID,
 		GroupExpenseID: item.GroupExpenseID,
@@ -76,17 +72,17 @@ func ExpenseItemToResponse(item expenseitem.ExpenseItem, userProfileID uuid.UUID
 		CreatedAt:      item.CreatedAt,
 		UpdatedAt:      item.UpdatedAt,
 		DeletedAt:      item.DeletedAt,
-		Participants:   ezutil.MapSlice(item.Participants, getItemParticipantSimpleMapper(userProfileID, namesByProfileID)),
+		Participants:   ezutil.MapSlice(item.Participants, getItemParticipantSimpleMapper(userProfileID, profilesByID)),
 	}
 }
 
-func getOtherFeeSimpleMapper(userProfileID uuid.UUID, namesByProfileID map[uuid.UUID]string) func(otherfee.OtherFee) dto.OtherFeeResponse {
+func getOtherFeeSimpleMapper(userProfileID uuid.UUID, profilesByID map[uuid.UUID]dto.ProfileResponse) func(otherfee.OtherFee) dto.OtherFeeResponse {
 	return func(fee otherfee.OtherFee) dto.OtherFeeResponse {
-		return OtherFeeToResponse(fee, userProfileID, namesByProfileID)
+		return OtherFeeToResponse(fee, userProfileID, profilesByID)
 	}
 }
 
-func OtherFeeToResponse(fee otherfee.OtherFee, userProfileID uuid.UUID, namesByProfileID map[uuid.UUID]string) dto.OtherFeeResponse {
+func OtherFeeToResponse(fee otherfee.OtherFee, userProfileID uuid.UUID, profilesByID map[uuid.UUID]dto.ProfileResponse) dto.OtherFeeResponse {
 	return dto.OtherFeeResponse{
 		ID:                fee.ID,
 		Name:              fee.Name,
@@ -95,37 +91,33 @@ func OtherFeeToResponse(fee otherfee.OtherFee, userProfileID uuid.UUID, namesByP
 		CreatedAt:         fee.CreatedAt,
 		UpdatedAt:         fee.UpdatedAt,
 		DeletedAt:         fee.DeletedAt,
-		Participants:      ezutil.MapSlice(fee.Participants, getFeeParticipantSimpleMapper(userProfileID, namesByProfileID)),
+		Participants:      ezutil.MapSlice(fee.Participants, getFeeParticipantSimpleMapper(userProfileID, profilesByID)),
 	}
 }
 
-func getFeeParticipantSimpleMapper(userProfileID uuid.UUID, namesByProfileID map[uuid.UUID]string) func(otherfee.FeeParticipant) dto.FeeParticipantResponse {
+func getFeeParticipantSimpleMapper(userProfileID uuid.UUID, profilesByID map[uuid.UUID]dto.ProfileResponse) func(otherfee.FeeParticipant) dto.FeeParticipantResponse {
 	return func(feeParticipant otherfee.FeeParticipant) dto.FeeParticipantResponse {
-		return feeParticipantToResponse(feeParticipant, userProfileID, namesByProfileID[feeParticipant.ProfileID])
+		return feeParticipantToResponse(feeParticipant, userProfileID, profilesByID[feeParticipant.ProfileID])
 	}
 }
 
-func feeParticipantToResponse(feeParticipant otherfee.FeeParticipant, userProfileID uuid.UUID, participantProfileName string) dto.FeeParticipantResponse {
+func feeParticipantToResponse(feeParticipant otherfee.FeeParticipant, userProfileID uuid.UUID, profile dto.ProfileResponse) dto.FeeParticipantResponse {
 	return dto.FeeParticipantResponse{
-		ProfileName: participantProfileName,
-		ProfileID:   feeParticipant.ProfileID,
+		Profile:     ToSimpleProfile(profile, userProfileID),
 		ShareAmount: feeParticipant.ShareAmount,
-		IsUser:      feeParticipant.ProfileID == userProfileID,
 	}
 }
 
-func getItemParticipantSimpleMapper(userProfileID uuid.UUID, namesByProfileID map[uuid.UUID]string) func(itemParticipant expenseitem.ItemParticipant) dto.ItemParticipantResponse {
+func getItemParticipantSimpleMapper(userProfileID uuid.UUID, profilesByID map[uuid.UUID]dto.ProfileResponse) func(itemParticipant expenseitem.ItemParticipant) dto.ItemParticipantResponse {
 	return func(itemParticipant expenseitem.ItemParticipant) dto.ItemParticipantResponse {
-		return itemParticipantToResponse(itemParticipant, userProfileID, namesByProfileID[itemParticipant.ProfileID])
+		return itemParticipantToResponse(itemParticipant, userProfileID, profilesByID[itemParticipant.ProfileID])
 	}
 }
 
-func itemParticipantToResponse(itemParticipant expenseitem.ItemParticipant, userProfileID uuid.UUID, participantProfileName string) dto.ItemParticipantResponse {
+func itemParticipantToResponse(itemParticipant expenseitem.ItemParticipant, userProfileID uuid.UUID, profile dto.ProfileResponse) dto.ItemParticipantResponse {
 	return dto.ItemParticipantResponse{
-		ProfileName: participantProfileName,
-		ProfileID:   itemParticipant.ProfileID,
-		Share:       itemParticipant.Share,
-		IsUser:      itemParticipant.ProfileID == userProfileID,
+		Profile:    ToSimpleProfile(profile, userProfileID),
+		ShareRatio: itemParticipant.Share,
 	}
 }
 
@@ -137,18 +129,16 @@ func otherFeeRequestToData(req dto.NewOtherFeeRequest) otherfee.OtherFeeData {
 	}
 }
 
-func ExpenseParticipantToResponse(expenseParticipant groupexpense.ExpenseParticipant, userProfileID uuid.UUID, participantProfileName string) dto.ExpenseParticipantResponse {
+func ExpenseParticipantToResponse(expenseParticipant groupexpense.ExpenseParticipant, userProfileID uuid.UUID, profile dto.ProfileResponse) dto.ExpenseParticipantResponse {
 	return dto.ExpenseParticipantResponse{
-		ProfileName: participantProfileName,
-		ProfileID:   expenseParticipant.ProfileID,
+		Profile:     ToSimpleProfile(profile, userProfileID),
 		ShareAmount: expenseParticipant.ShareAmount,
-		IsUser:      expenseParticipant.ProfileID == userProfileID,
 	}
 }
 
-func getExpenseParticipantSimpleMapper(userProfileID uuid.UUID, namesByProfileID map[uuid.UUID]string) func(groupexpense.ExpenseParticipant) dto.ExpenseParticipantResponse {
+func getExpenseParticipantSimpleMapper(userProfileID uuid.UUID, profilesByID map[uuid.UUID]dto.ProfileResponse) func(groupexpense.ExpenseParticipant) dto.ExpenseParticipantResponse {
 	return func(ep groupexpense.ExpenseParticipant) dto.ExpenseParticipantResponse {
-		return ExpenseParticipantToResponse(ep, userProfileID, namesByProfileID[ep.ProfileID])
+		return ExpenseParticipantToResponse(ep, userProfileID, profilesByID[ep.ProfileID])
 	}
 }
 

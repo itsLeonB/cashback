@@ -30,3 +30,18 @@ func ProfileResponseToParticipant(resp dto.ProfileResponse, userProfileID uuid.U
 		IsUser:    userProfileID == resp.ID,
 	}
 }
+
+func ToSimpleProfile(profile dto.ProfileResponse, userProfileID uuid.UUID) dto.SimpleProfile {
+	return dto.SimpleProfile{
+		ID:     profile.ID,
+		Name:   profile.Name,
+		Avatar: profile.Avatar,
+		IsUser: profile.ID == userProfileID,
+	}
+}
+
+func SimpleProfileMapper(userProfileID uuid.UUID) func(dto.ProfileResponse) dto.SimpleProfile {
+	return func(pr dto.ProfileResponse) dto.SimpleProfile {
+		return ToSimpleProfile(pr, userProfileID)
+	}
+}

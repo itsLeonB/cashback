@@ -49,12 +49,12 @@ func (ofs *otherFeeServiceImpl) Add(ctx context.Context, req dto.NewOtherFeeRequ
 
 	profileIDs := []uuid.UUID{req.UserProfileID}
 	profileIDs = append(profileIDs, otherFee.ProfileIDs()...)
-	namesByProfileID, err := ofs.profileService.GetNames(ctx, profileIDs)
+	profilesByID, err := ofs.profileService.GetByIDs(ctx, profileIDs)
 	if err != nil {
 		return dto.OtherFeeResponse{}, err
 	}
 
-	return mapper.OtherFeeToResponse(otherFee, req.UserProfileID, namesByProfileID), nil
+	return mapper.OtherFeeToResponse(otherFee, req.UserProfileID, profilesByID), nil
 }
 
 func (ofs *otherFeeServiceImpl) Update(ctx context.Context, req dto.UpdateOtherFeeRequest) (dto.OtherFeeResponse, error) {
@@ -80,12 +80,12 @@ func (ofs *otherFeeServiceImpl) Update(ctx context.Context, req dto.UpdateOtherF
 
 	profileIDs := []uuid.UUID{req.UserProfileID}
 	profileIDs = append(profileIDs, otherFee.ProfileIDs()...)
-	namesByProfileID, err := ofs.profileService.GetNames(ctx, profileIDs)
+	profilesByID, err := ofs.profileService.GetByIDs(ctx, profileIDs)
 	if err != nil {
 		return dto.OtherFeeResponse{}, err
 	}
 
-	return mapper.OtherFeeToResponse(otherFee, req.UserProfileID, namesByProfileID), nil
+	return mapper.OtherFeeToResponse(otherFee, req.UserProfileID, profilesByID), nil
 }
 
 func (ofs *otherFeeServiceImpl) Remove(ctx context.Context, groupExpenseID, otherFeeID, userProfileID uuid.UUID) error {

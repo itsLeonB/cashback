@@ -20,16 +20,10 @@ type NewGroupExpenseRequest struct {
 
 type GroupExpenseResponse struct {
 	ID               uuid.UUID       `json:"id"`
-	PayerProfileID   uuid.UUID       `json:"payerProfileId"`
-	PayerName        string          `json:"payerName,omitempty"`
-	PaidByUser       bool            `json:"paidByUser"`
 	TotalAmount      decimal.Decimal `json:"totalAmount"`
 	ItemsTotalAmount decimal.Decimal `json:"itemsTotalAmount"`
 	FeesTotalAmount  decimal.Decimal `json:"feesTotalAmount"`
 	Description      string          `json:"description"`
-	CreatorProfileID uuid.UUID       `json:"creatorProfileId"`
-	CreatorName      string          `json:"creatorName,omitempty"`
-	CreatedByUser    bool            `json:"createdByUser"`
 	// Deprecated: refer to Status instead
 	Confirmed bool `json:"confirmed"`
 	// Deprecated: refer to Status instead
@@ -40,6 +34,8 @@ type GroupExpenseResponse struct {
 	DeletedAt             time.Time                 `json:"deletedAt,omitzero"`
 
 	// Relationships
+	Payer        SimpleProfile                `json:"payer"`
+	Creator      SimpleProfile                `json:"creator"`
 	Items        []ExpenseItemResponse        `json:"items"`
 	OtherFees    []OtherFeeResponse           `json:"otherFees"`
 	Participants []ExpenseParticipantResponse `json:"participants"`
@@ -48,10 +44,8 @@ type GroupExpenseResponse struct {
 }
 
 type ExpenseParticipantResponse struct {
-	ProfileName string          `json:"profileName"`
-	ProfileID   uuid.UUID       `json:"profileId"`
+	Profile     SimpleProfile   `json:"profile"`
 	ShareAmount decimal.Decimal `json:"shareAmount"`
-	IsUser      bool            `json:"isUser"`
 }
 
 type ExpenseResponseV2 struct {

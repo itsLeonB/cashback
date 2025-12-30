@@ -62,7 +62,7 @@ func (geh *groupExpenseHandler) HandleGetAllCreated() gin.HandlerFunc {
 			return
 		}
 
-		groupExpenses, err := geh.groupExpenseService.GetAllCreated(ctx, userProfileID)
+		groupExpenses, err := geh.groupExpenseService.GetAllCreated(ctx, userProfileID, appconstant.ExpenseStatus(ctx.Query("status")))
 		if err != nil {
 			_ = ctx.Error(err)
 			return

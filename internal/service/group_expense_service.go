@@ -86,8 +86,8 @@ func (ges *groupExpenseServiceImpl) CreateDraft(ctx context.Context, request dto
 	return mapper.GroupExpenseToResponse(insertedGroupExpense, request.CreatorProfileID, profilesByID, dto.ExpenseBillResponse{}), nil
 }
 
-func (ges *groupExpenseServiceImpl) GetAllCreated(ctx context.Context, userProfileID uuid.UUID) ([]dto.GroupExpenseResponse, error) {
-	groupExpenses, err := ges.groupExpenseClient.GetAllCreated(ctx, userProfileID)
+func (ges *groupExpenseServiceImpl) GetAllCreated(ctx context.Context, userProfileID uuid.UUID, status appconstant.ExpenseStatus) ([]dto.GroupExpenseResponse, error) {
+	groupExpenses, err := ges.groupExpenseClient.GetAllCreated(ctx, userProfileID, status)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +205,7 @@ func (ges *groupExpenseServiceImpl) CreateDraftV2(ctx context.Context, userProfi
 		return dto.ExpenseResponseV2{}, err
 	}
 
-	status, err := mapper.FromExpenseStatusProto(expense.GetStatus())
+	status, err := groupexpense.FromExpenseStatusProto(expense.GetStatus())
 	if err != nil {
 		return dto.ExpenseResponseV2{}, err
 	}

@@ -4,16 +4,13 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	expense "github.com/itsLeonB/billsplittr-protos/gen/go/groupexpense/v1"
 	"github.com/itsLeonB/ezutil/v2"
-	"github.com/itsLeonB/orcashtrator/internal/appconstant"
 	"github.com/itsLeonB/orcashtrator/internal/domain/debt"
 	"github.com/itsLeonB/orcashtrator/internal/domain/expenseitem"
 	"github.com/itsLeonB/orcashtrator/internal/domain/groupexpense"
 	"github.com/itsLeonB/orcashtrator/internal/domain/otherfee"
 	"github.com/itsLeonB/orcashtrator/internal/dto"
 	"github.com/itsLeonB/ungerr"
-	"github.com/rotisserie/eris"
 	"github.com/shopspring/decimal"
 )
 
@@ -154,19 +151,4 @@ func ExpenseParticipantToData(participant groupexpense.ExpenseParticipant) (debt
 		ProfileID:   participant.ProfileID,
 		ShareAmount: participant.ShareAmount,
 	}, nil
-}
-
-func FromExpenseStatusProto(status expense.GroupExpenseResponse_Status) (appconstant.ExpenseStatus, error) {
-	switch status {
-	case expense.GroupExpenseResponse_STATUS_UNSPECIFIED:
-		return "", eris.New("unspecified expense status")
-	case expense.GroupExpenseResponse_STATUS_DRAFT:
-		return appconstant.DraftExpense, nil
-	case expense.GroupExpenseResponse_STATUS_READY:
-		return appconstant.ReadyExpense, nil
-	case expense.GroupExpenseResponse_STATUS_CONFIRMED:
-		return appconstant.ConfirmedExpense, nil
-	default:
-		return "", eris.Errorf("unknown expense status enum: %s", status.String())
-	}
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/billsplittr-protos/gen/go/groupexpense/v1"
 	"github.com/itsLeonB/ezutil/v2"
+	"github.com/itsLeonB/orcashtrator/internal/appconstant"
 	"github.com/itsLeonB/orcashtrator/internal/domain/expenseitem"
 	"github.com/itsLeonB/orcashtrator/internal/domain/otherfee"
 	"github.com/rotisserie/eris"
@@ -16,7 +17,7 @@ import (
 
 type GroupExpenseClient interface {
 	CreateDraft(ctx context.Context, req CreateDraftRequest) (GroupExpense, error)
-	GetAllCreated(ctx context.Context, profileID uuid.UUID) ([]GroupExpense, error)
+	GetAllCreated(ctx context.Context, profileID uuid.UUID, status appconstant.ExpenseStatus) ([]GroupExpense, error)
 	GetDetails(ctx context.Context, id uuid.UUID) (GroupExpense, error)
 	ConfirmDraft(ctx context.Context, req ConfirmDraftRequest) (GroupExpense, error)
 }
@@ -68,13 +69,15 @@ func (gec *groupExpenseClient) CreateDraft(ctx context.Context, req CreateDraftR
 	return fromGroupExpenseProto(response.GetGroupExpense())
 }
 
-func (gec *groupExpenseClient) GetAllCreated(ctx context.Context, profileID uuid.UUID) ([]GroupExpense, error) {
-	if profileID == uuid.Nil {
-		return nil, eris.New("profileID is nil")
+func (gec *groupExpenseClient) GetAllCreated(ctx context.Context, profileID uuid.UUID, status appconstant.ExpenseStatus) ([]GroupExpense, error) {
+	expenseStatus, err := toExpenseStatusProto(status)
+	if err != nil {
+		return nil, err
 	}
 
 	request := &groupexpense.GetAllCreatedRequest{
 		ProfileId: profileID.String(),
+		Status:    expenseStatus,
 	}
 
 	response, err := gec.client.GetAllCreated(ctx, request)

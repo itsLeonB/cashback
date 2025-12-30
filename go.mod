@@ -1,4 +1,4 @@
-module github.com/itsLeonB/orcashtrator
+module github.com/itsLeonB/cashback
 
 go 1.25.0
 

@@ -109,7 +109,6 @@ CREATE TABLE group_expenses (
     total_amount numeric(20,2) NOT NULL,
     items_total numeric(20,2) DEFAULT 0 NOT NULL,
     fees_total numeric(20,2) DEFAULT 0 NOT NULL,
-    confirmed boolean DEFAULT false NOT NULL,
     payer_profile_id uuid REFERENCES user_profiles(id),
     creator_profile_id uuid NOT NULL REFERENCES user_profiles(id)
 );

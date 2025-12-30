@@ -65,12 +65,18 @@ github.com/itsLeonB/ezutil/v2 v2.2.0 h1:bV8KqXvWM2WmMuHhScJifxRdzS3+ZQ3XcIksQ2YY
 github.com/itsLeonB/ezutil/v2 v2.2.0/go.mod h1:xEfkSPgylgeJV0jNGxDkQp7gtaHCH6ILTamWVCDY9Tw=
 github.com/itsLeonB/ginkgo v0.4.0-pre1 h1:gI/S5LCXGFLrgqW1aVsJwaWZRK9wjyeOrOPwAKeiz58=
 github.com/itsLeonB/ginkgo v0.4.0-pre1/go.mod h1:sX8ZxP1InXU5mmnhtIiY7X/8QmZdxDh+pkLmFusScjI=
+github.com/itsLeonB/go-crud v0.3.0-pre1 h1:FE1w+3h6c1j9ajnkaYuc6JcoAq8P/Ya74Fc0SrLaQ3w=
+github.com/itsLeonB/go-crud v0.3.0-pre1/go.mod h1:qfPrN9+It7J6zpKZVqjaAkPjRBcHObViJvE0wxwJlY4=
 github.com/itsLeonB/meq v0.1.1 h1:XTgwvDuuasrtICxCDKy65TbmsRhRE2tV7pYi20wmRUc=
 github.com/itsLeonB/meq v0.1.1/go.mod h1:6SGoFUDv46o5uJfHkBydXjPJyJl0P9jYLh/vZIFrQpY=
 github.com/itsLeonB/stortr-protos v0.1.2 h1:5ktzs30Cqjf/eYauR1Z+9k5656/Qtp8inshsgKUyg7Y=
 github.com/itsLeonB/stortr-protos v0.1.2/go.mod h1:HcIJPgUgXbLFjMBvZCdY+gWnvCrzAtV5x7dyc8IfLb4=
 github.com/itsLeonB/ungerr v0.1.0 h1:t2Ezk7xYQ859U2Tx/u+5+k/Rt7D3XXqXor6w11FeO5Y=
 github.com/itsLeonB/ungerr v0.1.0/go.mod h1:d1ZnTmRnnkccpRlhUMQGN8+PuMk82NqiRhcDOQ5PirY=
+github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD/E=
+github.com/jinzhu/inflection v1.0.0/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkryuEj+Srlc=
+github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=
+github.com/jinzhu/now v1.1.5/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
 github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
 github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
 github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
@@ -174,4 +180,6 @@ gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c/go.mod h1:JHkPIbrfpd72SG/EV
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+gorm.io/gorm v1.30.1 h1:lSHg33jJTBxs2mgJRfRZeLDG+WZaHYCk3Wtfl6Ngzo4=
+gorm.io/gorm v1.30.1/go.mod h1:8Z33v652h4//uMA76KjeDH8mJXPm1QNCYrMeatR0DOE=
 nullprogram.com/x/optparse v1.0.0/go.mod h1:KdyPE+Igbe0jQUrVfMqDMeJQIJZEuyV7pjYmp6pbG50=

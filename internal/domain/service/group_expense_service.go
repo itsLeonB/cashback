@@ -117,14 +117,9 @@ func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, profil
 		if err != nil {
 			return err
 		}
-		if groupExpense.Status == expenses.ConfirmedExpense {
-			return ungerr.UnprocessableEntityError("already confirmed")
-		}
-		if len(groupExpense.Items) < 1 {
-			return ungerr.UnprocessableEntityError("cannot confirm empty items")
-		}
-		if groupExpense.Status != expenses.ReadyExpense {
-			return ungerr.UnprocessableEntityError("expense is not ready to confirm")
+
+		if err = validateForConfirmation(groupExpense); err != nil {
+			return err
 		}
 
 		updatedParticipants, err := ges.calculateUpdatedExpenseParticipants(ctx, groupExpense)
@@ -151,6 +146,22 @@ func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, profil
 		return nil
 	})
 	return response, err
+}
+
+func validateForConfirmation(groupExpense expenses.GroupExpense) error {
+	if groupExpense.Status == expenses.ConfirmedExpense {
+		return ungerr.UnprocessableEntityError("already confirmed")
+	}
+	if len(groupExpense.Items) < 1 {
+		return ungerr.UnprocessableEntityError("cannot confirm empty items")
+	}
+	if groupExpense.Status != expenses.ReadyExpense {
+		return ungerr.UnprocessableEntityError("expense is not ready to confirm")
+	}
+	if !groupExpense.PayerProfileID.Valid {
+		return ungerr.UnprocessableEntityError("no payer is selected")
+	}
+	return nil
 }
 
 func (ges *groupExpenseServiceImpl) calculateUpdatedExpenseParticipants(ctx context.Context, groupExpense expenses.GroupExpense) ([]expenses.ExpenseParticipant, error) {
@@ -245,32 +256,9 @@ func (ges *groupExpenseServiceImpl) Delete(ctx context.Context, userProfileID, i
 }
 
 func (ges *groupExpenseServiceImpl) SyncParticipants(ctx context.Context, req dto.ExpenseParticipantsRequest) error {
-	participantSet := mapset.NewSet[uuid.UUID]()
-	for _, pid := range req.ParticipantProfileIDs {
-		participantSet.Add(pid)
-	}
-	if participantSet.Cardinality() != len(req.ParticipantProfileIDs) {
-		return ungerr.UnprocessableEntityError("duplicate participant profile IDs given")
-	}
-	if !participantSet.Contains(req.PayerProfileID) {
-		return ungerr.UnprocessableEntityError("payer profile ID must be one of the participant profile IDs")
-	}
-
-	for _, participantProfileID := range req.ParticipantProfileIDs {
-		if participantProfileID == req.UserProfileID {
-			continue
-		}
-		isFriends, _, err := ges.friendshipService.IsFriends(ctx, req.UserProfileID, participantProfileID)
-		if err != nil {
-			return err
-		}
-		if !isFriends {
-			return ungerr.UnprocessableEntityError(appconstant.ErrNotFriends)
-		}
-	}
-
-	if !participantSet.Contains(req.UserProfileID) {
-		participantSet.Add(req.UserProfileID)
+	participants, profileIDs, err := ges.validateAndGetParticipants(ctx, req)
+	if err != nil {
+		return err
 	}
 
 	return ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -279,22 +267,58 @@ func (ges *groupExpenseServiceImpl) SyncParticipants(ctx context.Context, req dt
 			return err
 		}
 
-		expense.PayerProfileID = req.PayerProfileID
+		expense.PayerProfileID = uuid.NullUUID{
+			UUID:  req.PayerProfileID,
+			Valid: true,
+		}
 
 		if _, err = ges.expenseRepo.Update(ctx, expense); err != nil {
 			return err
 		}
 
-		entityMapper := func(id uuid.UUID) expenses.ExpenseParticipant {
-			return expenses.ExpenseParticipant{ParticipantProfileID: id}
-		}
-
-		if err := ges.expenseRepo.SyncParticipants(ctx, expense.ID, ezutil.MapSlice(req.ParticipantProfileIDs, entityMapper)); err != nil {
+		if err := ges.expenseRepo.SyncParticipants(ctx, expense.ID, participants); err != nil {
 			return err
 		}
 
-		return ges.expenseRepo.DeleteItemParticipants(ctx, expense.ID, req.ParticipantProfileIDs)
+		return ges.expenseRepo.DeleteItemParticipants(ctx, expense.ID, profileIDs)
 	})
+}
+
+func (ges *groupExpenseServiceImpl) validateAndGetParticipants(ctx context.Context, req dto.ExpenseParticipantsRequest) ([]expenses.ExpenseParticipant, []uuid.UUID, error) {
+	participantSet := mapset.NewSet[uuid.UUID]()
+	for _, pid := range req.ParticipantProfileIDs {
+		participantSet.Add(pid)
+	}
+
+	if participantSet.Cardinality() != len(req.ParticipantProfileIDs) {
+		return nil, nil, ungerr.UnprocessableEntityError("duplicate participant profile IDs given")
+	}
+	if !participantSet.Contains(req.PayerProfileID) {
+		return nil, nil, ungerr.UnprocessableEntityError("payer profile ID must be one of the participant profile IDs")
+	}
+
+	for _, participantProfileID := range req.ParticipantProfileIDs {
+		if participantProfileID == req.UserProfileID {
+			continue
+		}
+		isFriends, _, err := ges.friendshipService.IsFriends(ctx, req.UserProfileID, participantProfileID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !isFriends {
+			return nil, nil, ungerr.UnprocessableEntityError(appconstant.ErrNotFriends)
+		}
+	}
+
+	if !participantSet.Contains(req.UserProfileID) {
+		participantSet.Add(req.UserProfileID)
+	}
+
+	participantSlice := participantSet.ToSlice()
+
+	return ezutil.MapSlice(participantSlice, func(id uuid.UUID) expenses.ExpenseParticipant {
+		return expenses.ExpenseParticipant{ParticipantProfileID: id}
+	}), participantSlice, nil
 }
 
 func (ges *groupExpenseServiceImpl) getGroupExpense(ctx context.Context, spec crud.Specification[expenses.GroupExpense]) (expenses.GroupExpense, error) {

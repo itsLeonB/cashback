@@ -17,7 +17,7 @@ const (
 
 type GroupExpense struct {
 	crud.BaseEntity
-	PayerProfileID   uuid.UUID
+	PayerProfileID   uuid.NullUUID
 	TotalAmount      decimal.Decimal
 	ItemsTotal       decimal.Decimal
 	FeesTotal        decimal.Decimal

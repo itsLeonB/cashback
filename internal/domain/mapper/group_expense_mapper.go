@@ -14,15 +14,23 @@ import (
 )
 
 func GroupExpenseRequestToEntity(request dto.NewGroupExpenseRequest) expenses.GroupExpense {
-	return expenses.GroupExpense{
-		PayerProfileID: request.PayerProfileID,
-		TotalAmount:    request.TotalAmount,
-		ItemsTotal:     request.Subtotal,
-		FeesTotal:      request.TotalAmount.Sub(request.Subtotal),
-		Description:    request.Description,
-		Items:          ezutil.MapSlice(request.Items, NewExpenseItemRequestToData),
-		OtherFees:      ezutil.MapSlice(request.OtherFees, otherFeeRequestToData),
+	expense := expenses.GroupExpense{
+		TotalAmount: request.TotalAmount,
+		ItemsTotal:  request.Subtotal,
+		FeesTotal:   request.TotalAmount.Sub(request.Subtotal),
+		Description: request.Description,
+		Items:       ezutil.MapSlice(request.Items, NewExpenseItemRequestToData),
+		OtherFees:   ezutil.MapSlice(request.OtherFees, otherFeeRequestToData),
 	}
+
+	if request.PayerProfileID != uuid.Nil {
+		expense.PayerProfileID = uuid.NullUUID{
+			UUID:  request.PayerProfileID,
+			Valid: true,
+		}
+	}
+
+	return expense
 }
 
 func GroupExpenseToResponse(
@@ -152,17 +160,17 @@ func ExpenseParticipantToData(participant expenses.ExpenseParticipant) (expenses
 
 func GroupExpenseToDebtTransactions(groupExpense expenses.GroupExpense, transferMethodID uuid.UUID) []debts.DebtTransaction {
 	action := debts.BorrowAction
-	if groupExpense.PayerProfileID == groupExpense.CreatorProfileID {
+	if groupExpense.PayerProfileID.UUID == groupExpense.CreatorProfileID {
 		action = debts.LendAction
 	}
 
 	debtTransactions := make([]debts.DebtTransaction, 0, len(groupExpense.Participants))
 	for _, participant := range groupExpense.Participants {
-		if groupExpense.PayerProfileID == participant.ParticipantProfileID {
+		if groupExpense.PayerProfileID.UUID == participant.ParticipantProfileID {
 			continue
 		}
 		debtTransactions = append(debtTransactions, debts.DebtTransaction{
-			LenderProfileID:   groupExpense.PayerProfileID,
+			LenderProfileID:   groupExpense.PayerProfileID.UUID,
 			BorrowerProfileID: participant.ParticipantProfileID,
 			Type:              debts.Lend,
 			Action:            action,

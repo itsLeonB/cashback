@@ -15,7 +15,6 @@ type Config struct {
 	App
 	Auth
 	DB
-	Google
 	LLM
 	Mail
 	OAuthProviders
@@ -62,8 +61,7 @@ func Load() error {
 		errs = errors.Join(errs, err)
 	}
 
-	var google Google
-	if err = envconfig.Process("GOOGLE", &google); err != nil {
+	if err = loadGoogleConfig(); err != nil {
 		errs = errors.Join(errs, err)
 	}
 
@@ -75,7 +73,6 @@ func Load() error {
 		app,
 		auth,
 		db,
-		google,
 		llm,
 		mail,
 		oAuthProviders,

@@ -26,16 +26,8 @@ type gcsStorageRepository struct {
 	client *storage.Client
 }
 
-func NewGCSStorageRepository(serviceAccountJSON []byte) (StorageRepository, error) {
-	if serviceAccountJSON == nil {
-		return nil, ungerr.Unknown("service account JSON is empty")
-	}
-
-	// Create client with only token source
-	client, err := storage.NewClient(
-		context.Background(),
-		// option.WithCredentialsJSON(serviceAccountJSON),
-	)
+func NewGCSStorageRepository() (StorageRepository, error) {
+	client, err := storage.NewClient(context.Background())
 	if err != nil {
 		return nil, ungerr.Unknownf("failed to create GCS client: %v", err)
 	}

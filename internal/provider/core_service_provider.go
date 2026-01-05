@@ -21,7 +21,7 @@ func (cs *CoreServices) Shutdown() error {
 }
 
 func ProvideCoreServices() (*CoreServices, error) {
-	storageRepo, err := storage.NewGCSStorageRepository([]byte(config.Global.ServiceAccount))
+	storageRepo, err := storage.NewGCSStorageRepository()
 	if err != nil {
 		return nil, err
 	}

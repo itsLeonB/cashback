@@ -33,15 +33,21 @@ type Services struct {
 	OtherFee     service.OtherFeeService
 }
 
-func ProvideServices(repos *Repositories, coreSvc *CoreServices, queues *Queues) *Services {
-	hash := sekure.NewHashService(config.Global.Auth.HashCost)
-	jwt := sekure.NewJwtService(config.Global.Auth.Issuer, config.Global.Auth.SecretKey, config.Global.Auth.TokenDuration)
+func ProvideServices(
+	repos *Repositories,
+	coreSvc *CoreServices,
+	queues *Queues,
+	authConfig config.Auth,
+	appConfig config.App,
+) *Services {
+	hash := sekure.NewHashService(authConfig.HashCost)
+	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)
 
 	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile)
 	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken)
 
 	oauth := service.NewOAuthService(repos.Transactor, repos.OAuthAccount, coreSvc.State, user, http.DefaultClient, jwt)
-	auth := service.NewAuthService(hash, jwt, repos.Transactor, user, coreSvc.Mail, config.Global.RegisterVerificationUrl, config.Global.ResetPasswordUrl, oauth)
+	auth := service.NewAuthService(hash, jwt, repos.Transactor, user, coreSvc.Mail, appConfig.RegisterVerificationUrl, appConfig.ResetPasswordUrl, oauth)
 
 	friendship := service.NewFriendshipService(repos.Transactor, repos.Friendship, profile)
 	friendshipReq := service.NewFriendshipRequestService(repos.Transactor, friendship, profile, repos.FriendshipRequest)
@@ -51,7 +57,7 @@ func ProvideServices(repos *Repositories, coreSvc *CoreServices, queues *Queues)
 	friendDetail := service.NewFriendDetailsService(debt, profile, friendship)
 
 	groupExpense := service.NewGroupExpenseService(friendship, repos.GroupExpense, repos.Transactor, fee.NewFeeCalculatorRegistry(), repos.OtherFee, repos.ExpenseBill, coreSvc.LLM)
-	expenseBill := service.NewExpenseBillService(config.Global.BucketNameExpenseBill, queues.ExpenseBillUploaded, repos.ExpenseBill, repos.Transactor, coreSvc.Image)
+	expenseBill := service.NewExpenseBillService(appConfig.BucketNameExpenseBill, queues.ExpenseBillUploaded, repos.ExpenseBill, repos.Transactor, coreSvc.Image)
 	expenseItem := service.NewExpenseItemService(repos.Transactor, repos.GroupExpense, repos.ExpenseItem, groupExpense)
 	otherFee := service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense)
 

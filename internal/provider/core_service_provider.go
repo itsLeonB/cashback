@@ -26,13 +26,13 @@ func ProvideCoreServices() (*CoreServices, error) {
 		return nil, err
 	}
 
-	store, err := store.NewStateStore(config.Global.Valkey)
+	store, err := store.NewStateStore()
 	if err != nil {
 		return nil, err
 	}
 
 	return &CoreServices{
-		LLM:   llm.NewLLMService(),
+		LLM:   llm.NewLLMService(config.Global.LLM),
 		Mail:  mail.NewMailService(),
 		Image: storage.NewImageService(validator.New(), storageRepo),
 		State: store,

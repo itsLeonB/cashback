@@ -10,8 +10,8 @@ import (
 	"gorm.io/gorm"
 )
 
-func ProvideAndConfigureSQL() (*gorm.DB, *sql.DB, error) {
-	gormDB, err := gorm.Open(postgres.Open(dsn()), &gorm.Config{})
+func ProvideAndConfigureSQL(cfg config.DB) (*gorm.DB, *sql.DB, error) {
+	gormDB, err := gorm.Open(postgres.Open(dsn(cfg)), &gorm.Config{})
 	if err != nil {
 		return nil, nil, ungerr.Wrap(err, "error opening gorm connection")
 	}
@@ -21,20 +21,24 @@ func ProvideAndConfigureSQL() (*gorm.DB, *sql.DB, error) {
 		return nil, nil, ungerr.Wrap(err, "error obtaining sql.DB instance")
 	}
 
-	sqlDB.SetMaxOpenConns(config.Global.DB.MaxOpenConns)
-	sqlDB.SetMaxIdleConns(config.Global.DB.MaxIdleConns)
-	sqlDB.SetConnMaxLifetime(config.Global.DB.ConnMaxLifetime)
+	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
+	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
+	sqlDB.SetConnMaxLifetime(cfg.ConnMaxLifetime)
+
+	if err = sqlDB.Ping(); err != nil {
+		return nil, nil, ungerr.Wrap(err, "error pinging SQL DB")
+	}
 
 	return gormDB, sqlDB, nil
 }
 
-func dsn() string {
+func dsn(cfg config.DB) string {
 	return fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s",
-		config.Global.DB.Host,
-		config.Global.DB.User,
-		config.Global.DB.Password,
-		config.Global.DB.Name,
-		config.Global.DB.Port,
+		cfg.Host,
+		cfg.User,
+		cfg.Password,
+		cfg.Name,
+		cfg.Port,
 	)
 }

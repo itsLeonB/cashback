@@ -9,17 +9,20 @@ import (
 	"github.com/itsLeonB/meq"
 )
 
-func ProvideAsynq() meq.DB {
-	return meq.NewAsynqDB(logger.Global, redisClientOpts())
+func ProvideAsynq(cfg config.Valkey) meq.DB {
+	return meq.NewAsynqDB(logger.Global, redisClientOpts(cfg))
 }
 
-func redisClientOpts() asynq.RedisClientOpt {
-	return asynq.RedisClientOpt{
-		Addr:     config.Global.Valkey.Addr,
-		Password: config.Global.Valkey.Password,
-		DB:       config.Global.Valkey.Db,
-		TLSConfig: &tls.Config{
-			MinVersion: tls.VersionTLS12,
-		},
+func redisClientOpts(cfg config.Valkey) asynq.RedisClientOpt {
+	opt := asynq.RedisClientOpt{
+		Addr:     cfg.Addr,
+		Password: cfg.Password,
+		DB:       cfg.Db,
 	}
+
+	if cfg.EnableTls {
+		opt.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
+
+	return opt
 }

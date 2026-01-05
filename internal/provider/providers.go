@@ -3,6 +3,7 @@ package provider
 import (
 	"errors"
 
+	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 )
 
@@ -47,6 +48,6 @@ func All() (*Providers, error) {
 		Queues:       queues,
 		Repositories: repos,
 		CoreServices: coreSvcs,
-		Services:     ProvideServices(repos, coreSvcs, queues),
+		Services:     ProvideServices(repos, coreSvcs, queues, config.Global.Auth, config.Global.App),
 	}, nil
 }

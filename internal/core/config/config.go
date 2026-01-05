@@ -19,7 +19,6 @@ type Config struct {
 	LLM
 	Mail
 	OAuthProviders
-	Storage
 	Valkey
 }
 
@@ -35,11 +34,6 @@ func Load() error {
 
 	var valkey Valkey
 	if err := envconfig.Process("VALKEY", &valkey); err != nil {
-		errs = errors.Join(errs, err)
-	}
-
-	var storage Storage
-	if err := envconfig.Process("STORAGE", &storage); err != nil {
 		errs = errors.Join(errs, err)
 	}
 
@@ -85,7 +79,6 @@ func Load() error {
 		llm,
 		mail,
 		oAuthProviders,
-		storage,
 		valkey,
 	}
 

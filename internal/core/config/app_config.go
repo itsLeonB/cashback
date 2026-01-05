@@ -11,6 +11,7 @@ type App struct {
 	ClientUrls              []string      `split_words:"true"`
 	RegisterVerificationUrl string        `split_words:"true"`
 	ResetPasswordUrl        string        `split_words:"true"`
+	BucketNameExpenseBill   string        `split_words:"true" required:"true"`
 }
 
 func (App) Prefix() string {

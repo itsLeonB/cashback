@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/provider/datasource"
 	"github.com/itsLeonB/meq"
 	"gorm.io/gorm"
@@ -27,7 +28,7 @@ func (ds *DataSources) Shutdown() error {
 }
 
 func ProvideDataSource() (*DataSources, error) {
-	gormDB, sqlDB, err := datasource.ProvideAndConfigureSQL()
+	gormDB, sqlDB, err := datasource.ProvideAndConfigureSQL(config.Global.DB)
 	if err != nil {
 		return nil, err
 	}
@@ -35,6 +36,6 @@ func ProvideDataSource() (*DataSources, error) {
 	return &DataSources{
 		Gorm:  gormDB,
 		SQL:   sqlDB,
-		Asynq: datasource.ProvideAsynq(),
+		Asynq: datasource.ProvideAsynq(config.Global.Valkey),
 	}, nil
 }

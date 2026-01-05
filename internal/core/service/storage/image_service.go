@@ -2,8 +2,10 @@ package storage
 
 import (
 	"context"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/ungerr"
 )
 
@@ -11,6 +13,7 @@ type ImageService interface {
 	Upload(ctx context.Context, req *ImageUploadRequest) (string, error)
 	GetURL(ctx context.Context, fileID FileIdentifier) (string, error)
 	Delete(ctx context.Context, fileID FileIdentifier) error
+	DeleteAllInvalid(ctx context.Context, bucketName string, validObjectKeys []string) error
 }
 
 type imageServiceImpl struct {
@@ -67,5 +70,40 @@ func (ubs *imageServiceImpl) validateUploadRequest(req *ImageUploadRequest) erro
 	if err := ubs.validate.Struct(req); err != nil {
 		return ungerr.Wrap(err, "struct validation failed")
 	}
+	return nil
+}
+
+func (ubs *imageServiceImpl) DeleteAllInvalid(ctx context.Context, bucketName string, validObjectKeys []string) error {
+	validKeys := make(map[string]struct{}, len(validObjectKeys))
+	for _, key := range validObjectKeys {
+		validKeys[key] = struct{}{}
+	}
+
+	allObjectKeys, err := ubs.storageRepo.GetAllObjectKeys(ctx, bucketName)
+	if err != nil {
+		return err
+	}
+
+	logger.Infof("obtained object keys from bucket: %s,\n%s", bucketName, strings.Join(allObjectKeys, "\n"))
+
+	hasDeleted := false
+	for _, key := range allObjectKeys {
+		if _, exists := validKeys[key]; !exists {
+			hasDeleted = true
+			logger.Infof("deleting image: %s", key)
+
+			if e := ubs.storageRepo.Delete(ctx, FileIdentifier{
+				BucketName: bucketName,
+				ObjectKey:  key,
+			}); e != nil {
+				logger.Errorf("error deleting image: %s from bucket: %s: %v", key, bucketName, e)
+			}
+		}
+	}
+
+	if !hasDeleted {
+		logger.Info("no images to delete")
+	}
+
 	return nil
 }

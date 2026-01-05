@@ -10,10 +10,10 @@ import (
 )
 
 func ProvideAsynq(cfg config.Valkey) meq.DB {
-	return meq.NewAsynqDB(logger.Global, redisClientOpts(cfg))
+	return meq.NewAsynqDB(logger.Global, RedisClientOpts(cfg))
 }
 
-func redisClientOpts(cfg config.Valkey) asynq.RedisClientOpt {
+func RedisClientOpts(cfg config.Valkey) asynq.RedisClientOpt {
 	opt := asynq.RedisClientOpt{
 		Addr:     cfg.Addr,
 		Password: cfg.Password,

@@ -1,23 +1,23 @@
 package main
 
 import (
-	"github.com/itsLeonB/cashback/internal/adapters/http"
+	"github.com/itsLeonB/cashback/internal/adapters/worker"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	_ "github.com/joho/godotenv/autoload"
 )
 
 func main() {
-	logger.Init("HTTP server")
+	logger.Init("Worker")
 
 	if err := config.Load(); err != nil {
 		logger.Fatal(err)
 	}
 
-	srv, err := http.Setup(*config.Global)
+	w, err := worker.Setup()
 	if err != nil {
 		logger.Fatal(err)
 	}
 
-	srv.ServeGracefully()
+	w.Run()
 }

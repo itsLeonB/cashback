@@ -4,8 +4,8 @@ import "github.com/itsLeonB/ezutil/v2"
 
 var Global ezutil.Logger
 
-func Init() {
-	Global = ezutil.NewSimpleLogger("Cashback", true, 0)
+func Init(appNamespace string) {
+	Global = ezutil.NewSimpleLogger(appNamespace, true, 0)
 }
 
 func Debug(args ...any) {

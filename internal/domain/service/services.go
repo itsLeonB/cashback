@@ -112,4 +112,6 @@ type OtherFeeService interface {
 type ExpenseBillService interface {
 	Save(ctx context.Context, req *dto.NewExpenseBillRequest) (dto.ExpenseBillResponse, error)
 	GetURL(ctx context.Context, billName string) (string, error)
+	ExtractBillText(ctx context.Context, msg message.ExpenseBillUploaded) (string, error)
+	Cleanup(ctx context.Context) error
 }

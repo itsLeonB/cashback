@@ -4,6 +4,8 @@ go 1.25.0
 
 require (
 	cloud.google.com/go/storage v1.58.0
+	cloud.google.com/go/vision v1.2.0
+	cloud.google.com/go/vision/v2 v2.9.5
 	github.com/deckarep/golang-set/v2 v2.8.0
 	github.com/getbrevo/brevo-go v1.1.3
 	github.com/gin-contrib/cors v1.7.6
@@ -20,6 +22,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/openai/openai-go/v2 v2.7.1
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/shopspring/decimal v1.4.0
 	github.com/valkey-io/valkey-go v1.0.70
 	golang.org/x/oauth2 v0.34.0
@@ -37,6 +40,7 @@ require (
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	cloud.google.com/go/iam v1.5.3 // indirect
+	cloud.google.com/go/longrunning v0.7.0 // indirect
 	cloud.google.com/go/monitoring v1.24.2 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.30.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.54.0 // indirect
@@ -78,7 +82,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/redis/go-redis/v9 v9.14.0 // indirect
-	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect

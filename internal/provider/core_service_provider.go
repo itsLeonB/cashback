@@ -5,6 +5,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/service/llm"
 	"github.com/itsLeonB/cashback/internal/core/service/mail"
+	"github.com/itsLeonB/cashback/internal/core/service/ocr"
 	"github.com/itsLeonB/cashback/internal/core/service/storage"
 	"github.com/itsLeonB/cashback/internal/core/service/store"
 )
@@ -14,6 +15,7 @@ type CoreServices struct {
 	Mail  mail.MailService
 	Image storage.ImageService
 	State store.StateStore
+	OCR   ocr.OCRService
 }
 
 func (cs *CoreServices) Shutdown() error {
@@ -31,10 +33,16 @@ func ProvideCoreServices() (*CoreServices, error) {
 		return nil, err
 	}
 
+	ocr, err := ocr.NewOCRClient()
+	if err != nil {
+		return nil, err
+	}
+
 	return &CoreServices{
-		LLM:   llm.NewLLMService(config.Global.LLM),
-		Mail:  mail.NewMailService(),
-		Image: storage.NewImageService(validator.New(), storageRepo),
-		State: store,
+		llm.NewLLMService(config.Global.LLM),
+		mail.NewMailService(),
+		storage.NewImageService(validator.New(), storageRepo),
+		store,
+		ocr,
 	}, nil
 }

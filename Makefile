@@ -28,11 +28,11 @@ help:
 	@echo "  make uninstall-pre-push-hook - Uninstall git pre-push hook"
 
 http:
-	go run cmd/http/main.go
+	go run ./cmd/http
 
 http-hot:
 	@echo "🚀 Starting HTTP server with hot reload..."
-	air --build.cmd "go build -o bin/http cmd/http/main.go" --build.bin "./bin/http"
+	air --build.cmd "go build -o bin/http ./cmd/http" --build.bin "./bin/http"
 
 lint:
 	golangci-lint run ./...

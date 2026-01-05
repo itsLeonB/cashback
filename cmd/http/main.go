@@ -1,18 +1,23 @@
 package main
 
 import (
-	"log"
-
-	"github.com/itsLeonB/orcashtrator/internal/config"
-	"github.com/itsLeonB/orcashtrator/internal/delivery/http"
+	"github.com/itsLeonB/cashback/internal/adapters/http"
+	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	_ "github.com/joho/godotenv/autoload"
-	"github.com/rotisserie/eris"
 )
 
 func main() {
-	srv, err := http.Setup(config.Load())
-	if err != nil {
-		log.Fatalf("error setting up server: %s", eris.ToString(err, true))
+	logger.Init()
+
+	if err := config.Load(); err != nil {
+		logger.Fatal(err)
 	}
+
+	srv, err := http.Setup(*config.Global)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
 	srv.ServeGracefully()
 }

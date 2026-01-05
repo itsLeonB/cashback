@@ -9,8 +9,8 @@ type App struct {
 	Port                    string        `default:"8080"`
 	Timeout                 time.Duration `default:"10s"`
 	ClientUrls              []string      `split_words:"true"`
-	RegisterVerificationUrl string        `split_words:"true" required:"true"`
-	ResetPasswordUrl        string        `split_words:"true" required:"true"`
+	RegisterVerificationUrl string        `split_words:"true"`
+	ResetPasswordUrl        string        `split_words:"true"`
 }
 
 func (App) Prefix() string {

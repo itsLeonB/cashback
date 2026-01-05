@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/ginkgo/pkg/server"
@@ -20,7 +19,7 @@ func NewDebtHandler(debtService service.DebtService) *DebtHandler {
 
 func (dh *DebtHandler) HandleCreate() gin.HandlerFunc {
 	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		profileID, err := util.GetProfileID(ctx)
+		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -38,7 +37,7 @@ func (dh *DebtHandler) HandleCreate() gin.HandlerFunc {
 
 func (dh *DebtHandler) HandleGetAll() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := util.GetProfileID(ctx)
+		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}

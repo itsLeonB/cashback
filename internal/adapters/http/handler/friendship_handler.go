@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
-	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/ginkgo/pkg/server"
@@ -29,7 +28,7 @@ func NewFriendshipHandler(
 
 func (fh *FriendshipHandler) HandleCreateAnonymousFriendship() gin.HandlerFunc {
 	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		profileID, err := util.GetProfileID(ctx)
+		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -47,7 +46,7 @@ func (fh *FriendshipHandler) HandleCreateAnonymousFriendship() gin.HandlerFunc {
 
 func (fh *FriendshipHandler) HandleGetAll() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := util.GetProfileID(ctx)
+		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +57,7 @@ func (fh *FriendshipHandler) HandleGetAll() gin.HandlerFunc {
 
 func (fh *FriendshipHandler) HandleGetDetails() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := util.GetProfileID(ctx)
+		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}

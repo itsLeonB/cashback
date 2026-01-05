@@ -167,7 +167,6 @@ func (as *oauthServiceImpl) findOAuthAccount(ctx context.Context, provider, prov
 	oauthSpec := crud.Specification[users.OAuthAccount]{}
 	oauthSpec.Model.Provider = provider
 	oauthSpec.Model.ProviderID = providerID
-	oauthSpec.DeletedFilter = crud.ExcludeDeleted
 	oauthSpec.PreloadRelations = []string{"User"}
 	return as.oauthAccountRepo.FindFirst(ctx, oauthSpec)
 }

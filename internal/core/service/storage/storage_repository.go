@@ -11,7 +11,6 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/itsLeonB/ungerr"
 	"google.golang.org/api/iterator"
-	"google.golang.org/api/option"
 )
 
 type StorageRepository interface {
@@ -35,7 +34,7 @@ func NewGCSStorageRepository(serviceAccountJSON []byte) (StorageRepository, erro
 	// Create client with only token source
 	client, err := storage.NewClient(
 		context.Background(),
-		option.WithCredentialsJSON(serviceAccountJSON),
+		// option.WithCredentialsJSON(serviceAccountJSON),
 	)
 	if err != nil {
 		return nil, ungerr.Unknownf("failed to create GCS client: %v", err)

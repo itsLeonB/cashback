@@ -84,12 +84,14 @@ func MapToFriendDetails(userProfileID uuid.UUID, friendship users.Friendship) (d
 	friendProfile := friendshipWithProfile.FriendProfile
 
 	return dto.FriendDetails{
-		BaseDTO:   friendProfile.BaseDTO,
-		ProfileID: friendProfile.ID,
-		Name:      friendProfile.Name,
-		Email:     friendProfile.Email,
-		Avatar:    friendProfile.Avatar,
-		Type:      friendship.Type,
+		BaseDTO:    friendProfile.BaseDTO,
+		ProfileID:  friendProfile.ID,
+		Name:       friendProfile.Name,
+		Email:      friendProfile.Email,
+		Avatar:     friendProfile.Avatar,
+		Type:       friendship.Type,
+		ProfileID1: friendship.ProfileID1,
+		ProfileID2: friendship.ProfileID2,
 	}, nil
 }
 

@@ -6,13 +6,14 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 )
 
-func ProfileToResponse(response users.UserProfile, email string, anonProfileIDs []uuid.UUID, realProfileID uuid.UUID) dto.ProfileResponse {
+func ProfileToResponse(profile users.UserProfile, email string, anonProfileIDs []uuid.UUID, realProfileID uuid.UUID) dto.ProfileResponse {
 	return dto.ProfileResponse{
-		UserID:                   response.UserID.UUID,
-		Name:                     response.Name,
-		Avatar:                   response.Avatar,
+		BaseDTO:                  BaseToDTO(profile.BaseEntity),
+		UserID:                   profile.UserID.UUID,
+		Name:                     profile.Name,
+		Avatar:                   profile.Avatar,
 		Email:                    email,
-		IsAnonymous:              !response.UserID.Valid,
+		IsAnonymous:              !profile.UserID.Valid,
 		AssociatedAnonProfileIDs: anonProfileIDs,
 		RealProfileID:            realProfileID,
 	}
@@ -20,15 +21,7 @@ func ProfileToResponse(response users.UserProfile, email string, anonProfileIDs 
 
 func SimpleProfileToResponse(email string, anonProfileIDs []uuid.UUID, realProfileID uuid.UUID) func(users.UserProfile) dto.ProfileResponse {
 	return func(up users.UserProfile) dto.ProfileResponse {
-		return dto.ProfileResponse{
-			UserID:                   up.UserID.UUID,
-			Name:                     up.Name,
-			Avatar:                   up.Avatar,
-			Email:                    email,
-			IsAnonymous:              !up.UserID.Valid,
-			AssociatedAnonProfileIDs: anonProfileIDs,
-			RealProfileID:            realProfileID,
-		}
+		return ProfileToResponse(up, email, anonProfileIDs, realProfileID)
 	}
 }
 

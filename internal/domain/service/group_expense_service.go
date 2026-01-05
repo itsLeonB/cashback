@@ -489,7 +489,6 @@ func (ges *groupExpenseServiceImpl) getPendingForProcessingExpenseBill(ctx conte
 	spec := crud.Specification[expenses.ExpenseBill]{}
 	spec.Model.ID = id
 	spec.ForUpdate = true
-	spec.DeletedFilter = crud.IncludeDeleted
 	expenseBill, err := ges.billRepo.FindFirst(ctx, spec)
 	if err != nil {
 		return expenses.ExpenseBill{}, err

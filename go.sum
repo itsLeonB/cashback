@@ -116,8 +116,8 @@ github.com/itsLeonB/ezutil/v2 v2.2.1-pre1 h1:MEHSCy4qToEuhXSOyKdVfl9+iJWXbPALO+o
 github.com/itsLeonB/ezutil/v2 v2.2.1-pre1/go.mod h1:485McANphv4ws3sPTli8HC9UQitkR6jBINzzP8sMLSU=
 github.com/itsLeonB/ginkgo v0.4.0-pre3 h1:2pd+aGcbG+gZsNltTP83M2RDn/Np/eib9kR5dnuAJXc=
 github.com/itsLeonB/ginkgo v0.4.0-pre3/go.mod h1:WGw3ZHqIxWkZZXBFt4WggzxXgEcupUGb554cIv5HhOM=
-github.com/itsLeonB/go-crud v1.3.0-pre1 h1:kk/Y2QHik3iBcL+i4WavmUfM+Ax8E+nKFH/rRF0g8Xg=
-github.com/itsLeonB/go-crud v1.3.0-pre1/go.mod h1:1fJA60s3lTpCmnB2BACazj9E/Dj5+nPKXS6gUG5Qqx4=
+github.com/itsLeonB/go-crud v1.3.0-pre2 h1:CJJhlLdoiniyYi4F+2jc5elhDThtNUCG7zuRapedosU=
+github.com/itsLeonB/go-crud v1.3.0-pre2/go.mod h1:1fJA60s3lTpCmnB2BACazj9E/Dj5+nPKXS6gUG5Qqx4=
 github.com/itsLeonB/meq v0.1.2-pre1 h1:Kt+JsCZzHXghDlk/n70TMkZyAownytRyRf0N+h7DVlc=
 github.com/itsLeonB/meq v0.1.2-pre1/go.mod h1:VIeyJ8FeZ65655WS/EcG9gZ7qbACrmYvTO89psftmrE=
 github.com/itsLeonB/sekure v0.1.1-pre1 h1:NLYGu7ySzc+lsAXYCLJ0cn/xTMSB986oOtsxSa02pWE=

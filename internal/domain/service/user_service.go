@@ -87,7 +87,6 @@ func (us *userServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (dto.UserR
 func (us *userServiceImpl) FindByEmail(ctx context.Context, email string) (users.User, error) {
 	userSpec := crud.Specification[users.User]{}
 	userSpec.Model.Email = email
-	userSpec.DeletedFilter = crud.ExcludeDeleted
 	userSpec.PreloadRelations = []string{"Profile"}
 	return us.userRepo.FindFirst(ctx, userSpec)
 }

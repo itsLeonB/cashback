@@ -25,17 +25,23 @@ type valkeyStateStore struct {
 }
 
 func NewStateStore(cfg config.Valkey) (StateStore, error) {
-	client, err := valkey.NewClient(valkey.ClientOption{
-		TLSConfig: &tls.Config{
-			MinVersion: tls.VersionTLS12,
-		},
+	opts := valkey.ClientOption{
 		InitAddress: []string{cfg.Addr},
 		Password:    cfg.Password,
 		SelectDB:    cfg.Db,
-	})
+	}
+
+	if cfg.EnableTls {
+		opts.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+	}
+
+	client, err := valkey.NewClient(opts)
 	if err != nil {
 		return nil, ungerr.Wrap(err, "error initializing valkey client")
 	}
+
 	return &valkeyStateStore{
 		client: client,
 		mu:     sync.Mutex{},
@@ -45,7 +51,14 @@ func NewStateStore(cfg config.Valkey) (StateStore, error) {
 func (vss *valkeyStateStore) Store(ctx context.Context, state string, expiry time.Duration) error {
 	key := vss.constructKey(state)
 
-	cmd := vss.client.B().Set().Key(key).Value("1").ExSeconds(int64(expiry.Seconds())).Build()
+	cmd := vss.client.
+		B().
+		Set().
+		Key(key).
+		Value("1").
+		ExSeconds(int64(expiry.Seconds())).
+		Build()
+
 	if err := vss.client.Do(ctx, cmd).Error(); err != nil {
 		return ungerr.Wrap(err, "error storing state in valkey")
 	}
@@ -59,7 +72,12 @@ func (vss *valkeyStateStore) VerifyAndDelete(ctx context.Context, state string) 
 
 	key := vss.constructKey(state)
 
-	getCmd := vss.client.B().Get().Key(key).Build()
+	getCmd := vss.client.
+		B().
+		Get().
+		Key(key).
+		Build()
+
 	if err := vss.client.Do(ctx, getCmd).Error(); err != nil {
 		if valkey.IsValkeyNil(err) {
 			return ungerr.BadRequestError("invalid state")
@@ -67,7 +85,12 @@ func (vss *valkeyStateStore) VerifyAndDelete(ctx context.Context, state string) 
 		return ungerr.Wrap(err, "failed to get state in valkey")
 	}
 
-	delCmd := vss.client.B().Del().Key(key).Build()
+	delCmd := vss.client.
+		B().
+		Del().
+		Key(key).
+		Build()
+
 	if err := vss.client.Do(ctx, delCmd).Error(); err != nil {
 		logger.Error(ungerr.Wrap(err, "error deleting key from state store"))
 	}

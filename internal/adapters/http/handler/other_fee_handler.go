@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
-	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/ginkgo/pkg/server"
@@ -26,7 +25,7 @@ func NewOtherFeeHandler(
 
 func (geh *OtherFeeHandler) HandleAdd() gin.HandlerFunc {
 	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := util.GetProfileID(ctx)
+		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -50,7 +49,7 @@ func (geh *OtherFeeHandler) HandleAdd() gin.HandlerFunc {
 
 func (geh *OtherFeeHandler) HandleUpdate() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := util.GetProfileID(ctx)
+		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +79,7 @@ func (geh *OtherFeeHandler) HandleUpdate() gin.HandlerFunc {
 
 func (geh *OtherFeeHandler) HandleRemove() gin.HandlerFunc {
 	return server.Handler(http.StatusNoContent, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := util.GetProfileID(ctx)
+		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}

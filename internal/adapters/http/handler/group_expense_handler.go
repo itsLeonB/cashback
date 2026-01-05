@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
-	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/service"
@@ -27,7 +26,7 @@ func newGroupExpenseHandler(
 
 func (geh *groupExpenseHandler) HandleCreateDraft() gin.HandlerFunc {
 	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := util.GetProfileID(ctx)
+		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -43,7 +42,7 @@ func (geh *groupExpenseHandler) HandleCreateDraft() gin.HandlerFunc {
 
 func (geh *groupExpenseHandler) HandleGetAllCreated() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := util.GetProfileID(ctx)
+		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -59,7 +58,7 @@ func (geh *groupExpenseHandler) HandleGetAllCreated() gin.HandlerFunc {
 
 func (geh *groupExpenseHandler) HandleGetDetails() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := util.GetProfileID(ctx)
+		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +74,7 @@ func (geh *groupExpenseHandler) HandleGetDetails() gin.HandlerFunc {
 
 func (geh *groupExpenseHandler) HandleConfirmDraft() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := util.GetProfileID(ctx)
+		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -96,7 +95,7 @@ func (geh *groupExpenseHandler) HandleConfirmDraft() gin.HandlerFunc {
 
 func (geh *groupExpenseHandler) HandleDelete() gin.HandlerFunc {
 	return server.Handler(http.StatusNoContent, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := util.GetProfileID(ctx)
+		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +111,7 @@ func (geh *groupExpenseHandler) HandleDelete() gin.HandlerFunc {
 
 func (geh *groupExpenseHandler) HandleSyncParticipants() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		userProfileID, err := util.GetProfileID(ctx)
+		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}

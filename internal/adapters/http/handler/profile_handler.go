@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
-	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/ginkgo/pkg/server"
@@ -27,7 +26,7 @@ func NewProfileHandler(
 
 func (ph *ProfileHandler) HandleProfile() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := server.GetAndParseFromContext[uuid.UUID](ctx, appconstant.ContextProfileID.String())
+		profileID, err := server.GetFromContext[uuid.UUID](ctx, appconstant.ContextProfileID.String())
 		if err != nil {
 			return nil, err
 		}
@@ -38,7 +37,7 @@ func (ph *ProfileHandler) HandleProfile() gin.HandlerFunc {
 
 func (ph *ProfileHandler) HandleUpdate() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := server.GetAndParseFromContext[uuid.UUID](ctx, appconstant.ContextProfileID.String())
+		profileID, err := server.GetFromContext[uuid.UUID](ctx, appconstant.ContextProfileID.String())
 		if err != nil {
 			return nil, err
 		}
@@ -54,7 +53,7 @@ func (ph *ProfileHandler) HandleUpdate() gin.HandlerFunc {
 
 func (ph *ProfileHandler) HandleSearch() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := util.GetProfileID(ctx)
+		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -69,7 +68,7 @@ func (ph *ProfileHandler) HandleSearch() gin.HandlerFunc {
 
 func (ph *ProfileHandler) HandleAssociate() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := util.GetProfileID(ctx)
+		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}

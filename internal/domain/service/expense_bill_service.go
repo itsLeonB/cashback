@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/service/ocr"
@@ -23,12 +24,13 @@ import (
 )
 
 type expenseBillServiceImpl struct {
-	bucketName string
-	taskQueue  meq.TaskQueue[message.ExpenseBillUploaded]
-	billRepo   crud.Repository[expenses.ExpenseBill]
-	transactor crud.Transactor
-	imageSvc   storage.ImageService
-	ocrSvc     ocr.OCRService
+	bucketName     string
+	taskQueue      meq.TaskQueue[message.ExpenseBillUploaded]
+	billRepo       crud.Repository[expenses.ExpenseBill]
+	transactor     crud.Transactor
+	imageSvc       storage.ImageService
+	ocrSvc         ocr.OCRService
+	extractedQueue meq.TaskQueue[message.ExpenseBillTextExtracted]
 }
 
 func NewExpenseBillService(
@@ -38,6 +40,7 @@ func NewExpenseBillService(
 	transactor crud.Transactor,
 	imageSvc storage.ImageService,
 	ocrSvc ocr.OCRService,
+	extractedQueue meq.TaskQueue[message.ExpenseBillTextExtracted],
 ) ExpenseBillService {
 	return &expenseBillServiceImpl{
 		bucketName,
@@ -46,6 +49,7 @@ func NewExpenseBillService(
 		transactor,
 		imageSvc,
 		ocrSvc,
+		extractedQueue,
 	}
 }
 
@@ -91,8 +95,7 @@ func (ebs *expenseBillServiceImpl) GetURL(ctx context.Context, billName string) 
 	return ebs.imageSvc.GetURL(ctx, ebs.objectKeyToFileID(billName))
 }
 
-func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg message.ExpenseBillUploaded) (string, error) {
-	var extractedText string
+func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg message.ExpenseBillUploaded) error {
 	err := ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[expenses.ExpenseBill]{}
 		spec.Model.ID = msg.ID
@@ -117,13 +120,60 @@ func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg mess
 			return nil
 		}
 
-		extractedText = text
 		bill.ExtractedText = text
 		bill.Status = expenses.ExtractedBill
 		_, err = ebs.billRepo.Update(ctx, bill)
 		return err
 	})
-	return extractedText, err
+	if err != nil {
+		return err
+	}
+
+	return ebs.extractedQueue.Enqueue(ctx, config.AppName, message.ExpenseBillTextExtracted{ID: msg.ID})
+}
+
+func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) error {
+	return ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		spec := crud.Specification[expenses.ExpenseBill]{}
+		spec.Model.ID = billID
+		spec.Model.GroupExpenseID = expenseID
+		spec.ForUpdate = true
+		bill, err := ebs.billRepo.FindFirst(ctx, spec)
+		if err != nil {
+			return err
+		}
+		if bill.IsZero() {
+			return ungerr.NotFoundError(fmt.Sprintf("expense bill with ID %s is not found", spec.Model.ID))
+		}
+
+		if bill.Status == expenses.FailedExtracting {
+			bill.Status = expenses.PendingBill
+			if _, err := ebs.billRepo.Update(ctx, bill); err != nil {
+				return err
+			}
+			return ebs.taskQueue.Enqueue(ctx, config.AppName, message.ExpenseBillUploaded{ID: billID})
+		}
+
+		if bill.ExtractedText == "" {
+			return ungerr.UnprocessableEntityError(fmt.Sprintf("bill %s has no extracted text to be parsed", billID))
+		}
+
+		switch bill.Status {
+		case expenses.PendingBill:
+			return ungerr.UnprocessableEntityError(fmt.Sprintf("bill %s is still pending to be extracted", billID))
+		case expenses.FailedExtracting:
+			return ungerr.UnprocessableEntityError(fmt.Sprintf("bill %s is failed while extracting text", billID))
+		case expenses.NotDetectedBill:
+			return ungerr.UnprocessableEntityError(fmt.Sprintf("bill %s already parsed with no detected data", billID))
+		}
+
+		bill.Status = expenses.ExtractedBill
+		if _, err := ebs.billRepo.Update(ctx, bill); err != nil {
+			return err
+		}
+
+		return ebs.extractedQueue.Enqueue(ctx, config.AppName, message.ExpenseBillTextExtracted{ID: billID})
+	})
 }
 
 func (ebs *expenseBillServiceImpl) Cleanup(ctx context.Context) error {

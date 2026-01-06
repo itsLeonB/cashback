@@ -3,8 +3,7 @@ package message
 import "github.com/google/uuid"
 
 type ExpenseBillTextExtracted struct {
-	ID   uuid.UUID `json:"id"`
-	Text string    `json:"text"`
+	ID uuid.UUID `json:"id"`
 }
 
 func (ExpenseBillTextExtracted) Type() string {

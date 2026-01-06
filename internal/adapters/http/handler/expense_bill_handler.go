@@ -59,3 +59,19 @@ func (geh *ExpenseBillHandler) HandleSave() gin.HandlerFunc {
 		return response, nil
 	})
 }
+
+func (geh *ExpenseBillHandler) HandleTriggerParsing() gin.HandlerFunc {
+	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+		expenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
+		if err != nil {
+			return nil, err
+		}
+
+		billID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextExpenseBillID.String())
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, geh.expenseBillService.TriggerParsing(ctx, expenseID, billID)
+	})
+}

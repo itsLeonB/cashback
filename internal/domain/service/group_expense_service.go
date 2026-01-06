@@ -357,7 +357,7 @@ func (ges *groupExpenseServiceImpl) ParseFromBillText(ctx context.Context, msg m
 		if err != nil {
 			return err
 		}
-		if err := ges.parseFlow(ctx, msg.Text, expenseBill); err != nil {
+		if err := ges.parseFlow(ctx, expenseBill); err != nil {
 			// Log error but do not return error (commit the transaction)
 			logger.Errorf("error processing bill parsing: %v", err)
 		}
@@ -365,8 +365,8 @@ func (ges *groupExpenseServiceImpl) ParseFromBillText(ctx context.Context, msg m
 	})
 }
 
-func (ges *groupExpenseServiceImpl) parseFlow(ctx context.Context, text string, expenseBill expenses.ExpenseBill) error {
-	status, err := ges.processAndGetStatus(ctx, text, expenseBill)
+func (ges *groupExpenseServiceImpl) parseFlow(ctx context.Context, expenseBill expenses.ExpenseBill) error {
+	status, err := ges.processAndGetStatus(ctx, expenseBill)
 	expenseBill.Status = status
 	_, statusErr := ges.billRepo.Update(ctx, expenseBill)
 	if statusErr != nil {
@@ -375,13 +375,13 @@ func (ges *groupExpenseServiceImpl) parseFlow(ctx context.Context, text string, 
 	return err
 }
 
-func (ges *groupExpenseServiceImpl) processAndGetStatus(ctx context.Context, text string, expenseBill expenses.ExpenseBill) (expenses.BillStatus, error) {
+func (ges *groupExpenseServiceImpl) processAndGetStatus(ctx context.Context, expenseBill expenses.ExpenseBill) (expenses.BillStatus, error) {
 	expense, err := ges.GetUnconfirmedGroupExpenseForUpdate(ctx, uuid.Nil, expenseBill.GroupExpenseID)
 	if err != nil {
 		return expenses.FailedParsingBill, err
 	}
 
-	request, err := ges.parseExpenseBillTextToExpenseRequest(ctx, text)
+	request, err := ges.parseExpenseBillTextToExpenseRequest(ctx, expenseBill.ExtractedText)
 	if err != nil {
 		if errors.Is(err, expenses.ErrExpenseNotDetected) {
 			return expenses.NotDetectedBill, nil

@@ -40,8 +40,8 @@ func Setup(providers *provider.Providers) (*Subscriber, error) {
 	srv := asynq.NewServer(datasource.RedisClientOpts(config.Global.Valkey), asynqCfg)
 	mux := asynq.NewServeMux()
 
-	mux.Handle(expenseBillUploadedQueue, expenseBillUploadedHandler(providers.Services.ExpenseBill, providers.ExpenseBillTextExtracted))
-	mux.Handle(expenseBillTextExtractedQueue, expenseBillTextExtractedHandler(providers.Services.GroupExpense))
+	mux.Handle(expenseBillUploadedQueue, withLogging(expenseBillUploadedQueue, providers.Services.ExpenseBill.ExtractBillText))
+	mux.Handle(expenseBillTextExtractedQueue, withLogging(expenseBillTextExtractedQueue, providers.Services.GroupExpense.ParseFromBillText))
 
 	if err := srv.Ping(); err != nil {
 		return nil, ungerr.Wrap(err, "error pinging valkey")

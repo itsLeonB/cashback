@@ -49,3 +49,28 @@ type ExpenseParticipantsRequest struct {
 	UserProfileID         uuid.UUID   `json:"-"`
 	GroupExpenseID        uuid.UUID   `json:"-"`
 }
+
+type ExpenseConfirmationResponse struct {
+	ID           uuid.UUID                     `json:"id"`
+	Description  string                        `json:"description"`
+	TotalAmount  decimal.Decimal               `json:"totalAmount"`
+	Payer        SimpleProfile                 `json:"payer"`
+	Participants []ConfirmedExpenseParticipant `json:"participants"`
+}
+
+type ConfirmedExpenseParticipant struct {
+	Profile    SimpleProfile        `json:"profile"`
+	Items      []ConfirmedItemShare `json:"items"`
+	ItemsTotal decimal.Decimal      `json:"itemsTotal"`
+	Fees       []ConfirmedItemShare `json:"fees"`
+	FeesTotal  decimal.Decimal      `json:"feesTotal"`
+	Total      decimal.Decimal      `json:"total"`
+}
+
+type ConfirmedItemShare struct {
+	ID          uuid.UUID       `json:"id"`
+	Name        string          `json:"name"`
+	BaseAmount  decimal.Decimal `json:"baseAmount"`
+	ShareRate   decimal.Decimal `json:"shareRate"`
+	ShareAmount decimal.Decimal `json:"shareAmount"`
+}

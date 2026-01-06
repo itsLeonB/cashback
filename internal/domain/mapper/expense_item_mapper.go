@@ -1,6 +1,7 @@
 package mapper
 
 import (
+	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/ezutil/v2"
@@ -50,5 +51,35 @@ func ItemParticipantRequestToEntity(itemParticipant dto.ItemParticipantRequest) 
 	return expenses.ItemParticipant{
 		ProfileID: itemParticipant.ProfileID,
 		Share:     itemParticipant.Share,
+	}
+}
+
+func getExpenseItemSimpleMapper(userProfileID uuid.UUID) func(item expenses.ExpenseItem) dto.ExpenseItemResponse {
+	return func(item expenses.ExpenseItem) dto.ExpenseItemResponse {
+		return ExpenseItemToResponse(item, userProfileID)
+	}
+}
+
+func ExpenseItemToResponse(item expenses.ExpenseItem, userProfileID uuid.UUID) dto.ExpenseItemResponse {
+	return dto.ExpenseItemResponse{
+		BaseDTO:        BaseToDTO(item.BaseEntity),
+		GroupExpenseID: item.GroupExpenseID,
+		Name:           item.Name,
+		Amount:         item.Amount,
+		Quantity:       item.Quantity,
+		Participants:   ezutil.MapSlice(item.Participants, getItemParticipantSimpleMapper(userProfileID)),
+	}
+}
+
+func getItemParticipantSimpleMapper(userProfileID uuid.UUID) func(itemParticipant expenses.ItemParticipant) dto.ItemParticipantResponse {
+	return func(itemParticipant expenses.ItemParticipant) dto.ItemParticipantResponse {
+		return itemParticipantToResponse(itemParticipant, userProfileID)
+	}
+}
+
+func itemParticipantToResponse(itemParticipant expenses.ItemParticipant, userProfileID uuid.UUID) dto.ItemParticipantResponse {
+	return dto.ItemParticipantResponse{
+		Profile:    ProfileToSimple(itemParticipant.Profile, userProfileID),
+		ShareRatio: itemParticipant.Share,
 	}
 }

@@ -65,73 +65,6 @@ func GroupExpenseSimpleMapper(userProfileID uuid.UUID, billURL string) func(expe
 	}
 }
 
-func getExpenseItemSimpleMapper(userProfileID uuid.UUID) func(item expenses.ExpenseItem) dto.ExpenseItemResponse {
-	return func(item expenses.ExpenseItem) dto.ExpenseItemResponse {
-		return ExpenseItemToResponse(item, userProfileID)
-	}
-}
-
-func ExpenseItemToResponse(item expenses.ExpenseItem, userProfileID uuid.UUID) dto.ExpenseItemResponse {
-	return dto.ExpenseItemResponse{
-		BaseDTO:        BaseToDTO(item.BaseEntity),
-		GroupExpenseID: item.GroupExpenseID,
-		Name:           item.Name,
-		Amount:         item.Amount,
-		Quantity:       item.Quantity,
-		Participants:   ezutil.MapSlice(item.Participants, getItemParticipantSimpleMapper(userProfileID)),
-	}
-}
-
-func getOtherFeeSimpleMapper(userProfileID uuid.UUID) func(expenses.OtherFee) dto.OtherFeeResponse {
-	return func(fee expenses.OtherFee) dto.OtherFeeResponse {
-		return OtherFeeToResponse(fee, userProfileID)
-	}
-}
-
-func OtherFeeToResponse(fee expenses.OtherFee, userProfileID uuid.UUID) dto.OtherFeeResponse {
-	return dto.OtherFeeResponse{
-		BaseDTO:           BaseToDTO(fee.BaseEntity),
-		Name:              fee.Name,
-		Amount:            fee.Amount,
-		CalculationMethod: fee.CalculationMethod,
-		Participants:      ezutil.MapSlice(fee.Participants, getFeeParticipantSimpleMapper(userProfileID)),
-	}
-}
-
-func getFeeParticipantSimpleMapper(userProfileID uuid.UUID) func(expenses.FeeParticipant) dto.FeeParticipantResponse {
-	return func(feeParticipant expenses.FeeParticipant) dto.FeeParticipantResponse {
-		return feeParticipantToResponse(feeParticipant, userProfileID)
-	}
-}
-
-func feeParticipantToResponse(feeParticipant expenses.FeeParticipant, userProfileID uuid.UUID) dto.FeeParticipantResponse {
-	return dto.FeeParticipantResponse{
-		Profile:     ProfileToSimple(feeParticipant.Profile, userProfileID),
-		ShareAmount: feeParticipant.ShareAmount,
-	}
-}
-
-func getItemParticipantSimpleMapper(userProfileID uuid.UUID) func(itemParticipant expenses.ItemParticipant) dto.ItemParticipantResponse {
-	return func(itemParticipant expenses.ItemParticipant) dto.ItemParticipantResponse {
-		return itemParticipantToResponse(itemParticipant, userProfileID)
-	}
-}
-
-func itemParticipantToResponse(itemParticipant expenses.ItemParticipant, userProfileID uuid.UUID) dto.ItemParticipantResponse {
-	return dto.ItemParticipantResponse{
-		Profile:    ProfileToSimple(itemParticipant.Profile, userProfileID),
-		ShareRatio: itemParticipant.Share,
-	}
-}
-
-func otherFeeRequestToData(req dto.NewOtherFeeRequest) expenses.OtherFee {
-	return expenses.OtherFee{
-		Name:              req.Name,
-		Amount:            req.Amount,
-		CalculationMethod: req.CalculationMethod,
-	}
-}
-
 func ExpenseParticipantToResponse(expenseParticipant expenses.ExpenseParticipant, userProfileID uuid.UUID) dto.ExpenseParticipantResponse {
 	return dto.ExpenseParticipantResponse{
 		Profile:     ProfileToSimple(expenseParticipant.Profile, userProfileID),
@@ -182,4 +115,91 @@ func GroupExpenseToDebtTransactions(groupExpense expenses.GroupExpense, transfer
 	}
 
 	return debtTransactions
+}
+
+func ToConfirmationResponse(expense expenses.GroupExpense, userProfileID uuid.UUID) dto.ExpenseConfirmationResponse {
+	// Pre-compute participant maps for O(1) lookups
+	itemParticipantMap := make(map[uuid.UUID]map[uuid.UUID]expenses.ItemParticipant)
+	feeParticipantMap := make(map[uuid.UUID]map[uuid.UUID]expenses.FeeParticipant)
+
+	// Build item participant lookup
+	for _, item := range expense.Items {
+		itemMap := make(map[uuid.UUID]expenses.ItemParticipant, len(item.Participants))
+		for _, p := range item.Participants {
+			itemMap[p.ProfileID] = p
+		}
+		itemParticipantMap[item.ID] = itemMap
+	}
+
+	// Build fee participant lookup
+	for _, fee := range expense.OtherFees {
+		feeMap := make(map[uuid.UUID]expenses.FeeParticipant, len(fee.Participants))
+		for _, p := range fee.Participants {
+			feeMap[p.ProfileID] = p
+		}
+		feeParticipantMap[fee.ID] = feeMap
+	}
+
+	participants := make([]dto.ConfirmedExpenseParticipant, len(expense.Participants))
+
+	for i, participant := range expense.Participants {
+		profileID := participant.ParticipantProfileID
+		items := make([]dto.ConfirmedItemShare, len(expense.Items))
+		itemsTotal := decimal.Zero
+
+		// Process items
+		for j, item := range expense.Items {
+			itemParticipant := itemParticipantMap[item.ID][profileID]
+			baseAmount := item.TotalAmount()
+			shareAmount := baseAmount.Mul(itemParticipant.Share)
+			itemsTotal = itemsTotal.Add(shareAmount)
+
+			items[j] = dto.ConfirmedItemShare{
+				ID:          item.ID,
+				Name:        item.Name,
+				BaseAmount:  baseAmount,
+				ShareRate:   itemParticipant.Share,
+				ShareAmount: shareAmount,
+			}
+		}
+
+		// Process fees
+		fees := make([]dto.ConfirmedItemShare, len(expense.OtherFees))
+		feesTotal := decimal.Zero
+
+		for j, fee := range expense.OtherFees {
+			feeParticipant := feeParticipantMap[fee.ID][profileID]
+			feesTotal = feesTotal.Add(feeParticipant.ShareAmount)
+
+			var shareRate decimal.Decimal
+			if !feeParticipant.ShareAmount.IsZero() {
+				shareRate = fee.Amount.Div(feeParticipant.ShareAmount)
+			}
+
+			fees[j] = dto.ConfirmedItemShare{
+				ID:          fee.ID,
+				Name:        fee.Name,
+				BaseAmount:  fee.Amount,
+				ShareRate:   shareRate,
+				ShareAmount: feeParticipant.ShareAmount,
+			}
+		}
+
+		participants[i] = dto.ConfirmedExpenseParticipant{
+			Profile:    ProfileToSimple(participant.Profile, userProfileID),
+			Items:      items,
+			ItemsTotal: itemsTotal,
+			Fees:       fees,
+			FeesTotal:  feesTotal,
+			Total:      participant.ShareAmount,
+		}
+	}
+
+	return dto.ExpenseConfirmationResponse{
+		ID:           expense.ID,
+		Description:  expense.Description,
+		TotalAmount:  expense.TotalAmount,
+		Payer:        ProfileToSimple(expense.Payer, userProfileID),
+		Participants: participants,
+	}
 }

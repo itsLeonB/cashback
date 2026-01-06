@@ -113,8 +113,8 @@ func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProf
 	return mapper.GroupExpenseToResponse(groupExpense, userProfileID, billURL), nil
 }
 
-func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, profileID uuid.UUID, dryRun bool) (dto.GroupExpenseResponse, error) {
-	var response dto.GroupExpenseResponse
+func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, profileID uuid.UUID, dryRun bool) (dto.ExpenseConfirmationResponse, error) {
+	var response dto.ExpenseConfirmationResponse
 	err := ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[expenses.GroupExpense]{}
 		spec.Model.ID = id
@@ -161,7 +161,7 @@ func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, profil
 
 		groupExpense.Participants = updatedParticipants
 
-		response = mapper.GroupExpenseToResponse(groupExpense, profileID, "")
+		response = mapper.ToConfirmationResponse(groupExpense, profileID)
 
 		return nil
 	})

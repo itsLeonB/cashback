@@ -87,7 +87,7 @@ type GroupExpenseService interface {
 	CreateDraft(ctx context.Context, userProfileID uuid.UUID, description string) (dto.GroupExpenseResponse, error)
 	GetAllCreated(ctx context.Context, userProfileID uuid.UUID, status expenses.ExpenseStatus) ([]dto.GroupExpenseResponse, error)
 	GetDetails(ctx context.Context, id, userProfileID uuid.UUID) (dto.GroupExpenseResponse, error)
-	ConfirmDraft(ctx context.Context, id, userProfileID uuid.UUID, dryRun bool) (dto.GroupExpenseResponse, error)
+	ConfirmDraft(ctx context.Context, id, userProfileID uuid.UUID, dryRun bool) (dto.ExpenseConfirmationResponse, error)
 	Delete(ctx context.Context, userProfileID, id uuid.UUID) error
 	SyncParticipants(ctx context.Context, req dto.ExpenseParticipantsRequest) error
 

@@ -2,6 +2,7 @@ package subscriber
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/hibiken/asynq"
 	"github.com/itsLeonB/cashback/internal/core/config"
@@ -9,6 +10,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/provider"
 	"github.com/itsLeonB/cashback/internal/provider/datasource"
+	"github.com/itsLeonB/meq/task"
 	"github.com/itsLeonB/ungerr"
 )
 
@@ -60,4 +62,24 @@ func (w *Subscriber) Start() error {
 
 func (w *Subscriber) Stop() {
 	w.srv.Shutdown()
+}
+
+func withLogging[T task.Message](taskType string, handler func(context.Context, T) error) asynq.Handler {
+	return asynq.HandlerFunc(func(ctx context.Context, t *asynq.Task) error {
+		logger.Infof("received new task %s", taskType)
+
+		var taskMsg task.Task[T]
+		if err := json.Unmarshal(t.Payload(), &taskMsg); err != nil {
+			logger.Errorf("error processing %s task: %v", taskType, err)
+			return ungerr.Wrapf(err, "error unmarshaling payload to: %T", taskMsg)
+		}
+
+		if err := handler(ctx, taskMsg.Message); err != nil {
+			logger.Errorf("error processing %s task: %v", taskType, err)
+			return err
+		}
+
+		logger.Infof("success processing %s task", taskType)
+		return nil
+	})
 }

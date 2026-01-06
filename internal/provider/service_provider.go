@@ -56,8 +56,8 @@ func ProvideServices(
 	debt := service.NewDebtService(debt.NewDebtCalculatorStrategies(), repos.DebtTransaction, transferMethod, friendship, profile)
 	friendDetail := service.NewFriendDetailsService(debt, profile, friendship)
 
-	groupExpense := service.NewGroupExpenseService(friendship, repos.GroupExpense, repos.Transactor, fee.NewFeeCalculatorRegistry(), repos.OtherFee, repos.ExpenseBill, coreSvc.LLM)
 	expenseBill := service.NewExpenseBillService(appConfig.BucketNameExpenseBill, queues.ExpenseBillUploaded, repos.ExpenseBill, repos.Transactor, coreSvc.Image, coreSvc.OCR, queues.ExpenseBillTextExtracted)
+	groupExpense := service.NewGroupExpenseService(friendship, repos.GroupExpense, repos.Transactor, fee.NewFeeCalculatorRegistry(), repos.OtherFee, repos.ExpenseBill, coreSvc.LLM, expenseBill)
 	expenseItem := service.NewExpenseItemService(repos.Transactor, repos.GroupExpense, repos.ExpenseItem, groupExpense)
 	otherFee := service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense)
 

@@ -36,6 +36,7 @@ func GroupExpenseRequestToEntity(request dto.NewGroupExpenseRequest) expenses.Gr
 func GroupExpenseToResponse(
 	groupExpense expenses.GroupExpense,
 	userProfileID uuid.UUID,
+	billURL string,
 ) dto.GroupExpenseResponse {
 	description := groupExpense.Description
 	if description == "" {
@@ -53,14 +54,14 @@ func GroupExpenseToResponse(
 		Items:            ezutil.MapSlice(groupExpense.Items, getExpenseItemSimpleMapper(userProfileID)),
 		OtherFees:        ezutil.MapSlice(groupExpense.OtherFees, getOtherFeeSimpleMapper(userProfileID)),
 		Participants:     ezutil.MapSlice(groupExpense.Participants, getExpenseParticipantSimpleMapper(userProfileID)),
-		Bill:             ExpenseBillToResponse(groupExpense.Bill),
+		Bill:             ExpenseBillToResponse(groupExpense.Bill, billURL),
 		BillExists:       groupExpense.Bill.ID != uuid.Nil,
 	}
 }
 
-func GroupExpenseSimpleMapper(userProfileID uuid.UUID) func(expenses.GroupExpense) dto.GroupExpenseResponse {
+func GroupExpenseSimpleMapper(userProfileID uuid.UUID, billURL string) func(expenses.GroupExpense) dto.GroupExpenseResponse {
 	return func(groupExpense expenses.GroupExpense) dto.GroupExpenseResponse {
-		return GroupExpenseToResponse(groupExpense, userProfileID)
+		return GroupExpenseToResponse(groupExpense, userProfileID, billURL)
 	}
 }
 

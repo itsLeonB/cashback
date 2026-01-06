@@ -83,7 +83,7 @@ func (ebs *expenseBillServiceImpl) Save(ctx context.Context, req *dto.NewExpense
 			return err
 		}
 
-		response = mapper.ExpenseBillToResponse(savedBill)
+		response = mapper.ExpenseBillToResponse(savedBill, "")
 
 		return nil
 	})

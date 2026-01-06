@@ -7,9 +7,11 @@ import (
 
 func ExpenseBillToResponse(
 	bill expenses.ExpenseBill,
+	url string,
 ) dto.ExpenseBillResponse {
 	return dto.ExpenseBillResponse{
-		BaseDTO: BaseToDTO(bill.BaseEntity),
-		Status:  bill.Status,
+		BaseDTO:  BaseToDTO(bill.BaseEntity),
+		ImageURL: url,
+		Status:   bill.Status,
 	}
 }

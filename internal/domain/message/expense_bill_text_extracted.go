@@ -1,0 +1,11 @@
+package message
+
+import "github.com/google/uuid"
+
+type ExpenseBillTextExtracted struct {
+	ID uuid.UUID `json:"id"`
+}
+
+func (ExpenseBillTextExtracted) Type() string {
+	return "expense-bill-text-extracted"
+}

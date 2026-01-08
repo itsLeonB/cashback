@@ -12,4 +12,12 @@ const (
 	ErrServiceClient = "service client communication failure"
 
 	ErrStructValidation = "error validating struct input"
+
+	ErrAuthUnknownCredentials = "unknown credentials, please check your email/password"
+
+	ErrTransferMethodNotFound = "transfer method with ID: %s is not found"
+
+	ErrDataSelect = "error retrieving data"
+	ErrDataUpdate = "error updating data"
+	ErrDataInsert = "error inserting new data"
 )

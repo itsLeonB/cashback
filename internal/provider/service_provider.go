@@ -1,104 +1,79 @@
 package provider
 
 import (
-	"github.com/itsLeonB/ezutil/v2"
-	"github.com/itsLeonB/orcashtrator/internal/config"
-	"github.com/itsLeonB/orcashtrator/internal/service"
-	"github.com/rotisserie/eris"
+	"net/http"
+
+	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/domain/service"
+	"github.com/itsLeonB/cashback/internal/domain/service/debt"
+	"github.com/itsLeonB/cashback/internal/domain/service/fee"
+	"github.com/itsLeonB/sekure"
 )
 
 type Services struct {
-	Auth              service.AuthService
+	// Auth
+	Auth  service.AuthService
+	OAuth service.OAuthService
+
+	// Users
+	User              service.UserService
 	Profile           service.ProfileService
 	Friendship        service.FriendshipService
 	FriendshipRequest service.FriendshipRequestService
-	TransferMethod    service.TransferMethodService
-	Debt              service.DebtService
 	FriendDetails     service.FriendDetailsService
-	GroupExpense      service.GroupExpenseService
-	ExpenseItem       service.ExpenseItemService
-	OtherFee          service.OtherFeeService
-	ExpenseBill       service.ExpenseBillService
+
+	// Debts
+	Debt           service.DebtService
+	TransferMethod service.TransferMethodService
+
+	// Expenses
+	GroupExpense service.GroupExpenseService
+	ExpenseBill  service.ExpenseBillService
+	ExpenseItem  service.ExpenseItemService
+	OtherFee     service.OtherFeeService
 }
 
 func ProvideServices(
-	clients *Clients,
-	logger ezutil.Logger,
-	cfg config.Config,
+	repos *Repositories,
+	coreSvc *CoreServices,
 	queues *Queues,
-) (*Services, error) {
-	if clients == nil {
-		return nil, eris.New("clients cannot be nil")
-	}
-	if logger == nil {
-		return nil, eris.New("logger cannot be nil")
-	}
-	if queues == nil {
-		return nil, eris.New("queue cannot be nil")
-	}
+	authConfig config.Auth,
+	appConfig config.App,
+) *Services {
+	hash := sekure.NewHashService(authConfig.HashCost)
+	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)
 
-	authService := service.NewAuthService(clients.Auth, cfg.RegisterVerificationUrl, cfg.ResetPasswordUrl)
+	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile)
+	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken)
 
-	profileService := service.NewProfileService(clients.Profile)
+	oauth := service.NewOAuthService(repos.Transactor, repos.OAuthAccount, coreSvc.State, user, http.DefaultClient, jwt)
+	auth := service.NewAuthService(hash, jwt, repos.Transactor, user, coreSvc.Mail, appConfig.RegisterVerificationUrl, appConfig.ResetPasswordUrl, oauth)
 
-	friendshipService := service.NewFriendshipService(
-		clients.Friendship,
-	)
+	friendship := service.NewFriendshipService(repos.Transactor, repos.Friendship, profile)
+	friendshipReq := service.NewFriendshipRequestService(repos.Transactor, friendship, profile, repos.FriendshipRequest)
 
-	friendshipRequestService := service.NewFriendshipRequestService(clients.FriendshipRequest)
+	transferMethod := service.NewTransferMethodService(repos.TransferMethod)
+	debt := service.NewDebtService(debt.NewDebtCalculatorStrategies(), repos.DebtTransaction, transferMethod, friendship, profile)
+	friendDetail := service.NewFriendDetailsService(debt, profile, friendship)
 
-	transferMethodService := service.NewTransferMethodService(clients.TransferMethod)
-
-	debtService := service.NewDebtService(
-		clients.Debt,
-		friendshipService,
-		profileService,
-	)
-
-	friendDetailsService := service.NewFriendDetailsService(
-		clients.Friendship,
-		debtService,
-		profileService,
-	)
-
-	groupExpenseService := service.NewGroupExpenseService(
-		friendshipService,
-		debtService,
-		profileService,
-		clients.GroupExpense,
-	)
-
-	expenseItemSvc := service.NewExpenseItemService(
-		profileService,
-		clients.ExpenseItem,
-	)
-
-	otherFeeSvc := service.NewOtherFeeService(
-		profileService,
-		clients.OtherFee,
-	)
-
-	expenseBillService := service.NewExpenseBillService(
-		logger,
-		friendshipService,
-		profileService,
-		clients.ExpenseBill,
-		clients.ImageUpload,
-		cfg.BucketNameExpenseBill,
-		queues.ExpenseBillUploaded,
-	)
+	expenseBill := service.NewExpenseBillService(appConfig.BucketNameExpenseBill, queues.ExpenseBillUploaded, repos.ExpenseBill, repos.Transactor, coreSvc.Image, coreSvc.OCR, queues.ExpenseBillTextExtracted)
+	groupExpense := service.NewGroupExpenseService(friendship, repos.GroupExpense, repos.Transactor, fee.NewFeeCalculatorRegistry(), repos.OtherFee, repos.ExpenseBill, coreSvc.LLM, expenseBill, debt)
+	expenseItem := service.NewExpenseItemService(repos.Transactor, repos.GroupExpense, repos.ExpenseItem, groupExpense)
+	otherFee := service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense)
 
 	return &Services{
-		authService,
-		profileService,
-		friendshipService,
-		friendshipRequestService,
-		transferMethodService,
-		debtService,
-		friendDetailsService,
-		groupExpenseService,
-		expenseItemSvc,
-		otherFeeSvc,
-		expenseBillService,
-	}, nil
+		Auth:              auth,
+		OAuth:             oauth,
+		User:              user,
+		Profile:           profile,
+		Friendship:        friendship,
+		FriendshipRequest: friendshipReq,
+		FriendDetails:     friendDetail,
+		Debt:              debt,
+		TransferMethod:    transferMethod,
+		GroupExpense:      groupExpense,
+		ExpenseBill:       expenseBill,
+		ExpenseItem:       expenseItem,
+		OtherFee:          otherFee,
+	}
 }

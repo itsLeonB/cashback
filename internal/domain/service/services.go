@@ -1,0 +1,118 @@
+package service
+
+import (
+	"context"
+
+	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
+	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
+	"github.com/itsLeonB/cashback/internal/domain/entity/users"
+	"github.com/itsLeonB/cashback/internal/domain/message"
+)
+
+type UserService interface {
+	CreateNew(ctx context.Context, request dto.NewUserRequest) (users.User, error)
+	GetByID(ctx context.Context, id uuid.UUID) (dto.UserResponse, error)
+	FindByEmail(ctx context.Context, email string) (users.User, error)
+	Verify(ctx context.Context, id uuid.UUID, email string, name string, avatar string) (users.User, error)
+	GeneratePasswordResetToken(ctx context.Context, userID uuid.UUID) (string, error)
+	ResetPassword(ctx context.Context, userID uuid.UUID, email, resetToken, password string) (users.User, error)
+}
+
+type AuthService interface {
+	Register(ctx context.Context, request dto.RegisterRequest) (dto.RegisterResponse, error)
+	InternalLogin(ctx context.Context, request dto.InternalLoginRequest) (dto.LoginResponse, error)
+	VerifyToken(ctx context.Context, token string) (bool, map[string]any, error)
+	GetOAuth2URL(ctx context.Context, provider string) (string, error)
+	OAuth2Login(ctx context.Context, provider, code, state string) (dto.LoginResponse, error)
+	VerifyRegistration(ctx context.Context, token string) (dto.LoginResponse, error)
+	SendPasswordReset(ctx context.Context, email string) error
+	ResetPassword(ctx context.Context, token, newPassword string) (dto.LoginResponse, error)
+}
+
+type OAuthService interface {
+	GetOAuthURL(ctx context.Context, provider string) (string, error)
+	HandleOAuthCallback(ctx context.Context, data dto.OAuthCallbackData) (dto.LoginResponse, error)
+}
+
+type ProfileService interface {
+	Create(ctx context.Context, request dto.NewProfileRequest) (dto.ProfileResponse, error)
+	GetByID(ctx context.Context, id uuid.UUID) (dto.ProfileResponse, error)
+	GetNames(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error)
+	Update(ctx context.Context, id uuid.UUID, name string) (dto.ProfileResponse, error)
+	Search(ctx context.Context, profileID uuid.UUID, input string) ([]dto.ProfileResponse, error)
+	Associate(ctx context.Context, userProfileID, realProfileID, anonProfileID uuid.UUID) error
+	GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]dto.ProfileResponse, error)
+	GetRealProfileID(ctx context.Context, anonProfileID uuid.UUID) (uuid.UUID, error)
+}
+
+type FriendshipService interface {
+	CreateAnonymous(ctx context.Context, request dto.NewAnonymousFriendshipRequest) (dto.FriendshipResponse, error)
+	GetAll(ctx context.Context, profileID uuid.UUID) ([]dto.FriendshipResponse, error)
+	GetDetails(ctx context.Context, profileID, friendshipID uuid.UUID) (dto.FriendDetails, error)
+	IsFriends(ctx context.Context, profileID1, profileID2 uuid.UUID) (bool, bool, error)
+	CreateReal(ctx context.Context, userProfileID, friendProfileID uuid.UUID) (dto.FriendshipResponse, error)
+}
+
+type FriendshipRequestService interface {
+	Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID) error
+	GetAllSent(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error)
+	Cancel(ctx context.Context, userProfileID, reqID uuid.UUID) error
+	GetAllReceived(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error)
+	Ignore(ctx context.Context, userProfileID, reqID uuid.UUID) error
+	Block(ctx context.Context, userProfileID, reqID uuid.UUID) error
+	Unblock(ctx context.Context, userProfileID, reqID uuid.UUID) error
+	Accept(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipResponse, error)
+}
+
+type FriendDetailsService interface {
+	GetDetails(ctx context.Context, profileID, friendshipID uuid.UUID) (dto.FriendDetailsResponse, error)
+}
+
+type DebtService interface {
+	RecordNewTransaction(ctx context.Context, request dto.NewDebtTransactionRequest) (dto.DebtTransactionResponse, error)
+	GetTransactions(ctx context.Context, userProfileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
+	ProcessConfirmedGroupExpense(ctx context.Context, groupExpense expenses.GroupExpense) error
+	GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
+}
+
+type TransferMethodService interface {
+	GetAll(ctx context.Context) ([]dto.TransferMethodResponse, error)
+	GetByID(ctx context.Context, id uuid.UUID) (debts.TransferMethod, error)
+	GetByName(ctx context.Context, name string) (debts.TransferMethod, error)
+}
+
+type GroupExpenseService interface {
+	CreateDraft(ctx context.Context, userProfileID uuid.UUID, description string) (dto.GroupExpenseResponse, error)
+	GetAllCreated(ctx context.Context, userProfileID uuid.UUID, status expenses.ExpenseStatus) ([]dto.GroupExpenseResponse, error)
+	GetDetails(ctx context.Context, id, userProfileID uuid.UUID) (dto.GroupExpenseResponse, error)
+	ConfirmDraft(ctx context.Context, id, userProfileID uuid.UUID, dryRun bool) (dto.ExpenseConfirmationResponse, error)
+	Delete(ctx context.Context, userProfileID, id uuid.UUID) error
+	SyncParticipants(ctx context.Context, req dto.ExpenseParticipantsRequest) error
+
+	GetUnconfirmedGroupExpenseForUpdate(ctx context.Context, profileID, id uuid.UUID) (expenses.GroupExpense, error)
+	ParseFromBillText(ctx context.Context, msg message.ExpenseBillTextExtracted) error
+}
+
+type ExpenseItemService interface {
+	Add(ctx context.Context, request dto.NewExpenseItemRequest) (dto.ExpenseItemResponse, error)
+	Update(ctx context.Context, request dto.UpdateExpenseItemRequest) (dto.ExpenseItemResponse, error)
+	Remove(ctx context.Context, groupExpenseID, expenseItemID, userProfileID uuid.UUID) error
+	SyncParticipants(ctx context.Context, req dto.SyncItemParticipantsRequest) error
+}
+
+type OtherFeeService interface {
+	Add(ctx context.Context, request dto.NewOtherFeeRequest) (dto.OtherFeeResponse, error)
+	Update(ctx context.Context, request dto.UpdateOtherFeeRequest) (dto.OtherFeeResponse, error)
+	Remove(ctx context.Context, groupExpenseID, otherFeeID, userProfileID uuid.UUID) error
+	GetCalculationMethods(ctx context.Context) []dto.FeeCalculationMethodInfo
+}
+
+type ExpenseBillService interface {
+	Save(ctx context.Context, req *dto.NewExpenseBillRequest) (dto.ExpenseBillResponse, error)
+	GetURL(ctx context.Context, billName string) (string, error)
+	ExtractBillText(ctx context.Context, msg message.ExpenseBillUploaded) error
+	Cleanup(ctx context.Context) error
+	TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) error
+}

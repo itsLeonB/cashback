@@ -7,16 +7,16 @@ RUN go mod download
 
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' \
-    -o /orcashtrator ./cmd/http/main.go
+    -o /cashback ./cmd/http
 
 FROM gcr.io/distroless/static-debian12 AS build-release-stage
 
 WORKDIR /
 
-COPY --from=build-stage /orcashtrator /orcashtrator
+COPY --from=build-stage /cashback /cashback
 
 EXPOSE 8080
 
 USER nonroot:nonroot
 
-ENTRYPOINT ["/orcashtrator"]
+ENTRYPOINT ["/cashback"]

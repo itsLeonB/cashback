@@ -32,6 +32,7 @@ type groupExpenseServiceImpl struct {
 	billRepo              crud.Repository[expenses.ExpenseBill]
 	llmService            llm.LLMService
 	billSvc               ExpenseBillService
+	debtSvc               DebtService
 }
 
 func NewGroupExpenseService(
@@ -43,6 +44,7 @@ func NewGroupExpenseService(
 	billRepo crud.Repository[expenses.ExpenseBill],
 	llmService llm.LLMService,
 	billSvc ExpenseBillService,
+	debtSvc DebtService,
 ) GroupExpenseService {
 	return &groupExpenseServiceImpl{
 		friendshipService,
@@ -53,6 +55,7 @@ func NewGroupExpenseService(
 		billRepo,
 		llmService,
 		billSvc,
+		debtSvc,
 	}
 }
 
@@ -160,6 +163,12 @@ func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, profil
 		}
 
 		groupExpense.Participants = updatedParticipants
+
+		if !dryRun {
+			if err = ges.debtSvc.ProcessConfirmedGroupExpense(ctx, groupExpense); err != nil {
+				return err
+			}
+		}
 
 		response = mapper.ToConfirmationResponse(groupExpense, profileID)
 

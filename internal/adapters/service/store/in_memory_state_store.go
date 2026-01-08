@@ -9,28 +9,83 @@ import (
 	"github.com/itsLeonB/ungerr"
 )
 
+type stateEntry struct {
+	value     string
+	expiresAt time.Time
+}
+
 type inMemoryStateStore struct {
-	data *sync.Map
+	data   *sync.Map
+	stopCh chan struct{}
+	wg     sync.WaitGroup
 }
 
 func NewInMemoryStateStore() *inMemoryStateStore {
-	return &inMemoryStateStore{new(sync.Map)}
+	store := &inMemoryStateStore{
+		data:   new(sync.Map),
+		stopCh: make(chan struct{}),
+	}
+	store.startCleanup()
+	return store
 }
 
 func (vss *inMemoryStateStore) Store(ctx context.Context, state string, expiry time.Duration) error {
-	vss.data.Store(vss.constructKey(state), state)
+	key := vss.constructKey(state)
+	entry := stateEntry{
+		value:     state,
+		expiresAt: time.Now().Add(expiry),
+	}
+	vss.data.Store(key, entry)
 	return nil
 }
 
 func (vss *inMemoryStateStore) VerifyAndDelete(ctx context.Context, state string) error {
-	if _, loaded := vss.data.LoadAndDelete(vss.constructKey(state)); !loaded {
+	key := vss.constructKey(state)
+	value, loaded := vss.data.LoadAndDelete(key)
+	if !loaded {
+		return ungerr.BadRequestError("invalid state")
+	}
+
+	entry := value.(stateEntry)
+	if time.Now().After(entry.expiresAt) {
 		return ungerr.BadRequestError("invalid state")
 	}
 
 	return nil
 }
 
+func (vss *inMemoryStateStore) startCleanup() {
+	vss.wg.Add(1)
+	go func() {
+		defer vss.wg.Done()
+		ticker := time.NewTicker(1 * time.Minute) // Adjust interval as needed
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				vss.cleanup()
+			case <-vss.stopCh:
+				return
+			}
+		}
+	}()
+}
+
+func (vss *inMemoryStateStore) cleanup() {
+	now := time.Now()
+	vss.data.Range(func(key, value interface{}) bool {
+		entry := value.(stateEntry)
+		if now.After(entry.expiresAt) {
+			vss.data.Delete(key)
+		}
+		return true
+	})
+}
+
 func (vss *inMemoryStateStore) Shutdown() error {
+	close(vss.stopCh)
+	vss.wg.Wait()
 	return nil
 }
 

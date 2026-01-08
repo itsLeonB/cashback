@@ -23,6 +23,7 @@ type GroupExpenseResponse struct {
 	FeesTotalAmount  decimal.Decimal        `json:"feesTotalAmount"`
 	Description      string                 `json:"description"`
 	Status           expenses.ExpenseStatus `json:"status"`
+	IsPreviewable    bool                   `json:"isPreviewable"`
 
 	// Relationships
 	Payer        SimpleProfile                `json:"payer"`
@@ -32,6 +33,8 @@ type GroupExpenseResponse struct {
 	Participants []ExpenseParticipantResponse `json:"participants"`
 	Bill         ExpenseBillResponse          `json:"bill"`
 	BillExists   bool                         `json:"billExists"`
+
+	ConfirmationPreview ExpenseConfirmationResponse `json:"confirmationPreview"`
 }
 
 type ExpenseParticipantResponse struct {

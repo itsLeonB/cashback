@@ -71,7 +71,7 @@ func (ges *groupExpenseServiceImpl) CreateDraft(ctx context.Context, userProfile
 		return dto.GroupExpenseResponse{}, err
 	}
 
-	return mapper.GroupExpenseToResponse(insertedDraftExpense, userProfileID, ""), nil
+	return mapper.GroupExpenseToResponse(insertedDraftExpense, userProfileID, "", false), nil
 }
 
 func (ges *groupExpenseServiceImpl) GetAllCreated(ctx context.Context, userProfileID uuid.UUID, status expenses.ExpenseStatus) ([]dto.GroupExpenseResponse, error) {
@@ -85,7 +85,7 @@ func (ges *groupExpenseServiceImpl) GetAllCreated(ctx context.Context, userProfi
 		return nil, err
 	}
 
-	return ezutil.MapSlice(groupExpenses, mapper.GroupExpenseSimpleMapper(userProfileID, "")), nil
+	return ezutil.MapSlice(groupExpenses, mapper.GroupExpenseSimpleMapper(userProfileID, "", false)), nil
 }
 
 func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProfileID uuid.UUID) (dto.GroupExpenseResponse, error) {
@@ -113,7 +113,7 @@ func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProf
 		logger.Errorf("error retrieving bill image URL: %v", err)
 	}
 
-	return mapper.GroupExpenseToResponse(groupExpense, userProfileID, billURL), nil
+	return mapper.GroupExpenseToResponse(groupExpense, userProfileID, billURL, groupExpense.Status == expenses.ConfirmedExpense), nil
 }
 
 func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, profileID uuid.UUID, dryRun bool) (dto.ExpenseConfirmationResponse, error) {

@@ -37,17 +37,14 @@ func GroupExpenseToResponse(
 	groupExpense expenses.GroupExpense,
 	userProfileID uuid.UUID,
 	billURL string,
+	constructPreview bool,
 ) dto.GroupExpenseResponse {
-	description := groupExpense.Description
-	if description == "" {
-		description = "Untitled Expense at " + time.Now().Format(time.DateOnly)
-	}
-	return dto.GroupExpenseResponse{
+	expense := dto.GroupExpenseResponse{
 		BaseDTO:          BaseToDTO(groupExpense.BaseEntity),
 		TotalAmount:      groupExpense.TotalAmount,
 		ItemsTotalAmount: groupExpense.ItemsTotal,
 		FeesTotalAmount:  groupExpense.FeesTotal,
-		Description:      description,
+		Description:      groupExpense.Description,
 		Status:           groupExpense.Status,
 		Payer:            ProfileToSimple(groupExpense.Payer, userProfileID),
 		Creator:          ProfileToSimple(groupExpense.Creator, userProfileID),
@@ -57,11 +54,22 @@ func GroupExpenseToResponse(
 		Bill:             ExpenseBillToResponse(groupExpense.Bill, billURL),
 		BillExists:       groupExpense.Bill.ID != uuid.Nil,
 	}
+
+	if groupExpense.Description == "" {
+		expense.Description = "Untitled Expense at " + time.Now().Format(time.DateOnly)
+	}
+
+	if constructPreview {
+		expense.IsPreviewable = true
+		expense.ConfirmationPreview = ToConfirmationResponse(groupExpense, userProfileID)
+	}
+
+	return expense
 }
 
-func GroupExpenseSimpleMapper(userProfileID uuid.UUID, billURL string) func(expenses.GroupExpense) dto.GroupExpenseResponse {
+func GroupExpenseSimpleMapper(userProfileID uuid.UUID, billURL string, constructPreview bool) func(expenses.GroupExpense) dto.GroupExpenseResponse {
 	return func(groupExpense expenses.GroupExpense) dto.GroupExpenseResponse {
-		return GroupExpenseToResponse(groupExpense, userProfileID, billURL)
+		return GroupExpenseToResponse(groupExpense, userProfileID, billURL, constructPreview)
 	}
 }
 

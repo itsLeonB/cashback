@@ -3,6 +3,7 @@ package datasource
 import (
 	"database/sql"
 	"fmt"
+	"sync"
 
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/ungerr"
@@ -10,26 +11,48 @@ import (
 	"gorm.io/gorm"
 )
 
+var (
+	sqlInstance *sqlConnection
+	sqlOnce     sync.Once
+)
+
+type sqlConnection struct {
+	gormDB *gorm.DB
+	sqlDB  *sql.DB
+}
+
 func ProvideAndConfigureSQL(cfg config.DB) (*gorm.DB, *sql.DB, error) {
-	gormDB, err := gorm.Open(postgres.Open(dsn(cfg)), &gorm.Config{})
+	var err error
+	sqlOnce.Do(func() {
+		gormDB, e := gorm.Open(postgres.Open(dsn(cfg)), &gorm.Config{})
+		if e != nil {
+			err = ungerr.Wrap(e, "error opening gorm connection")
+			return
+		}
+
+		sqlDB, e := gormDB.DB()
+		if e != nil {
+			err = ungerr.Wrap(e, "error obtaining sql.DB instance")
+			return
+		}
+
+		sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
+		sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
+		sqlDB.SetConnMaxLifetime(cfg.ConnMaxLifetime)
+
+		if e = sqlDB.Ping(); e != nil {
+			err = ungerr.Wrap(e, "error pinging SQL DB")
+			return
+		}
+
+		sqlInstance = &sqlConnection{gormDB: gormDB, sqlDB: sqlDB}
+	})
+
 	if err != nil {
-		return nil, nil, ungerr.Wrap(err, "error opening gorm connection")
+		return nil, nil, err
 	}
 
-	sqlDB, err := gormDB.DB()
-	if err != nil {
-		return nil, nil, ungerr.Wrap(err, "error obtaining sql.DB instance")
-	}
-
-	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
-	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
-	sqlDB.SetConnMaxLifetime(cfg.ConnMaxLifetime)
-
-	if err = sqlDB.Ping(); err != nil {
-		return nil, nil, ungerr.Wrap(err, "error pinging SQL DB")
-	}
-
-	return gormDB, sqlDB, nil
+	return sqlInstance.gormDB, sqlInstance.sqlDB, nil
 }
 
 func dsn(cfg config.DB) string {

@@ -144,31 +144,39 @@ func ToConfirmationResponse(expense expenses.GroupExpense, userProfileID uuid.UU
 
 	for i, participant := range expense.Participants {
 		profileID := participant.ParticipantProfileID
-		items := make([]dto.ConfirmedItemShare, len(expense.Items))
+		items := make([]dto.ConfirmedItemShare, 0, len(expense.Items))
 		itemsTotal := decimal.Zero
 
 		// Process items
-		for j, item := range expense.Items {
-			itemParticipant := itemParticipantMap[item.ID][profileID]
+		for _, item := range expense.Items {
+			itemParticipant, ok := itemParticipantMap[item.ID][profileID]
+			if !ok {
+				continue
+			}
+
 			baseAmount := item.TotalAmount()
 			shareAmount := baseAmount.Mul(itemParticipant.Share)
 			itemsTotal = itemsTotal.Add(shareAmount)
 
-			items[j] = dto.ConfirmedItemShare{
+			items = append(items, dto.ConfirmedItemShare{
 				ID:          item.ID,
 				Name:        item.Name,
 				BaseAmount:  baseAmount,
 				ShareRate:   itemParticipant.Share,
 				ShareAmount: shareAmount,
-			}
+			})
 		}
 
 		// Process fees
-		fees := make([]dto.ConfirmedItemShare, len(expense.OtherFees))
+		fees := make([]dto.ConfirmedItemShare, 0, len(expense.OtherFees))
 		feesTotal := decimal.Zero
 
-		for j, fee := range expense.OtherFees {
-			feeParticipant := feeParticipantMap[fee.ID][profileID]
+		for _, fee := range expense.OtherFees {
+			feeParticipant, ok := feeParticipantMap[fee.ID][profileID]
+			if !ok {
+				continue
+			}
+
 			feesTotal = feesTotal.Add(feeParticipant.ShareAmount)
 
 			var shareRate decimal.Decimal
@@ -176,13 +184,13 @@ func ToConfirmationResponse(expense expenses.GroupExpense, userProfileID uuid.UU
 				shareRate = fee.Amount.Div(feeParticipant.ShareAmount)
 			}
 
-			fees[j] = dto.ConfirmedItemShare{
+			fees = append(fees, dto.ConfirmedItemShare{
 				ID:          fee.ID,
 				Name:        fee.Name,
 				BaseAmount:  fee.Amount,
 				ShareRate:   shareRate,
 				ShareAmount: feeParticipant.ShareAmount,
-			}
+			})
 		}
 
 		participants[i] = dto.ConfirmedExpenseParticipant{

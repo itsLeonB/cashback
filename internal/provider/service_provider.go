@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"embed"
 	"net/http"
 
 	"github.com/itsLeonB/cashback/internal/core/config"
@@ -52,7 +53,7 @@ func ProvideServices(
 	friendship := service.NewFriendshipService(repos.Transactor, repos.Friendship, profile)
 	friendshipReq := service.NewFriendshipRequestService(repos.Transactor, friendship, profile, repos.FriendshipRequest)
 
-	transferMethod := service.NewTransferMethodService(repos.TransferMethod)
+	transferMethod := service.NewTransferMethodService(repos.TransferMethod, nil, "", embed.FS{})
 	debt := service.NewDebtService(debt.NewDebtCalculatorStrategies(), repos.DebtTransaction, transferMethod, friendship, profile)
 	friendDetail := service.NewFriendDetailsService(debt, profile, friendship)
 

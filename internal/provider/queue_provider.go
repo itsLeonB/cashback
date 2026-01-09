@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 
 	"github.com/hibiken/asynq"
-	adapters "github.com/itsLeonB/cashback/internal/adapters/queue"
+	adapters "github.com/itsLeonB/cashback/internal/adapters/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 )

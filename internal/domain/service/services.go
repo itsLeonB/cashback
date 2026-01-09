@@ -81,6 +81,7 @@ type TransferMethodService interface {
 	GetAll(ctx context.Context) ([]dto.TransferMethodResponse, error)
 	GetByID(ctx context.Context, id uuid.UUID) (debts.TransferMethod, error)
 	GetByName(ctx context.Context, name string) (debts.TransferMethod, error)
+	SyncMethods(ctx context.Context) error
 }
 
 type GroupExpenseService interface {

@@ -15,7 +15,7 @@ if ! make test; then
 fi
 
 echo "\n=== Running build ==="
-if ! make build; then
+if ! make build-all; then
     echo "❌ Build failed! Please fix the build issues before pushing."
     exit 1
 fi

@@ -7,8 +7,10 @@ import (
 
 func TransferMethodToResponse(tm debts.TransferMethod) dto.TransferMethodResponse {
 	return dto.TransferMethodResponse{
-		BaseDTO: BaseToDTO(tm.BaseEntity),
-		Name:    tm.Name,
-		Display: tm.Display,
+		BaseDTO:  BaseToDTO(tm.BaseEntity),
+		Name:     tm.Name,
+		Display:  tm.Display,
+		IconURL:  tm.IconURL.String,
+		ParentID: tm.ParentID.UUID,
 	}
 }

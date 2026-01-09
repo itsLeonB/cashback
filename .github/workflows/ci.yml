@@ -75,7 +75,7 @@ jobs:
           go-version-file: "go.mod"
 
       - name: Build
-        run: go build -v ./...
+        run: make build-all
 
   security:
     name: Security Scan

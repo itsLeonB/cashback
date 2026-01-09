@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/itsLeonB/ungerr"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
 )
 
@@ -18,6 +20,7 @@ type StorageRepository interface {
 	Delete(ctx context.Context, fileID FileIdentifier) error
 	GetSignedURL(ctx context.Context, fileID FileIdentifier, expiration time.Duration) (string, error)
 	GetAllObjectKeys(ctx context.Context, bucketName string) ([]string, error)
+	Exists(ctx context.Context, fileID FileIdentifier) (bool, error)
 	ToURI(fi FileIdentifier) string
 	Close() error
 }
@@ -113,6 +116,28 @@ func (r *gcsStorageRepository) GetAllObjectKeys(ctx context.Context, bucketName 
 	}
 
 	return objectKeys, nil
+}
+
+func (r *gcsStorageRepository) Exists(ctx context.Context, fileID FileIdentifier) (bool, error) {
+	_, err := r.toObject(fileID).Attrs(ctx)
+	if err == nil {
+		return true, nil
+	}
+
+	// Case 1: canonical GCS error
+	if errors.Is(err, storage.ErrObjectNotExist) {
+		return false, nil
+	}
+
+	// Case 2: wrapped googleapi error (most common)
+	var gErr *googleapi.Error
+	if errors.As(err, &gErr) {
+		if gErr.Code == http.StatusNotFound {
+			return false, nil
+		}
+	}
+
+	return false, err
 }
 
 func (r *gcsStorageRepository) ToURI(fi FileIdentifier) string {

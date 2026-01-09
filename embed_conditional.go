@@ -1,3 +1,5 @@
+//go:build migrator
+
 package appembed
 
 import "embed"

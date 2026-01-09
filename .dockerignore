@@ -29,3 +29,8 @@ LICENSE
 # Docker-related
 Dockerfile
 docker-compose*.yml
+
+# Local only scripts and configs
+scripts/
+Makefile
+.golangci.yml

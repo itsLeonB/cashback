@@ -1,4 +1,4 @@
-//go:build !migrator && !asseter
+//go:build !job
 
 package appembed
 

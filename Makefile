@@ -2,8 +2,7 @@
 http \
 http-hot \
 worker \
-migrator \
-asseter \
+job \
 lint \
 test \
 test-verbose \
@@ -20,8 +19,7 @@ help:
 	@echo "  make http                    - Start the HTTP server"
 	@echo "  make http-hot                - Start the HTTP server with hot reload (requires air)"
 	@echo "  make worker                  - Start the worker"
-	@echo "  make migrator                - Run database migrations"
-	@echo "  make asseter                 - Run asset synchronization"
+	@echo "  make job                     - Run migrations + asset sync (production)"
 	@echo "  make lint                    - Run golangci-lint on the codebase"
 	@echo "  make test                    - Run all tests"
 	@echo "  make test-verbose            - Run all tests with verbose output"
@@ -43,11 +41,8 @@ http-hot:
 worker:
 	go run ./cmd/worker
 
-migrator:
-	go run -tags migrator ./cmd/migrator
-
-asseter:
-	go run -tags asseter ./cmd/asseter
+job:
+	go run -tags job ./cmd/job
 
 lint:
 	golangci-lint run ./...
@@ -84,8 +79,7 @@ build-all:
 	@mkdir -p bin
 	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -o bin/http ./cmd/http
 	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -o bin/worker ./cmd/worker
-	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -tags migrator -o bin/migrator ./cmd/migrator
-	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -tags asseter -o bin/asseter ./cmd/asseter
+	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -tags job -o bin/job ./cmd/job
 	@echo "Build success! Binaries are located in bin/"
 	@ls -lh bin/
 

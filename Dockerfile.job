@@ -6,15 +6,19 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' \
-    -o /asseter ./cmd/asseter
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -trimpath \
+    -buildvcs=false \
+    -ldflags='-w -s' \
+    -tags job \
+    -o /job ./cmd/job
 
 FROM gcr.io/distroless/static-debian12 AS build-release-stage
 
 WORKDIR /
 
-COPY --from=build-stage /asseter /asseter
+COPY --from=build-stage /job /job
 
 USER nonroot:nonroot
 
-ENTRYPOINT ["/asseter"]
+ENTRYPOINT ["/job"]

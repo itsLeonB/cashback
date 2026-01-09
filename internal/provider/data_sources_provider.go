@@ -2,29 +2,23 @@ package provider
 
 import (
 	"database/sql"
-	"errors"
 
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/provider/datasource"
-	"github.com/itsLeonB/meq"
+	"github.com/itsLeonB/ungerr"
 	"gorm.io/gorm"
 )
 
 type DataSources struct {
-	Gorm  *gorm.DB
-	SQL   *sql.DB
-	Asynq meq.DB
+	Gorm *gorm.DB
+	SQL  *sql.DB
 }
 
 func (ds *DataSources) Shutdown() error {
-	var errs error
 	if err := ds.SQL.Close(); err != nil {
-		errs = errors.Join(errs, err)
+		return ungerr.Wrap(err, "error closing SQL db")
 	}
-	if err := ds.Asynq.Shutdown(); err != nil {
-		errs = errors.Join(errs, err)
-	}
-	return errs
+	return nil
 }
 
 func ProvideDataSource() (*DataSources, error) {
@@ -34,8 +28,7 @@ func ProvideDataSource() (*DataSources, error) {
 	}
 
 	return &DataSources{
-		Gorm:  gormDB,
-		SQL:   sqlDB,
-		Asynq: datasource.ProvideAsynq(config.Global.Valkey),
+		Gorm: gormDB,
+		SQL:  sqlDB,
 	}, nil
 }

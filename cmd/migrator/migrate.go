@@ -3,6 +3,7 @@ package migrator
 import (
 	appembed "github.com/itsLeonB/cashback"
 	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/provider/datasource"
 	"github.com/itsLeonB/ungerr"
 	"github.com/pressly/goose/v3"
@@ -15,6 +16,7 @@ func Run() error {
 	}
 
 	goose.SetBaseFS(appembed.Migrations)
+	goose.SetLogger(logger.Global)
 
 	if err = goose.SetDialect("postgres"); err != nil {
 		return ungerr.Wrap(err, "error setting migrator dialect to postgres")

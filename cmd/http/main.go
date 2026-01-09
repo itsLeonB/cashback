@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/itsLeonB/cashback/cmd/migrator"
 	"github.com/itsLeonB/cashback/internal/adapters/http"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
@@ -12,10 +11,6 @@ func main() {
 	logger.Init("HTTP server")
 
 	if err := config.Load(); err != nil {
-		logger.Fatal(err)
-	}
-
-	if err := migrator.Run(); err != nil {
 		logger.Fatal(err)
 	}
 

@@ -3,10 +3,9 @@ package message
 import "github.com/google/uuid"
 
 type ExpenseBillUploaded struct {
-	ID  uuid.UUID `json:"id"`
-	URI string    `json:"uri"`
+	ID uuid.UUID `json:"id"`
 }
 
-func (ebu ExpenseBillUploaded) Type() string {
+func (ExpenseBillUploaded) Type() string {
 	return "expense-bill-uploaded"
 }

@@ -7,10 +7,9 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/provider"
-	"github.com/itsLeonB/cashback/internal/provider/datasource"
-	"github.com/itsLeonB/meq/task"
 	"github.com/itsLeonB/ungerr"
 )
 
@@ -37,7 +36,7 @@ func Setup(providers *provider.Providers) (*Subscriber, error) {
 		Logger: logger.Global,
 	}
 
-	srv := asynq.NewServer(datasource.RedisClientOpts(config.Global.Valkey), asynqCfg)
+	srv := asynq.NewServer(provider.RedisClientOpts(config.Global.Valkey), asynqCfg)
 	mux := asynq.NewServeMux()
 
 	mux.Handle(expenseBillUploadedQueue, withLogging(expenseBillUploadedQueue, providers.Services.ExpenseBill.ExtractBillText))
@@ -64,17 +63,17 @@ func (w *Subscriber) Stop() {
 	w.srv.Shutdown()
 }
 
-func withLogging[T task.Message](taskType string, handler func(context.Context, T) error) asynq.Handler {
+func withLogging[T queue.TaskMessage](taskType string, handler func(context.Context, T) error) asynq.Handler {
 	return asynq.HandlerFunc(func(ctx context.Context, t *asynq.Task) error {
 		logger.Infof("received new task %s", taskType)
 
-		var taskMsg task.Task[T]
-		if err := json.Unmarshal(t.Payload(), &taskMsg); err != nil {
+		var msg T
+		if err := json.Unmarshal(t.Payload(), &msg); err != nil {
 			logger.Errorf("error processing %s task: %v", taskType, err)
-			return ungerr.Wrapf(err, "error unmarshaling payload to: %T", taskMsg)
+			return ungerr.Wrapf(err, "error unmarshaling payload to: %T", msg)
 		}
 
-		if err := handler(ctx, taskMsg.Message); err != nil {
+		if err := handler(ctx, msg); err != nil {
 			logger.Errorf("error processing %s task: %v", taskType, err)
 			return err
 		}

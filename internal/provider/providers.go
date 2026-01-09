@@ -20,6 +20,9 @@ func (p *Providers) Shutdown() error {
 	if e := p.DataSources.Shutdown(); e != nil {
 		errs = errors.Join(errs, e)
 	}
+	if e := p.Queues.Shutdown(); e != nil {
+		errs = errors.Join(errs, e)
+	}
 	if e := p.CoreServices.Shutdown(); e != nil {
 		errs = errors.Join(errs, e)
 	}
@@ -32,13 +35,22 @@ func All() (*Providers, error) {
 		return nil, err
 	}
 
-	queues := ProvideQueues(dataSources.Asynq)
+	queues, err := ProvideQueues(config.Global.Valkey)
+	if err != nil {
+		if e := dataSources.Shutdown(); e != nil {
+			logger.Error(e)
+		}
+		return nil, err
+	}
 	repos := ProvideRepositories(dataSources)
 
 	coreSvcs, err := ProvideCoreServices()
 	if err != nil {
 		if e := dataSources.Shutdown(); e != nil {
-			logger.Error("error shutdown data sources", e)
+			logger.Error(e)
+		}
+		if e := queues.Shutdown(); e != nil {
+			logger.Error(e)
 		}
 		return nil, err
 	}

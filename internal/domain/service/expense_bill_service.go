@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/service/ocr"
+	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/core/service/storage"
 	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
@@ -19,28 +19,25 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
-	"github.com/itsLeonB/meq"
 	"github.com/itsLeonB/ungerr"
 )
 
 type expenseBillServiceImpl struct {
-	bucketName     string
-	taskQueue      meq.TaskQueue[message.ExpenseBillUploaded]
-	billRepo       crud.Repository[expenses.ExpenseBill]
-	transactor     crud.Transactor
-	imageSvc       storage.ImageService
-	ocrSvc         ocr.OCRService
-	extractedQueue meq.TaskQueue[message.ExpenseBillTextExtracted]
+	bucketName string
+	taskQueue  queue.TaskQueue
+	billRepo   crud.Repository[expenses.ExpenseBill]
+	transactor crud.Transactor
+	imageSvc   storage.ImageService
+	ocrSvc     ocr.OCRService
 }
 
 func NewExpenseBillService(
 	bucketName string,
-	taskQueue meq.TaskQueue[message.ExpenseBillUploaded],
+	taskQueue queue.TaskQueue,
 	billRepo crud.Repository[expenses.ExpenseBill],
 	transactor crud.Transactor,
 	imageSvc storage.ImageService,
 	ocrSvc ocr.OCRService,
-	extractedQueue meq.TaskQueue[message.ExpenseBillTextExtracted],
 ) ExpenseBillService {
 	return &expenseBillServiceImpl{
 		bucketName,
@@ -49,7 +46,6 @@ func NewExpenseBillService(
 		transactor,
 		imageSvc,
 		ocrSvc,
-		extractedQueue,
 	}
 }
 
@@ -78,7 +74,7 @@ func (ebs *expenseBillServiceImpl) Save(ctx context.Context, req *dto.NewExpense
 			URI: billUri,
 		}
 
-		if err = ebs.taskQueue.Enqueue(ctx, config.AppName, msg); err != nil {
+		if err = ebs.taskQueue.Enqueue(ctx, msg); err != nil {
 			go ebs.rollbackUpload(ctx, fileID)
 			return err
 		}
@@ -129,7 +125,7 @@ func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg mess
 		return err
 	}
 
-	return ebs.extractedQueue.Enqueue(ctx, config.AppName, message.ExpenseBillTextExtracted{ID: msg.ID})
+	return ebs.taskQueue.Enqueue(ctx, message.ExpenseBillTextExtracted{ID: msg.ID})
 }
 
 func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) error {
@@ -151,7 +147,7 @@ func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID
 			if _, err := ebs.billRepo.Update(ctx, bill); err != nil {
 				return err
 			}
-			return ebs.taskQueue.Enqueue(ctx, config.AppName, message.ExpenseBillUploaded{ID: billID})
+			return ebs.taskQueue.Enqueue(ctx, message.ExpenseBillUploaded{ID: billID})
 		}
 
 		if bill.ExtractedText == "" {
@@ -172,7 +168,7 @@ func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID
 			return err
 		}
 
-		return ebs.extractedQueue.Enqueue(ctx, config.AppName, message.ExpenseBillTextExtracted{ID: billID})
+		return ebs.taskQueue.Enqueue(ctx, message.ExpenseBillTextExtracted{ID: billID})
 	})
 }
 

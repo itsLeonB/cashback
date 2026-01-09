@@ -16,7 +16,6 @@ require (
 	github.com/itsLeonB/ezutil/v2 v2.2.1-pre2
 	github.com/itsLeonB/ginkgo v0.4.0-pre3
 	github.com/itsLeonB/go-crud v1.3.0-pre2
-	github.com/itsLeonB/meq v0.1.2-pre1
 	github.com/itsLeonB/sekure v0.1.1-pre1
 	github.com/itsLeonB/ungerr v0.2.0-pre3
 	github.com/joho/godotenv v1.5.1

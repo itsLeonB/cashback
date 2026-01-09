@@ -51,6 +51,9 @@ func (r *gcsStorageRepository) Upload(ctx context.Context, req *StorageUploadReq
 
 	// Set cache control for images
 	writer.CacheControl = "public, max-age=3600" // 1 hour cache
+	if req.CacheControl != "" {
+		writer.CacheControl = req.CacheControl
+	}
 
 	// Write the file data
 	if _, err := io.Copy(writer, bytes.NewReader(req.Data)); err != nil {

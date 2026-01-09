@@ -45,6 +45,6 @@ func ProvideCoreServices() (*CoreServices, error) {
 		storage.NewImageService(validator.New(), storageRepo),
 		store,
 		ocr,
-		nil,
+		storageRepo,
 	}, nil
 }

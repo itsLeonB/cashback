@@ -64,17 +64,11 @@ func (ebs *expenseBillServiceImpl) Save(ctx context.Context, req *dto.NewExpense
 			return err
 		}
 
-		billUri, err := ebs.doUpload(ctx, req, fileID)
-		if err != nil {
+		if _, err = ebs.doUpload(ctx, req, fileID); err != nil {
 			return err
 		}
 
-		msg := message.ExpenseBillUploaded{
-			ID:  savedBill.ID,
-			URI: billUri,
-		}
-
-		if err = ebs.taskQueue.Enqueue(ctx, msg); err != nil {
+		if err = ebs.taskQueue.Enqueue(ctx, message.ExpenseBillUploaded{ID: savedBill.ID}); err != nil {
 			go ebs.rollbackUpload(ctx, fileID)
 			return err
 		}
@@ -104,7 +98,8 @@ func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg mess
 			return ungerr.NotFoundError(fmt.Sprintf("expense bill with ID %s is not found", spec.Model.ID))
 		}
 
-		text, err := ebs.ocrSvc.ExtractFromURI(ctx, msg.URI)
+		uri := ebs.imageSvc.GetURI(ebs.objectKeyToFileID(bill.ImageName))
+		text, err := ebs.ocrSvc.ExtractFromURI(ctx, uri)
 		if err != nil {
 			bill.Status = expenses.FailedExtracting
 			_, statusErr := ebs.billRepo.Update(ctx, bill)
@@ -125,7 +120,7 @@ func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg mess
 		return err
 	}
 
-	return ebs.taskQueue.Enqueue(ctx, message.ExpenseBillTextExtracted{ID: msg.ID})
+	return ebs.taskQueue.Enqueue(ctx, message.ExpenseBillTextExtracted(msg))
 }
 
 func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) error {

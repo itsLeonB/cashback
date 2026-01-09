@@ -48,6 +48,7 @@ func (pr *profileRepositoryGorm) SearchByName(ctx context.Context, query string,
 	if err := db.
 		Table("user_profiles").
 		Where("name % ?", query).
+		Where("user_id IS NOT NULL").
 		Order(gorm.Expr("similarity(name, ?) DESC", query)).
 		Limit(limit).
 		Find(&results).Error; err != nil {

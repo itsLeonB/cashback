@@ -17,7 +17,6 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
-	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 )
@@ -51,7 +50,15 @@ func (tms *transferMethodServiceImpl) GetAll(ctx context.Context) ([]dto.Transfe
 		return nil, err
 	}
 
-	return ezutil.MapSlice(transferMethods, mapper.TransferMethodToResponse), nil
+	responses := make([]dto.TransferMethodResponse, 0, len(transferMethods))
+	for _, tm := range transferMethods {
+		if tm.ParentID.Valid {
+			continue
+		}
+		responses = append(responses, mapper.TransferMethodToResponse(tm))
+	}
+
+	return responses, nil
 }
 
 func (tms *transferMethodServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (debts.TransferMethod, error) {

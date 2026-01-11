@@ -7,6 +7,17 @@ import (
 )
 
 func ProfileToResponse(profile users.UserProfile, email string, anonProfileIDs []uuid.UUID, realProfileID uuid.UUID) dto.ProfileResponse {
+	associatedAnonProfileIDs := anonProfileIDs
+	if len(associatedAnonProfileIDs) < 1 {
+		for _, anonProfile := range profile.RelatedAnonProfiles {
+			associatedAnonProfileIDs = append(associatedAnonProfileIDs, anonProfile.AnonProfileID)
+		}
+	}
+
+	if realProfileID == uuid.Nil {
+		realProfileID = profile.RelatedRealProfile.RealProfileID
+	}
+
 	return dto.ProfileResponse{
 		BaseDTO:                  BaseToDTO(profile.BaseEntity),
 		UserID:                   profile.UserID.UUID,
@@ -14,14 +25,8 @@ func ProfileToResponse(profile users.UserProfile, email string, anonProfileIDs [
 		Avatar:                   profile.Avatar,
 		Email:                    email,
 		IsAnonymous:              !profile.UserID.Valid,
-		AssociatedAnonProfileIDs: anonProfileIDs,
+		AssociatedAnonProfileIDs: associatedAnonProfileIDs,
 		RealProfileID:            realProfileID,
-	}
-}
-
-func SimpleProfileToResponse(email string, anonProfileIDs []uuid.UUID, realProfileID uuid.UUID) func(users.UserProfile) dto.ProfileResponse {
-	return func(up users.UserProfile) dto.ProfileResponse {
-		return ProfileToResponse(up, email, anonProfileIDs, realProfileID)
 	}
 }
 

@@ -8,15 +8,6 @@
             "envFile": "${workspaceFolder}/.env",
             "program": "${workspaceFolder}/cmd/http/main.go",
             "cwd": "${workspaceFolder}"
-        },
-        {
-            "name": "asseter",
-            "type": "go",
-            "request": "launch",
-            "mode": "debug",
-            "envFile": "${workspaceFolder}/.env",
-            "program": "${workspaceFolder}/cmd/asseter/main.go",
-            "cwd": "${workspaceFolder}"
         }
     ]
 }

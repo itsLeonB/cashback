@@ -31,7 +31,14 @@ func (pr *profileRepositoryGorm) FindByIDs(ctx context.Context, ids []uuid.UUID)
 		return nil, err
 	}
 
-	if err = db.Where("id IN ?", ids).Find(&profiles).Error; err != nil {
+	if err = db.
+		Scopes(crud.PreloadRelations([]string{
+			"RelatedRealProfile",
+			"RelatedAnonProfiles",
+		})).
+		Where("id IN ?", ids).
+		Find(&profiles).
+		Error; err != nil {
 		return nil, ungerr.Wrap(err, appconstant.ErrDataSelect)
 	}
 

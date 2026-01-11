@@ -52,7 +52,7 @@ func (fds *friendDetailsServiceImpl) GetDetails(ctx context.Context, profileID, 
 	}
 
 	if friendProfile.RealProfileID != uuid.Nil {
-		return fds.returnRedirectResponse(ctx, profileID, friendProfileID, friendProfile.RealProfileID)
+		return fds.returnRedirectResponse(ctx, profileID, friendProfile.RealProfileID)
 	}
 
 	debtTransactions, err := fds.debtSvc.GetAllByProfileIDs(ctx, profileID, friendProfileID)
@@ -66,7 +66,6 @@ func (fds *friendDetailsServiceImpl) GetDetails(ctx context.Context, profileID, 
 func (fds *friendDetailsServiceImpl) returnRedirectResponse(
 	ctx context.Context,
 	profileID,
-	friendProfileID,
 	friendRealProfileID uuid.UUID,
 ) (dto.FriendDetailsResponse, error) {
 	realFriendships, err := fds.friendshipSvc.GetAll(ctx, friendRealProfileID)

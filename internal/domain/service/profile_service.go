@@ -136,20 +136,6 @@ func (ps *profileServiceImpl) getByID(ctx context.Context, id uuid.UUID) (users.
 	return profile, nil
 }
 
-func (ps *profileServiceImpl) GetNames(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error) {
-	profiles, err := ps.GetByIDs(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-
-	namesByProfileID := make(map[uuid.UUID]string, len(profiles))
-	for _, profile := range profiles {
-		namesByProfileID[profile.ID] = profile.Name
-	}
-
-	return namesByProfileID, nil
-}
-
 func (ps *profileServiceImpl) Update(ctx context.Context, id uuid.UUID, name string) (dto.ProfileResponse, error) {
 	var response dto.ProfileResponse
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -292,6 +278,18 @@ func (ps *profileServiceImpl) GetByIDs(ctx context.Context, ids []uuid.UUID) (ma
 	profileMap := make(map[uuid.UUID]dto.ProfileResponse, len(profiles))
 	for _, profile := range profiles {
 		profileMap[profile.ID] = mapper.ProfileToResponse(profile, "", nil, uuid.Nil)
+	}
+
+	// ensure all requested IDs exist
+	var notFoundIDs []uuid.UUID
+	for _, id := range ids {
+		if _, ok := profileMap[id]; !ok {
+			notFoundIDs = append(notFoundIDs, id)
+		}
+	}
+
+	if len(notFoundIDs) > 0 {
+		return nil, ungerr.NotFoundError(fmt.Sprintf("profiles not found: %v", notFoundIDs))
 	}
 
 	return profileMap, nil

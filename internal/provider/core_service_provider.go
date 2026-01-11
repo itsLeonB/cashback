@@ -11,11 +11,12 @@ import (
 )
 
 type CoreServices struct {
-	LLM   llm.LLMService
-	Mail  mail.MailService
-	Image storage.ImageService
-	State store.StateStore
-	OCR   ocr.OCRService
+	LLM     llm.LLMService
+	Mail    mail.MailService
+	Image   storage.ImageService
+	State   store.StateStore
+	OCR     ocr.OCRService
+	Storage storage.StorageRepository
 }
 
 func (cs *CoreServices) Shutdown() error {
@@ -44,5 +45,6 @@ func ProvideCoreServices() (*CoreServices, error) {
 		storage.NewImageService(validator.New(), storageRepo),
 		store,
 		ocr,
+		storageRepo,
 	}, nil
 }

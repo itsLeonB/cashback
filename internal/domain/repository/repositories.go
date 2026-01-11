@@ -12,7 +12,7 @@ import (
 
 type DebtTransactionRepository interface {
 	crud.Repository[debts.DebtTransaction]
-	FindAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]debts.DebtTransaction, error)
+	FindAllByMultipleProfileIDs(ctx context.Context, userProfileIDs, friendProfileIDs []uuid.UUID) ([]debts.DebtTransaction, error)
 	FindAllByUserProfileID(ctx context.Context, userProfileID uuid.UUID) ([]debts.DebtTransaction, error)
 }
 

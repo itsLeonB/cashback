@@ -7,14 +7,14 @@ RUN go mod download
 
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' \
-    -o /cashback-worker ./cmd/worker
+    -o /worker ./cmd/worker
 
 FROM gcr.io/distroless/static-debian12 AS build-release-stage
 
 WORKDIR /
 
-COPY --from=build-stage /cashback-worker /cashback-worker
+COPY --from=build-stage /worker /worker
 
 USER nonroot:nonroot
 
-ENTRYPOINT ["/cashback-worker"]
+ENTRYPOINT ["/worker"]

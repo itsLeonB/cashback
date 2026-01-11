@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
@@ -417,6 +418,9 @@ func (ges *groupExpenseServiceImpl) processAndGetStatus(ctx context.Context, exp
 		}
 		return expenses.FailedParsingBill, err
 	}
+
+	request.Items = slices.DeleteFunc(request.Items, func(item dto.NewExpenseItemRequest) bool { return item.Amount.Equal(decimal.Zero) })
+	request.OtherFees = slices.DeleteFunc(request.OtherFees, func(fee dto.NewOtherFeeRequest) bool { return fee.Amount.Equal(decimal.Zero) })
 
 	if err = ges.UpdateDraft(ctx, expense, request); err != nil {
 		return expenses.FailedParsingBill, err

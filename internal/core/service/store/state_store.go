@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/itsLeonB/cashback/internal/adapters/service/store"
+	"github.com/itsLeonB/cashback/internal/adapters/core/service/store"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/ungerr"
 )

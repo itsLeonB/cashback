@@ -3,6 +3,7 @@ package provider
 import (
 	"net/http"
 
+	appembed "github.com/itsLeonB/cashback"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/cashback/internal/domain/service/debt"
@@ -52,7 +53,7 @@ func ProvideServices(
 	friendship := service.NewFriendshipService(repos.Transactor, repos.Friendship, profile)
 	friendshipReq := service.NewFriendshipRequestService(repos.Transactor, friendship, profile, repos.FriendshipRequest)
 
-	transferMethod := service.NewTransferMethodService(repos.TransferMethod)
+	transferMethod := service.NewTransferMethodService(repos.TransferMethod, coreSvc.Storage, appConfig.BucketNameTransferMethods, appembed.TransferMethodAssets)
 	debt := service.NewDebtService(debt.NewDebtCalculatorStrategies(), repos.DebtTransaction, transferMethod, friendship, profile)
 	friendDetail := service.NewFriendDetailsService(debt, profile, friendship)
 

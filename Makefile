@@ -1,6 +1,8 @@
 .PHONY: help \
 http \
 http-hot \
+worker \
+job \
 lint \
 test \
 test-verbose \
@@ -8,6 +10,7 @@ test-coverage \
 test-coverage-html \
 test-clean \
 build \
+build-all \
 install-pre-push-hook \
 uninstall-pre-push-hook
 
@@ -15,13 +18,16 @@ help:
 	@echo "Makefile commands:"
 	@echo "  make http                    - Start the HTTP server"
 	@echo "  make http-hot                - Start the HTTP server with hot reload (requires air)"
+	@echo "  make worker                  - Start the worker"
+	@echo "  make job                     - Run migrations + asset sync (production)"
 	@echo "  make lint                    - Run golangci-lint on the codebase"
 	@echo "  make test                    - Run all tests"
 	@echo "  make test-verbose            - Run all tests with verbose output"
 	@echo "  make test-coverage           - Run all tests with coverage report"
 	@echo "  make test-coverage-html      - Run all tests and generate HTML coverage report"
 	@echo "  make test-clean              - Clean test cache and run tests"
-	@echo "  make build                   - Build the project for production"
+	@echo "  make build                   - Build HTTP server for production"
+	@echo "  make build-all               - Build all programs for production"
 	@echo "  make install-pre-push-hook   - Install git pre-push hook for linting and testing"
 	@echo "  make uninstall-pre-push-hook - Uninstall git pre-push hook"
 
@@ -31,6 +37,12 @@ http:
 http-hot:
 	@echo "🚀 Starting HTTP server with hot reload..."
 	air --build.cmd "go build -o bin/http ./cmd/http" --build.bin "./bin/http"
+
+worker:
+	go run ./cmd/worker
+
+job:
+	go run -tags job ./cmd/job
 
 lint:
 	golangci-lint run ./...
@@ -58,9 +70,18 @@ test-clean:
 	go clean -testcache && go test -v ./internal/...; \
 
 build:
-	@echo "Building the project..."
-	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -o bin/http cmd/http/main.go
+	@echo "Building HTTP server..."
+	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -o bin/http ./cmd/http
 	@echo "Build success! Binary is located at bin/http"
+
+build-all:
+	@echo "Building all programs..."
+	@mkdir -p bin
+	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -o bin/http ./cmd/http
+	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -o bin/worker ./cmd/worker
+	CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false -ldflags='-w -s' -tags job -o bin/job ./cmd/job
+	@echo "Build success! Binaries are located in bin/"
+	@ls -lh bin/
 
 install-pre-push-hook:
 	@echo "Installing pre-push git hook..."

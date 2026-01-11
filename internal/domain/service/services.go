@@ -39,7 +39,6 @@ type OAuthService interface {
 type ProfileService interface {
 	Create(ctx context.Context, request dto.NewProfileRequest) (dto.ProfileResponse, error)
 	GetByID(ctx context.Context, id uuid.UUID) (dto.ProfileResponse, error)
-	GetNames(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error)
 	Update(ctx context.Context, id uuid.UUID, name string) (dto.ProfileResponse, error)
 	Search(ctx context.Context, profileID uuid.UUID, input string) ([]dto.ProfileResponse, error)
 	Associate(ctx context.Context, userProfileID, realProfileID, anonProfileID uuid.UUID) error

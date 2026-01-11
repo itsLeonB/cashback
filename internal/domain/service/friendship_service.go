@@ -191,16 +191,8 @@ func (fs *friendshipServiceImpl) CreateReal(ctx context.Context, userProfileID, 
 			return err
 		}
 
-		var userProfile dto.ProfileResponse
-		var friendProfile dto.ProfileResponse
-		for _, profile := range profiles {
-			if profile.ID == userProfileID {
-				userProfile = profile
-			}
-			if profile.ID == friendProfileID {
-				friendProfile = profile
-			}
-		}
+		userProfile := profiles[userProfileID]
+		friendProfile := profiles[friendProfileID]
 
 		newFriendship, err := mapper.OrderProfilesToFriendship(userProfile, friendProfile)
 		if err != nil {

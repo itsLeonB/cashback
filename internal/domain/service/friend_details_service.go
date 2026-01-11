@@ -52,25 +52,7 @@ func (fds *friendDetailsServiceImpl) GetDetails(ctx context.Context, profileID, 
 	}
 
 	if friendProfile.RealProfileID != uuid.Nil {
-		realFriendships, err := fds.friendshipSvc.GetAll(ctx, friendProfile.RealProfileID)
-		if err != nil {
-			return dto.FriendDetailsResponse{}, err
-		}
-
-		var realFriendshipID uuid.UUID
-		for _, realFriendship := range realFriendships {
-			if ezutil.CompareUUID(realFriendship.ProfileID, profileID) == 0 {
-				realFriendshipID = realFriendship.ID
-				break
-			}
-		}
-		if realFriendshipID == uuid.Nil {
-			return dto.FriendDetailsResponse{}, ungerr.Unknownf("real friendship not found. friendProfileID: %s", friendProfileID)
-		}
-
-		return dto.FriendDetailsResponse{
-			RedirectToRealFriendship: realFriendshipID,
-		}, nil
+		return fds.returnRedirectResponse(ctx, profileID, friendProfileID, friendProfile.RealProfileID)
 	}
 
 	debtTransactions, err := fds.debtSvc.GetAllByProfileIDs(ctx, profileID, friendProfileID)
@@ -79,4 +61,31 @@ func (fds *friendDetailsServiceImpl) GetDetails(ctx context.Context, profileID, 
 	}
 
 	return mapper.MapToFriendDetailsResponse(profileID, response, debtTransactions)
+}
+
+func (fds *friendDetailsServiceImpl) returnRedirectResponse(
+	ctx context.Context,
+	profileID,
+	friendProfileID,
+	friendRealProfileID uuid.UUID,
+) (dto.FriendDetailsResponse, error) {
+	realFriendships, err := fds.friendshipSvc.GetAll(ctx, friendRealProfileID)
+	if err != nil {
+		return dto.FriendDetailsResponse{}, err
+	}
+
+	var realFriendshipID uuid.UUID
+	for _, realFriendship := range realFriendships {
+		if ezutil.CompareUUID(realFriendship.ProfileID, profileID) == 0 {
+			realFriendshipID = realFriendship.ID
+			break
+		}
+	}
+	if realFriendshipID == uuid.Nil {
+		return dto.FriendDetailsResponse{}, ungerr.Unknownf("real friendship not found. friendRealProfileID: %s", friendRealProfileID)
+	}
+
+	return dto.FriendDetailsResponse{
+		RedirectToRealFriendship: realFriendshipID,
+	}, nil
 }

@@ -119,29 +119,30 @@ func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, gro
 }
 
 func (ds *debtServiceImpl) GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
-	friendProfile, err := ds.profileService.GetByID(ctx, friendProfileID)
+	profiles, err := ds.profileService.GetByIDs(ctx, []uuid.UUID{userProfileID, friendProfileID})
 	if err != nil {
 		return nil, err
 	}
 
-	associatedProfileIDs := []uuid.UUID{friendProfileID}
-	if friendProfile.IsAnonymous {
-		if friendProfile.RealProfileID != uuid.Nil {
-			associatedProfileIDs = append(associatedProfileIDs, friendProfile.RealProfileID)
-		}
-	} else {
-		associatedProfileIDs = append(associatedProfileIDs, friendProfile.AssociatedAnonProfileIDs...)
-	}
+	userIDs := ds.getAssociatedIDs(profiles[userProfileID])
+	friendIDs := ds.getAssociatedIDs(profiles[friendProfileID])
 
-	allTransactions := make([]debts.DebtTransaction, 0)
-	for _, profileID := range associatedProfileIDs {
-		transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, userProfileID, profileID)
-		if err != nil {
-			return nil, err
-		}
-
-		allTransactions = append(allTransactions, transactions...)
+	allTransactions, err := ds.debtTransactionRepository.FindAllByMultipleProfileIDs(ctx, userIDs, friendIDs)
+	if err != nil {
+		return nil, err
 	}
 
 	return ezutil.MapSlice(allTransactions, mapper.DebtTransactionSimpleMapper(userProfileID)), nil
+}
+
+func (ds *debtServiceImpl) getAssociatedIDs(profile dto.ProfileResponse) []uuid.UUID {
+	ids := []uuid.UUID{profile.ID}
+	if profile.IsAnonymous {
+		if profile.RealProfileID != uuid.Nil {
+			ids = append(ids, profile.RealProfileID)
+		}
+	} else {
+		ids = append(ids, profile.AssociatedAnonProfileIDs...)
+	}
+	return ids
 }

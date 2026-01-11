@@ -37,7 +37,6 @@ func (dtr *debtTransactionRepositoryGorm) FindAllByMultipleProfileIDs(ctx contex
 	}
 
 	err = db.
-		Scopes(crud.ForUpdate(true)).
 		Where("lender_profile_id IN ? AND borrower_profile_id IN ?", userProfileIDs, friendProfileIDs).
 		Or("lender_profile_id IN ? AND borrower_profile_id IN ?", friendProfileIDs, userProfileIDs).
 		Find(&transactions).

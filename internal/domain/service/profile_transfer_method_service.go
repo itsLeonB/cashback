@@ -3,8 +3,11 @@ package service
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
+	"github.com/itsLeonB/cashback/internal/domain/mapper"
+	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 )
@@ -52,4 +55,20 @@ func (ptm *profileTransferMethodService) Add(ctx context.Context, req dto.NewPro
 		return ungerr.Wrap(err, "error inserting new profile transfer method")
 	}
 	return nil
+}
+
+func (ptm *profileTransferMethodService) GetAllByProfileID(ctx context.Context, profileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error) {
+	if _, err := ptm.profileSvc.GetEntityByID(ctx, profileID); err != nil {
+		return nil, err
+	}
+
+	spec := crud.Specification[debts.ProfileTransferMethod]{}
+	spec.Model.ProfileID = profileID
+	spec.PreloadRelations = []string{"Method"}
+	methods, err := ptm.profileTransferMethodRepo.FindAll(ctx, spec)
+	if err != nil {
+		return nil, err
+	}
+
+	return ezutil.MapSlice(methods, mapper.ProfileTransferMethodToResponse), nil
 }

@@ -56,7 +56,14 @@ func (r *gcsStorageRepository) Upload(ctx context.Context, req *StorageUploadReq
 	}
 
 	// Write the file data
-	if _, err := io.Copy(writer, bytes.NewReader(req.Data)); err != nil {
+	var reader io.Reader
+	if req.Reader != nil {
+		reader = req.Reader
+	} else {
+		reader = bytes.NewReader(req.Data)
+	}
+
+	if _, err := io.Copy(writer, reader); err != nil {
 		_ = writer.Close() // best-effort close on copy failure
 		return ungerr.Wrap(err, "failed to upload file to GCS")
 	}
@@ -122,9 +129,9 @@ func (r *gcsStorageRepository) GetAllObjectKeys(ctx context.Context, bucketName 
 }
 
 func (r *gcsStorageRepository) Exists(ctx context.Context, fileID FileIdentifier) (bool, error) {
-	_, err := r.toObject(fileID).Attrs(ctx)
+	attrs, err := r.toObject(fileID).Attrs(ctx)
 	if err == nil {
-		return true, nil
+		return attrs.Size > 0, nil
 	}
 
 	// Case 1: canonical GCS error

@@ -26,6 +26,9 @@ func (p *Providers) Shutdown() error {
 	if e := p.CoreServices.Shutdown(); e != nil {
 		errs = errors.Join(errs, e)
 	}
+	if e := p.Services.Shutdown(); e != nil {
+		errs = errors.Join(errs, e)
+	}
 	return errs
 }
 

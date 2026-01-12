@@ -35,6 +35,10 @@ type Services struct {
 	OtherFee     service.OtherFeeService
 }
 
+func (s *Services) Shutdown() error {
+	return s.TransferMethod.Shutdown()
+}
+
 func ProvideServices(
 	repos *Repositories,
 	coreSvc *CoreServices,

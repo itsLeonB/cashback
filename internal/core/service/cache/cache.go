@@ -10,6 +10,7 @@ import (
 
 type Cache[T any] interface {
 	Get(ctx context.Context, key string, fallbackFunc func(context.Context, string) (T, bool)) (T, bool)
+	Shutdown() error
 }
 
 type cacheEntry[T any] struct {
@@ -53,6 +54,12 @@ func (c *inmemoryCache[T]) Get(ctx context.Context, key string, fallbackFunc fun
 	}
 	c.data.Store(key, entry)
 	return fallbackVal, true
+}
+
+func (c *inmemoryCache[T]) Shutdown() error {
+	close(c.stopCh)
+	c.wg.Wait()
+	return nil
 }
 
 func (c *inmemoryCache[T]) getValue(key string) (T, bool) {

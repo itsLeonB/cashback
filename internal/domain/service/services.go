@@ -83,6 +83,7 @@ type TransferMethodService interface {
 	GetByName(ctx context.Context, name string) (debts.TransferMethod, error)
 	SyncMethods(ctx context.Context) error
 	SignedURLPopulator(ctx context.Context) func(debts.TransferMethod) dto.TransferMethodResponse
+	Shutdown() error
 }
 
 type GroupExpenseService interface {

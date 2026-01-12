@@ -181,6 +181,10 @@ func (tms *transferMethodServiceImpl) SyncMethods(ctx context.Context) error {
 	return err
 }
 
+func (tms *transferMethodServiceImpl) Shutdown() error {
+	return tms.urlCache.Shutdown()
+}
+
 func (tms *transferMethodServiceImpl) prepareForMethodSync(ctx context.Context) ([]debts.TransferMethod, map[string]struct{}, error) {
 	methods, err := tms.transferMethodRepo.FindAll(ctx, crud.Specification[debts.TransferMethod]{})
 	if err != nil {

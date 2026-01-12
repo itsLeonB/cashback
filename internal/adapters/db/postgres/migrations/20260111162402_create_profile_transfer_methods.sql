@@ -16,7 +16,7 @@ CREATE INDEX profile_transfer_methods_transfer_method_id_idx ON profile_transfer
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS profile_transfer_methods;
 DROP INDEX profile_transfer_methods_profile_id_idx;
 DROP INDEX profile_transfer_methods_transfer_method_id_idx;
+DROP TABLE IF EXISTS profile_transfer_methods;
 -- +goose StatementEnd

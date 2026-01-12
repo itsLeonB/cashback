@@ -64,7 +64,7 @@ func (c *inmemoryCache[T]) getValue(key string) (T, bool) {
 
 	entry, ok := value.(cacheEntry[T])
 	if !ok {
-		logger.Errorf("cache value is not cacheEntry, instead: %T", entry)
+		logger.Errorf("cache value is not cacheEntry, instead: %T", value)
 		c.data.Delete(key)
 		return zero, false
 	}
@@ -98,7 +98,11 @@ func (c *inmemoryCache[T]) startCleanup() {
 func (c *inmemoryCache[T]) cleanup() {
 	now := time.Now()
 	c.data.Range(func(key, value any) bool {
-		entry := value.(cacheEntry[T])
+		entry, ok := value.(cacheEntry[T])
+		if !ok {
+			c.data.Delete(key)
+			return true
+		}
 		if now.After(entry.expiresAt) {
 			c.data.Delete(key)
 		}

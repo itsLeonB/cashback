@@ -32,9 +32,10 @@ func (tmr *transferMethodRepositoryGorm) GetAllByParentFilter(ctx context.Contex
 	case debts.ChildOnly:
 		query = query.Where("parent_id IS NOT NULL")
 	case debts.ForTransaction:
+		// Return all parent methods plus child methods configured for this profile
 		query = query.Table("transfer_methods tm").
-			Joins("JOIN profile_transfer_methods ptm ON tm.id = ptm.transfer_method_id").
-			Where("tm.parent_id IS NULL OR ptm.profile_id = ?", profileID)
+			Joins("LEFT JOIN profile_transfer_methods ptm ON tm.id = ptm.transfer_method_id AND ptm.profile_id = ?", profileID).
+			Where("tm.parent_id IS NULL OR ptm.id IS NOT NULL")
 	default:
 		// no filter
 	}

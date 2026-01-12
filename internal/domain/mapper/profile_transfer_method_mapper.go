@@ -7,9 +7,9 @@ import (
 
 func ProfileTransferMethodToResponse(ptm debts.ProfileTransferMethod) dto.ProfileTransferMethodResponse {
 	return dto.ProfileTransferMethodResponse{
-		BaseDTO:        BaseToDTO(ptm.BaseEntity),
-		TransferMethod: TransferMethodToResponse(ptm.Method),
-		AccountName:    ptm.AccountName,
-		AccountNumber:  ptm.AccountNumber,
+		BaseDTO:       BaseToDTO(ptm.BaseEntity),
+		Method:        TransferMethodToResponse(ptm.Method),
+		AccountName:   ptm.AccountName,
+		AccountNumber: ptm.AccountNumber,
 	}
 }

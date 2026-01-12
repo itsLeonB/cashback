@@ -17,19 +17,21 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
+	"github.com/itsLeonB/cashback/internal/domain/repository"
+	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 )
 
 type transferMethodServiceImpl struct {
-	transferMethodRepo crud.Repository[debts.TransferMethod]
+	transferMethodRepo repository.TransferMethodRepository
 	storageRepo        storage.StorageRepository
 	bucketName         string
 	fs                 embed.FS
 }
 
 func NewTransferMethodService(
-	transferMethodRepo crud.Repository[debts.TransferMethod],
+	transferMethodRepo repository.TransferMethodRepository,
 	storageRepo storage.StorageRepository,
 	bucketName string,
 	fs embed.FS,
@@ -44,21 +46,13 @@ func NewTransferMethodService(
 
 var spaceRegex = regexp.MustCompile(`\s+`)
 
-func (tms *transferMethodServiceImpl) GetAll(ctx context.Context) ([]dto.TransferMethodResponse, error) {
-	transferMethods, err := tms.transferMethodRepo.FindAll(ctx, crud.Specification[debts.TransferMethod]{})
+func (tms *transferMethodServiceImpl) GetAll(ctx context.Context, filter debts.ParentFilter, profileID uuid.UUID) ([]dto.TransferMethodResponse, error) {
+	methods, err := tms.transferMethodRepo.GetAllByParentFilter(ctx, filter, profileID)
 	if err != nil {
 		return nil, err
 	}
 
-	responses := make([]dto.TransferMethodResponse, 0, len(transferMethods))
-	for _, tm := range transferMethods {
-		if tm.ParentID.Valid {
-			continue
-		}
-		responses = append(responses, mapper.TransferMethodToResponse(tm))
-	}
-
-	return responses, nil
+	return ezutil.MapSlice(methods, mapper.TransferMethodToResponse), nil
 }
 
 func (tms *transferMethodServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (debts.TransferMethod, error) {

@@ -11,7 +11,7 @@ type NewProfileTransferMethodRequest struct {
 
 type ProfileTransferMethodResponse struct {
 	BaseDTO
-	TransferMethod TransferMethodResponse
-	AccountName    string `json:"accountName"`
-	AccountNumber  string `json:"accountNumber"`
+	Method        TransferMethodResponse `json:"method"`
+	AccountName   string                 `json:"accountName"`
+	AccountNumber string                 `json:"accountNumber"`
 }

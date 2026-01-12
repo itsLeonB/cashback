@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/ginkgo/pkg/server"
 )
@@ -18,6 +19,11 @@ func NewTransferMethodHandler(transferMethodService service.TransferMethodServic
 
 func (tmh *TransferMethodHandler) HandleGetAll() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		return tmh.transferMethodService.GetAll(ctx)
+		profileID, err := getProfileID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return tmh.transferMethodService.GetAll(ctx, debts.ParentFilter(ctx.Query("status")), profileID)
 	})
 }

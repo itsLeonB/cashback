@@ -23,7 +23,7 @@ type Repositories struct {
 
 	// Debts
 	DebtTransaction       repository.DebtTransactionRepository
-	TransferMethod        crud.Repository[debts.TransferMethod]
+	TransferMethod        repository.TransferMethodRepository
 	ProfileTransferMethod crud.Repository[debts.ProfileTransferMethod]
 
 	// Expenses
@@ -44,7 +44,7 @@ func ProvideRepositories(dataSource *DataSources) *Repositories {
 		OAuthAccount:          crud.NewRepository[users.OAuthAccount](dataSource.Gorm),
 		FriendshipRequest:     crud.NewRepository[users.FriendshipRequest](dataSource.Gorm),
 		DebtTransaction:       adapters.NewDebtTransactionRepository(dataSource.Gorm),
-		TransferMethod:        crud.NewRepository[debts.TransferMethod](dataSource.Gorm),
+		TransferMethod:        adapters.NewTransferMethodRepository(dataSource.Gorm),
 		ProfileTransferMethod: crud.NewRepository[debts.ProfileTransferMethod](dataSource.Gorm),
 		GroupExpense:          adapters.NewGroupExpenseRepository(dataSource.Gorm),
 		ExpenseItem:           adapters.NewExpenseItemRepository(dataSource.Gorm),

@@ -78,7 +78,7 @@ type DebtService interface {
 }
 
 type TransferMethodService interface {
-	GetAll(ctx context.Context) ([]dto.TransferMethodResponse, error)
+	GetAll(ctx context.Context, filter debts.ParentFilter, profileID uuid.UUID) ([]dto.TransferMethodResponse, error)
 	GetByID(ctx context.Context, id uuid.UUID) (debts.TransferMethod, error)
 	GetByName(ctx context.Context, name string) (debts.TransferMethod, error)
 	SyncMethods(ctx context.Context) error

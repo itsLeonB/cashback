@@ -70,5 +70,5 @@ func (ptm *profileTransferMethodService) GetAllByProfileID(ctx context.Context, 
 		return nil, err
 	}
 
-	return ezutil.MapSlice(methods, mapper.ProfileTransferMethodToResponse), nil
+	return ezutil.MapSlice(methods, mapper.ProfileTransferMethodPopulator(ptm.transferMethodSvc.SignedURLPopulator(ctx))), nil
 }

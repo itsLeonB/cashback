@@ -5,11 +5,13 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 )
 
-func ProfileTransferMethodToResponse(ptm debts.ProfileTransferMethod) dto.ProfileTransferMethodResponse {
-	return dto.ProfileTransferMethodResponse{
-		BaseDTO:       BaseToDTO(ptm.BaseEntity),
-		Method:        TransferMethodToResponse(ptm.Method),
-		AccountName:   ptm.AccountName,
-		AccountNumber: ptm.AccountNumber,
+func ProfileTransferMethodPopulator(transferMethodPopulator func(debts.TransferMethod) dto.TransferMethodResponse) func(debts.ProfileTransferMethod) dto.ProfileTransferMethodResponse {
+	return func(ptm debts.ProfileTransferMethod) dto.ProfileTransferMethodResponse {
+		return dto.ProfileTransferMethodResponse{
+			BaseDTO:       BaseToDTO(ptm.BaseEntity),
+			Method:        transferMethodPopulator(ptm.Method),
+			AccountName:   ptm.AccountName,
+			AccountNumber: ptm.AccountNumber,
+		}
 	}
 }

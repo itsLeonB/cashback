@@ -82,6 +82,7 @@ type TransferMethodService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (debts.TransferMethod, error)
 	GetByName(ctx context.Context, name string) (debts.TransferMethod, error)
 	SyncMethods(ctx context.Context) error
+	SignedURLPopulator(ctx context.Context) func(debts.TransferMethod) dto.TransferMethodResponse
 }
 
 type GroupExpenseService interface {

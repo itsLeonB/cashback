@@ -22,8 +22,9 @@ type Repositories struct {
 	FriendshipRequest  crud.Repository[users.FriendshipRequest]
 
 	// Debts
-	DebtTransaction repository.DebtTransactionRepository
-	TransferMethod  crud.Repository[debts.TransferMethod]
+	DebtTransaction       repository.DebtTransactionRepository
+	TransferMethod        crud.Repository[debts.TransferMethod]
+	ProfileTransferMethod crud.Repository[debts.ProfileTransferMethod]
 
 	// Expenses
 	GroupExpense repository.GroupExpenseRepository
@@ -34,19 +35,20 @@ type Repositories struct {
 
 func ProvideRepositories(dataSource *DataSources) *Repositories {
 	return &Repositories{
-		Transactor:         crud.NewTransactor(dataSource.Gorm),
-		User:               crud.NewRepository[users.User](dataSource.Gorm),
-		Profile:            adapters.NewProfileRepository(dataSource.Gorm),
-		Friendship:         adapters.NewFriendshipRepository(dataSource.Gorm),
-		RelatedProfile:     crud.NewRepository[users.RelatedProfile](dataSource.Gorm),
-		PasswordResetToken: crud.NewRepository[users.PasswordResetToken](dataSource.Gorm),
-		OAuthAccount:       crud.NewRepository[users.OAuthAccount](dataSource.Gorm),
-		FriendshipRequest:  crud.NewRepository[users.FriendshipRequest](dataSource.Gorm),
-		DebtTransaction:    adapters.NewDebtTransactionRepository(dataSource.Gorm),
-		TransferMethod:     crud.NewRepository[debts.TransferMethod](dataSource.Gorm),
-		GroupExpense:       adapters.NewGroupExpenseRepository(dataSource.Gorm),
-		ExpenseItem:        adapters.NewExpenseItemRepository(dataSource.Gorm),
-		OtherFee:           adapters.NewOtherFeeRepository(dataSource.Gorm),
-		ExpenseBill:        crud.NewRepository[expenses.ExpenseBill](dataSource.Gorm),
+		Transactor:            crud.NewTransactor(dataSource.Gorm),
+		User:                  crud.NewRepository[users.User](dataSource.Gorm),
+		Profile:               adapters.NewProfileRepository(dataSource.Gorm),
+		Friendship:            adapters.NewFriendshipRepository(dataSource.Gorm),
+		RelatedProfile:        crud.NewRepository[users.RelatedProfile](dataSource.Gorm),
+		PasswordResetToken:    crud.NewRepository[users.PasswordResetToken](dataSource.Gorm),
+		OAuthAccount:          crud.NewRepository[users.OAuthAccount](dataSource.Gorm),
+		FriendshipRequest:     crud.NewRepository[users.FriendshipRequest](dataSource.Gorm),
+		DebtTransaction:       adapters.NewDebtTransactionRepository(dataSource.Gorm),
+		TransferMethod:        crud.NewRepository[debts.TransferMethod](dataSource.Gorm),
+		ProfileTransferMethod: crud.NewRepository[debts.ProfileTransferMethod](dataSource.Gorm),
+		GroupExpense:          adapters.NewGroupExpenseRepository(dataSource.Gorm),
+		ExpenseItem:           adapters.NewExpenseItemRepository(dataSource.Gorm),
+		OtherFee:              adapters.NewOtherFeeRepository(dataSource.Gorm),
+		ExpenseBill:           crud.NewRepository[expenses.ExpenseBill](dataSource.Gorm),
 	}
 }

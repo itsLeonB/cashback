@@ -38,6 +38,7 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 					profileRoutes.GET("", handlers.Profile.HandleProfile())
 					profileRoutes.PATCH("", handlers.Profile.HandleUpdate())
 					profileRoutes.POST("/associate", handlers.Profile.HandleAssociate())
+					profileRoutes.POST("/transfer-methods", handlers.ProfileTransferMethod.HandleAdd())
 				}
 
 				protectedRoutes.GET("/profiles", handlers.Profile.HandleSearch())

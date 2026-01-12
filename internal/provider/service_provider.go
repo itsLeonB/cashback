@@ -24,8 +24,9 @@ type Services struct {
 	FriendDetails     service.FriendDetailsService
 
 	// Debts
-	Debt           service.DebtService
-	TransferMethod service.TransferMethodService
+	Debt                  service.DebtService
+	TransferMethod        service.TransferMethodService
+	ProfileTransferMethod service.ProfileTransferMethodService
 
 	// Expenses
 	GroupExpense service.GroupExpenseService
@@ -63,18 +64,19 @@ func ProvideServices(
 	otherFee := service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense)
 
 	return &Services{
-		Auth:              auth,
-		OAuth:             oauth,
-		User:              user,
-		Profile:           profile,
-		Friendship:        friendship,
-		FriendshipRequest: friendshipReq,
-		FriendDetails:     friendDetail,
-		Debt:              debt,
-		TransferMethod:    transferMethod,
-		GroupExpense:      groupExpense,
-		ExpenseBill:       expenseBill,
-		ExpenseItem:       expenseItem,
-		OtherFee:          otherFee,
+		Auth:                  auth,
+		OAuth:                 oauth,
+		User:                  user,
+		Profile:               profile,
+		Friendship:            friendship,
+		FriendshipRequest:     friendshipReq,
+		FriendDetails:         friendDetail,
+		Debt:                  debt,
+		TransferMethod:        transferMethod,
+		ProfileTransferMethod: service.NewProfileTransferMethodService(profile, repos.ProfileTransferMethod, transferMethod),
+		GroupExpense:          groupExpense,
+		ExpenseBill:           expenseBill,
+		ExpenseItem:           expenseItem,
+		OtherFee:              otherFee,
 	}
 }

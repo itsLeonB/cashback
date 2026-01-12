@@ -44,6 +44,7 @@ type ProfileService interface {
 	Associate(ctx context.Context, userProfileID, realProfileID, anonProfileID uuid.UUID) error
 	GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]dto.ProfileResponse, error)
 	GetRealProfileID(ctx context.Context, anonProfileID uuid.UUID) (uuid.UUID, error)
+	GetEntityByID(ctx context.Context, id uuid.UUID) (users.UserProfile, error)
 }
 
 type FriendshipService interface {
@@ -115,4 +116,8 @@ type ExpenseBillService interface {
 	ExtractBillText(ctx context.Context, msg message.ExpenseBillUploaded) error
 	Cleanup(ctx context.Context) error
 	TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) error
+}
+
+type ProfileTransferMethodService interface {
+	Add(ctx context.Context, req dto.NewProfileTransferMethodRequest) error
 }

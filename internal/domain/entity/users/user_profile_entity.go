@@ -2,6 +2,7 @@ package users
 
 import (
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/go-crud"
 )
 
@@ -12,8 +13,9 @@ type UserProfile struct {
 	Avatar string
 
 	// Relationships
-	RelatedRealProfile  RelatedProfile   `gorm:"foreignKey:AnonProfileID"`
-	RelatedAnonProfiles []RelatedProfile `gorm:"foreignKey:RealProfileID"`
+	RelatedRealProfile  RelatedProfile                `gorm:"foreignKey:AnonProfileID"`
+	RelatedAnonProfiles []RelatedProfile              `gorm:"foreignKey:RealProfileID"`
+	TransferMethods     []debts.ProfileTransferMethod `gorm:"foreignKey:ProfileID"`
 }
 
 func (up UserProfile) IsReal() bool {

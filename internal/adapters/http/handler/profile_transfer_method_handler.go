@@ -30,3 +30,14 @@ func (ptmh *ProfileTransferMethodHandler) HandleAdd() gin.HandlerFunc {
 		return nil, ptmh.svc.Add(ctx, req)
 	})
 }
+
+func (ptmh *ProfileTransferMethodHandler) HandleGetAllOwned() gin.HandlerFunc {
+	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+		profileID, err := getProfileID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return ptmh.svc.GetAllByProfileID(ctx, profileID)
+	})
+}

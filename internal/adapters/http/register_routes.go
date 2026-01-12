@@ -33,12 +33,14 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 
 			protectedRoutes := v1.Group("/", middlewares.auth)
 			{
+				transferMethodsRoute := "/transfer-methods"
 				profileRoutes := protectedRoutes.Group("/profile")
 				{
 					profileRoutes.GET("", handlers.Profile.HandleProfile())
 					profileRoutes.PATCH("", handlers.Profile.HandleUpdate())
 					profileRoutes.POST("/associate", handlers.Profile.HandleAssociate())
-					profileRoutes.POST("/transfer-methods", handlers.ProfileTransferMethod.HandleAdd())
+					profileRoutes.POST(transferMethodsRoute, handlers.ProfileTransferMethod.HandleAdd())
+					profileRoutes.GET(transferMethodsRoute, handlers.ProfileTransferMethod.HandleGetAllOwned())
 				}
 
 				protectedRoutes.GET("/profiles", handlers.Profile.HandleSearch())
@@ -61,7 +63,7 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 					friendRequestRoutes.POST(receivedFriendRequestRoute, handlers.FriendshipRequest.HandleAccept())
 				}
 
-				protectedRoutes.GET("/transfer-methods", handlers.TransferMethod.HandleGetAll())
+				protectedRoutes.GET(transferMethodsRoute, handlers.TransferMethod.HandleGetAll())
 				protectedRoutes.POST("/debts", handlers.Debt.HandleCreate())
 				protectedRoutes.GET("/debts", handlers.Debt.HandleGetAll())
 

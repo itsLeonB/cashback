@@ -195,7 +195,7 @@ func ToConfirmationResponse(expense expenses.GroupExpense, userProfileID uuid.UU
 
 			var shareRate decimal.Decimal
 			if !feeParticipant.ShareAmount.IsZero() {
-				shareRate = fee.Amount.Div(feeParticipant.ShareAmount)
+				shareRate = feeParticipant.ShareAmount.Div(fee.Amount)
 			}
 
 			fees = append(fees, dto.ConfirmedItemShare{

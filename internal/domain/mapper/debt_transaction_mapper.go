@@ -59,7 +59,7 @@ func calculateBalances(userAssociatedIDs []uuid.UUID, transactions []debts.DebtT
 			}
 		} else {
 			// Skip transactions where user is both or neither (shouldn't happen)
-			logger.Errorf("orphaned transaction %t. userIsLender: %t. userIsBorrower", tx.ID, userIsLender, userIsBorrower)
+			logger.Errorf("orphaned transaction %s. userIsLender: %t. userIsBorrower: %t", tx.ID, userIsLender, userIsBorrower)
 			continue
 		}
 

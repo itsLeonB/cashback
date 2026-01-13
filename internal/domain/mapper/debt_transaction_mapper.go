@@ -2,41 +2,79 @@ package mapper
 
 import (
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/shopspring/decimal"
 	"golang.org/x/text/currency"
 )
 
-func MapToFriendBalanceSummary(userProfileID uuid.UUID, debtTransactions []dto.DebtTransactionResponse) dto.FriendBalance {
-	totalOwedToYou, totalYouOwe := decimal.Zero, decimal.Zero
-
-	for _, transaction := range debtTransactions {
-		switch transaction.Type {
-		case debts.Lend:
-			switch transaction.Action {
-			case debts.LendAction: // You lent money
-				totalOwedToYou = totalOwedToYou.Add(transaction.Amount)
-			case debts.BorrowAction: // You borrowed money
-				totalYouOwe = totalYouOwe.Add(transaction.Amount)
-			}
-		case debts.Repay:
-			switch transaction.Action {
-			case debts.ReceiveAction: // You received repayment
-				totalOwedToYou = totalOwedToYou.Sub(transaction.Amount)
-			case debts.ReturnAction: // You returned money
-				totalYouOwe = totalYouOwe.Sub(transaction.Amount)
-			}
-		}
-	}
+func MapToFriendBalanceSummary(transactions []debts.DebtTransaction, userAssociatedIDs []uuid.UUID) dto.FriendBalance {
+	totalLent, totalBorrowed, history := calculateBalances(userAssociatedIDs, transactions)
 
 	return dto.FriendBalance{
-		TotalOwedToYou: totalOwedToYou,
-		TotalYouOwe:    totalYouOwe,
-		NetBalance:     totalOwedToYou.Sub(totalYouOwe),
-		CurrencyCode:   currency.IDR.String(),
+		NetBalance:              totalLent.Sub(totalBorrowed),
+		TotalLentToFriend:       totalLent,
+		TotalBorrowedFromFriend: totalBorrowed,
+		TransactionHistory:      history,
+		CurrencyCode:            currency.IDR.String(),
 	}
 }
+
+func calculateBalances(userAssociatedIDs []uuid.UUID, transactions []debts.DebtTransaction) (decimal.Decimal, decimal.Decimal, []dto.FriendTransactionItem) {
+	totalLent, totalBorrowed := decimal.Zero, decimal.Zero
+	history := make([]dto.FriendTransactionItem, 0, len(transactions))
+
+	// Create a map for quick lookup of user's associated IDs
+	userIDMap := make(map[uuid.UUID]struct{}, len(userAssociatedIDs))
+	for _, id := range userAssociatedIDs {
+		userIDMap[id] = struct{}{}
+	}
+
+	for _, tx := range transactions {
+		var transactionType string
+		var amount decimal.Decimal
+
+		// Check if user (or their associated profiles) is the lender or borrower
+		_, userIsLender := userIDMap[tx.LenderProfileID]
+		_, userIsBorrower := userIDMap[tx.BorrowerProfileID]
+
+		if userIsLender && !userIsBorrower {
+			// User is the lender
+			transactionType = "LENT"
+			amount = tx.Amount
+			if tx.Type == debts.Lend {
+				totalLent = totalLent.Add(tx.Amount)
+			} else { // Repay
+				totalLent = totalLent.Sub(tx.Amount)
+			}
+		} else if userIsBorrower && !userIsLender {
+			// User is the borrower
+			transactionType = "BORROWED"
+			amount = tx.Amount
+			if tx.Type == debts.Lend {
+				totalBorrowed = totalBorrowed.Add(tx.Amount)
+			} else { // Repay
+				totalBorrowed = totalBorrowed.Sub(tx.Amount)
+			}
+		} else {
+			// Skip transactions where user is both or neither (shouldn't happen)
+			logger.Errorf("orphaned transaction %t. userIsLender: %t. userIsBorrower", tx.ID, userIsLender, userIsBorrower)
+			continue
+		}
+
+		history = append(history, dto.FriendTransactionItem{
+			BaseDTO:        BaseToDTO(tx.BaseEntity),
+			Type:           transactionType,
+			Amount:         amount,
+			TransferMethod: tx.TransferMethod.Display,
+			Description:    tx.Description,
+		})
+	}
+
+	return totalLent, totalBorrowed, history
+}
+
 func DebtTransactionToResponse(userProfileID uuid.UUID, transaction debts.DebtTransaction) dto.DebtTransactionResponse {
 	var profileID uuid.UUID
 	if userProfileID == transaction.BorrowerProfileID && userProfileID != transaction.LenderProfileID {

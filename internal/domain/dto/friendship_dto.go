@@ -1,8 +1,6 @@
 package dto
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/shopspring/decimal"
@@ -40,24 +38,23 @@ type FriendDetails struct {
 }
 
 type FriendBalance struct {
-	TotalOwedToYou decimal.Decimal `json:"totalOwedToYou"`
-	TotalYouOwe    decimal.Decimal `json:"totalYouOwe"`
-	NetBalance     decimal.Decimal `json:"netBalance"`
-	CurrencyCode   string          `json:"currencyCode"`
+	NetBalance              decimal.Decimal         `json:"netBalance"`
+	TotalLentToFriend       decimal.Decimal         `json:"totalLentToFriend"`
+	TotalBorrowedFromFriend decimal.Decimal         `json:"totalBorrowedFromFriend"`
+	TransactionHistory      []FriendTransactionItem `json:"transactionHistory"`
+	CurrencyCode            string                  `json:"currencyCode"`
 }
 
-type FriendStats struct {
-	TotalTransactions        int             `json:"totalTransactions"`
-	FirstTransactionDate     time.Time       `json:"firstTransactionDate"`
-	LastTransactionDate      time.Time       `json:"lastTransactionDate"`
-	MostUsedTransferMethod   string          `json:"mostUsedTransferMethod"`
-	AverageTransactionAmount decimal.Decimal `json:"averageTransactionAmount"`
+type FriendTransactionItem struct {
+	BaseDTO
+	Type           string          `json:"type"`
+	Amount         decimal.Decimal `json:"amount"`
+	TransferMethod string          `json:"transferMethod"`
+	Description    string          `json:"description"`
 }
 
 type FriendDetailsResponse struct {
-	Friend                   FriendDetails             `json:"friend"`
-	Balance                  FriendBalance             `json:"balance"`
-	Transactions             []DebtTransactionResponse `json:"transactions"`
-	Stats                    FriendStats               `json:"stats"`
-	RedirectToRealFriendship uuid.UUID                 `json:"redirectToRealFriendship,omitzero"`
+	Friend                   FriendDetails `json:"friend"`
+	Balance                  FriendBalance `json:"balance"`
+	RedirectToRealFriendship uuid.UUID     `json:"redirectToRealFriendship,omitzero"`
 }

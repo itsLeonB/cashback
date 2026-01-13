@@ -39,6 +39,8 @@ func (dtr *debtTransactionRepositoryGorm) FindAllByMultipleProfileIDs(ctx contex
 	err = db.
 		Where("lender_profile_id IN ? AND borrower_profile_id IN ?", userProfileIDs, friendProfileIDs).
 		Or("lender_profile_id IN ? AND borrower_profile_id IN ?", friendProfileIDs, userProfileIDs).
+		Preload("TransferMethod").
+		Order("created_at DESC").
 		Find(&transactions).
 		Error
 

@@ -118,21 +118,17 @@ func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, gro
 	return err
 }
 
-func (ds *debtServiceImpl) GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
+func (ds *debtServiceImpl) GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]debts.DebtTransaction, []uuid.UUID, error) {
 	profiles, err := ds.profileService.GetByIDs(ctx, []uuid.UUID{userProfileID, friendProfileID})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	userIDs := ds.getAssociatedIDs(profiles[userProfileID])
 	friendIDs := ds.getAssociatedIDs(profiles[friendProfileID])
 
-	allTransactions, err := ds.debtTransactionRepository.FindAllByMultipleProfileIDs(ctx, userIDs, friendIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	return ezutil.MapSlice(allTransactions, mapper.DebtTransactionSimpleMapper(userProfileID)), nil
+	transactions, err := ds.debtTransactionRepository.FindAllByMultipleProfileIDs(ctx, userIDs, friendIDs)
+	return transactions, userIDs, err
 }
 
 func (ds *debtServiceImpl) getAssociatedIDs(profile dto.ProfileResponse) []uuid.UUID {

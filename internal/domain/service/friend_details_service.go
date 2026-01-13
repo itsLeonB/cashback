@@ -55,12 +55,12 @@ func (fds *friendDetailsServiceImpl) GetDetails(ctx context.Context, profileID, 
 		return fds.returnRedirectResponse(ctx, profileID, friendProfile.RealProfileID)
 	}
 
-	debtTransactions, err := fds.debtSvc.GetAllByProfileIDs(ctx, profileID, friendProfileID)
+	debtTransactions, userAssociatedIDs, err := fds.debtSvc.GetAllByProfileIDs(ctx, profileID, friendProfileID)
 	if err != nil {
 		return dto.FriendDetailsResponse{}, err
 	}
 
-	return mapper.MapToFriendDetailsResponse(profileID, response, debtTransactions)
+	return mapper.MapToFriendDetailsResponse(response, debtTransactions, userAssociatedIDs)
 }
 
 func (fds *friendDetailsServiceImpl) returnRedirectResponse(

@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/ungerr"
@@ -96,18 +97,12 @@ func MapToFriendDetails(userProfileID uuid.UUID, friendship users.Friendship) (d
 }
 
 func MapToFriendDetailsResponse(
-	userProfileID uuid.UUID,
 	friendDetails dto.FriendDetails,
-	debtTransactions []dto.DebtTransactionResponse,
+	debtTransactions []debts.DebtTransaction,
+	userAssociatedIDs []uuid.UUID,
 ) (dto.FriendDetailsResponse, error) {
-	txs := debtTransactions
-	if txs == nil {
-		txs = make([]dto.DebtTransactionResponse, 0)
-	}
-
 	return dto.FriendDetailsResponse{
-		Friend:       friendDetails,
-		Balance:      MapToFriendBalanceSummary(userProfileID, txs),
-		Transactions: txs,
+		Friend:  friendDetails,
+		Balance: MapToFriendBalanceSummary(debtTransactions, userAssociatedIDs),
 	}, nil
 }

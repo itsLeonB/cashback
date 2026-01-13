@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/ginkgo/pkg/server"
@@ -39,5 +41,21 @@ func (ptmh *ProfileTransferMethodHandler) HandleGetAllOwned() gin.HandlerFunc {
 		}
 
 		return ptmh.svc.GetAllByProfileID(ctx, profileID)
+	})
+}
+
+func (ptmh *ProfileTransferMethodHandler) HandleGetAllByFriendProfileID() gin.HandlerFunc {
+	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+		userProfileID, err := getProfileID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		friendProfileID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextProfileID.String())
+		if err != nil {
+			return nil, err
+		}
+
+		return ptmh.svc.GetAllByFriendProfileID(ctx, userProfileID, friendProfileID)
 	})
 }

@@ -16,17 +16,20 @@ type profileTransferMethodService struct {
 	profileSvc                ProfileService
 	profileTransferMethodRepo crud.Repository[debts.ProfileTransferMethod]
 	transferMethodSvc         TransferMethodService
+	friendshipSvc             FriendshipService
 }
 
 func NewProfileTransferMethodService(
 	profileSvc ProfileService,
 	profileTransferMethodRepo crud.Repository[debts.ProfileTransferMethod],
 	transferMethodSvc TransferMethodService,
+	friendshipSvc FriendshipService,
 ) *profileTransferMethodService {
 	return &profileTransferMethodService{
 		profileSvc,
 		profileTransferMethodRepo,
 		transferMethodSvc,
+		friendshipSvc,
 	}
 }
 
@@ -62,6 +65,26 @@ func (ptm *profileTransferMethodService) GetAllByProfileID(ctx context.Context, 
 		return nil, err
 	}
 
+	return ptm.getByProfileID(ctx, profileID)
+}
+
+func (ptm *profileTransferMethodService) GetAllByFriendProfileID(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error) {
+	if _, err := ptm.profileSvc.GetByIDs(ctx, []uuid.UUID{userProfileID, friendProfileID}); err != nil {
+		return nil, err
+	}
+
+	isFriends, _, err := ptm.friendshipSvc.IsFriends(ctx, userProfileID, friendProfileID)
+	if err != nil {
+		return nil, err
+	}
+	if !isFriends {
+		return nil, ungerr.ForbiddenError("users are not friends")
+	}
+
+	return ptm.getByProfileID(ctx, friendProfileID)
+}
+
+func (ptm *profileTransferMethodService) getByProfileID(ctx context.Context, profileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error) {
 	spec := crud.Specification[debts.ProfileTransferMethod]{}
 	spec.Model.ProfileID = profileID
 	spec.PreloadRelations = []string{"Method"}

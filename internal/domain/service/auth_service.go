@@ -31,7 +31,6 @@ type authServiceImpl struct {
 }
 
 func NewAuthService(
-	hashService sekure.HashService,
 	jwtService sekure.JWTService,
 	transactor crud.Transactor,
 	userSvc UserService,
@@ -39,9 +38,10 @@ func NewAuthService(
 	verificationURL string,
 	resetPasswordURL string,
 	oAuthSvc OAuthService,
+	hashCost int,
 ) AuthService {
 	return &authServiceImpl{
-		hashService,
+		sekure.NewHashService(hashCost),
 		jwtService,
 		transactor,
 		userSvc,

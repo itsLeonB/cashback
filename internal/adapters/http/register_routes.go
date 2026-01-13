@@ -43,8 +43,12 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 					profileRoutes.GET(transferMethodsRoute, handlers.ProfileTransferMethod.HandleGetAllOwned())
 				}
 
-				protectedRoutes.GET("/profiles", handlers.Profile.HandleSearch())
-				protectedRoutes.POST(fmt.Sprintf("/profiles/:%s/friend-requests", appconstant.ContextProfileID.String()), handlers.FriendshipRequest.HandleSend())
+				profilesRoutes := protectedRoutes.Group("/profiles")
+				{
+					profilesRoutes.GET("", handlers.Profile.HandleSearch())
+					profilesRoutes.POST(fmt.Sprintf("/:%s/friend-requests", appconstant.ContextProfileID.String()), handlers.FriendshipRequest.HandleSend())
+					profilesRoutes.GET(fmt.Sprintf("/:%s%s", appconstant.ContextProfileID.String(), transferMethodsRoute), handlers.ProfileTransferMethod.HandleGetAllByFriendProfileID())
+				}
 
 				friendshipRoutes := protectedRoutes.Group("/friendships")
 				{

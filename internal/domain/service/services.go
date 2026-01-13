@@ -123,4 +123,5 @@ type ExpenseBillService interface {
 type ProfileTransferMethodService interface {
 	Add(ctx context.Context, req dto.NewProfileTransferMethodRequest) error
 	GetAllByProfileID(ctx context.Context, profileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error)
+	GetAllByFriendProfileID(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error)
 }

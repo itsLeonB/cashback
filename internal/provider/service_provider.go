@@ -13,11 +13,9 @@ import (
 
 type Services struct {
 	// Auth
-	Auth  service.AuthService
-	OAuth service.OAuthService
+	Auth service.AuthService
 
 	// Users
-	User              service.UserService
 	Profile           service.ProfileService
 	Friendship        service.FriendshipService
 	FriendshipRequest service.FriendshipRequestService
@@ -46,41 +44,42 @@ func ProvideServices(
 	authConfig config.Auth,
 	appConfig config.App,
 ) *Services {
-	hash := sekure.NewHashService(authConfig.HashCost)
 	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)
 
 	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile)
 	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken)
-
-	oauth := service.NewOAuthService(repos.Transactor, repos.OAuthAccount, coreSvc.State, user, http.DefaultClient, jwt)
-	auth := service.NewAuthService(hash, jwt, repos.Transactor, user, coreSvc.Mail, appConfig.RegisterVerificationUrl, appConfig.ResetPasswordUrl, oauth)
-
 	friendship := service.NewFriendshipService(repos.Transactor, repos.Friendship, profile)
-	friendshipReq := service.NewFriendshipRequestService(repos.Transactor, friendship, profile, repos.FriendshipRequest)
 
 	transferMethod := service.NewTransferMethodService(repos.TransferMethod, coreSvc.Storage, appConfig.BucketNameTransferMethods, appembed.TransferMethodAssets)
 	debt := service.NewDebtService(debt.NewDebtCalculatorStrategies(), repos.DebtTransaction, transferMethod, friendship, profile)
-	friendDetail := service.NewFriendDetailsService(debt, profile, friendship)
 
 	expenseBill := service.NewExpenseBillService(appConfig.BucketNameExpenseBill, queues.taskQueue, repos.ExpenseBill, repos.Transactor, coreSvc.Image, coreSvc.OCR)
 	groupExpense := service.NewGroupExpenseService(friendship, repos.GroupExpense, repos.Transactor, fee.NewFeeCalculatorRegistry(), repos.OtherFee, repos.ExpenseBill, coreSvc.LLM, expenseBill, debt)
-	expenseItem := service.NewExpenseItemService(repos.Transactor, repos.GroupExpense, repos.ExpenseItem, groupExpense)
-	otherFee := service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense)
 
 	return &Services{
-		Auth:                  auth,
-		OAuth:                 oauth,
-		User:                  user,
-		Profile:               profile,
-		Friendship:            friendship,
-		FriendshipRequest:     friendshipReq,
-		FriendDetails:         friendDetail,
+		Auth: service.NewAuthService(
+			jwt,
+			repos.Transactor,
+			user,
+			coreSvc.Mail,
+			appConfig.RegisterVerificationUrl,
+			appConfig.ResetPasswordUrl,
+			service.NewOAuthService(repos.Transactor, repos.OAuthAccount, coreSvc.State, user, http.DefaultClient, jwt),
+			authConfig.HashCost,
+		),
+
+		Profile:           profile,
+		Friendship:        friendship,
+		FriendshipRequest: service.NewFriendshipRequestService(repos.Transactor, friendship, profile, repos.FriendshipRequest),
+		FriendDetails:     service.NewFriendDetailsService(debt, profile, friendship),
+
 		Debt:                  debt,
 		TransferMethod:        transferMethod,
-		ProfileTransferMethod: service.NewProfileTransferMethodService(profile, repos.ProfileTransferMethod, transferMethod),
-		GroupExpense:          groupExpense,
-		ExpenseBill:           expenseBill,
-		ExpenseItem:           expenseItem,
-		OtherFee:              otherFee,
+		ProfileTransferMethod: service.NewProfileTransferMethodService(profile, repos.ProfileTransferMethod, transferMethod, friendship),
+
+		GroupExpense: groupExpense,
+		ExpenseBill:  expenseBill,
+		ExpenseItem:  service.NewExpenseItemService(repos.Transactor, repos.GroupExpense, repos.ExpenseItem, groupExpense),
+		OtherFee:     service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense),
 	}
 }

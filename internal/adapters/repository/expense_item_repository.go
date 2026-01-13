@@ -40,7 +40,7 @@ func (ger *expenseItemRepositoryGorm) SyncParticipants(ctx context.Context, expe
 		// For PostgreSQL
 		if err := db.Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "expense_item_id"}, {Name: "profile_id"}},
-			DoUpdates: clause.AssignmentColumns([]string{"share"}),
+			DoUpdates: clause.AssignmentColumns([]string{"weight", "allocated_amount"}),
 		}).Create(&participants).Error; err != nil {
 			return ungerr.Wrap(err, appconstant.ErrDataUpdate)
 		}

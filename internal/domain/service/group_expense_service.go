@@ -206,7 +206,7 @@ func (ges *groupExpenseServiceImpl) calculateUpdatedExpenseParticipants(ctx cont
 			return nil, ungerr.UnprocessableEntityError(fmt.Sprintf("item %s does not have participants", item.Name))
 		}
 		for _, participant := range item.Participants {
-			amountToAdd := item.TotalAmount().Mul(participant.Share)
+			amountToAdd := participant.AllocatedAmount
 			expenseParticipant, ok := participantsMap[participant.ProfileID]
 			if !ok {
 				return nil, ungerr.Unknownf("profile ID: %s is not found in expense participants", participant.ProfileID.String())

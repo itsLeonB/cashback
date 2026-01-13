@@ -5,12 +5,12 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 )
 
-func TransferMethodToResponse(tm debts.TransferMethod) dto.TransferMethodResponse {
+func TransferMethodToResponse(tm debts.TransferMethod, iconURL string) dto.TransferMethodResponse {
 	return dto.TransferMethodResponse{
 		BaseDTO:  BaseToDTO(tm.BaseEntity),
 		Name:     tm.Name,
 		Display:  tm.Display,
-		IconURL:  tm.IconURL.String,
+		IconURL:  iconURL,
 		ParentID: tm.ParentID.UUID,
 	}
 }

@@ -45,3 +45,8 @@ type FriendshipRepository interface {
 	FindFirstBySpec(ctx context.Context, spec users.FriendshipSpecification) (users.Friendship, error)
 	FindByProfileIDs(ctx context.Context, profileID1, profileID2 uuid.UUID) (users.Friendship, error)
 }
+
+type TransferMethodRepository interface {
+	crud.Repository[debts.TransferMethod]
+	GetAllByParentFilter(ctx context.Context, filter debts.ParentFilter, profileID uuid.UUID) ([]debts.TransferMethod, error)
+}

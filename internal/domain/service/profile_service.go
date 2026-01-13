@@ -66,7 +66,7 @@ func (ps *profileServiceImpl) Create(ctx context.Context, request dto.NewProfile
 }
 
 func (ps *profileServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (dto.ProfileResponse, error) {
-	profile, err := ps.getByID(ctx, id)
+	profile, err := ps.GetEntityByID(ctx, id)
 	if err != nil {
 		return dto.ProfileResponse{}, err
 	}
@@ -123,7 +123,7 @@ func (ps *profileServiceImpl) GetRealProfileID(ctx context.Context, anonProfileI
 	return relation.RealProfileID, err
 }
 
-func (ps *profileServiceImpl) getByID(ctx context.Context, id uuid.UUID) (users.UserProfile, error) {
+func (ps *profileServiceImpl) GetEntityByID(ctx context.Context, id uuid.UUID) (users.UserProfile, error) {
 	spec := crud.Specification[users.UserProfile]{}
 	spec.Model.ID = id
 	profile, err := ps.profileRepo.FindFirst(ctx, spec)
@@ -218,10 +218,10 @@ func (ps *profileServiceImpl) Associate(ctx context.Context, userProfileID, real
 			return ungerr.BadRequestError("userProfileID / realProfileID / anonProfileID cannot be nil")
 		}
 
-		if _, err := ps.getByID(ctx, realProfileID); err != nil {
+		if _, err := ps.GetEntityByID(ctx, realProfileID); err != nil {
 			return err
 		}
-		if _, err := ps.getByID(ctx, anonProfileID); err != nil {
+		if _, err := ps.GetEntityByID(ctx, anonProfileID); err != nil {
 			return err
 		}
 

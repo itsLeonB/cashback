@@ -33,15 +33,22 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 
 			protectedRoutes := v1.Group("/", middlewares.auth)
 			{
+				transferMethodsRoute := "/transfer-methods"
 				profileRoutes := protectedRoutes.Group("/profile")
 				{
 					profileRoutes.GET("", handlers.Profile.HandleProfile())
 					profileRoutes.PATCH("", handlers.Profile.HandleUpdate())
 					profileRoutes.POST("/associate", handlers.Profile.HandleAssociate())
+					profileRoutes.POST(transferMethodsRoute, handlers.ProfileTransferMethod.HandleAdd())
+					profileRoutes.GET(transferMethodsRoute, handlers.ProfileTransferMethod.HandleGetAllOwned())
 				}
 
-				protectedRoutes.GET("/profiles", handlers.Profile.HandleSearch())
-				protectedRoutes.POST(fmt.Sprintf("/profiles/:%s/friend-requests", appconstant.ContextProfileID.String()), handlers.FriendshipRequest.HandleSend())
+				profilesRoutes := protectedRoutes.Group("/profiles")
+				{
+					profilesRoutes.GET("", handlers.Profile.HandleSearch())
+					profilesRoutes.POST(fmt.Sprintf("/:%s/friend-requests", appconstant.ContextProfileID.String()), handlers.FriendshipRequest.HandleSend())
+					profilesRoutes.GET(fmt.Sprintf("/:%s%s", appconstant.ContextProfileID.String(), transferMethodsRoute), handlers.ProfileTransferMethod.HandleGetAllByFriendProfileID())
+				}
 
 				friendshipRoutes := protectedRoutes.Group("/friendships")
 				{
@@ -60,7 +67,7 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 					friendRequestRoutes.POST(receivedFriendRequestRoute, handlers.FriendshipRequest.HandleAccept())
 				}
 
-				protectedRoutes.GET("/transfer-methods", handlers.TransferMethod.HandleGetAll())
+				protectedRoutes.GET(transferMethodsRoute, handlers.TransferMethod.HandleGetAll())
 				protectedRoutes.POST("/debts", handlers.Debt.HandleCreate())
 				protectedRoutes.GET("/debts", handlers.Debt.HandleGetAll())
 

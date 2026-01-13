@@ -9,27 +9,32 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/service/cache"
 	"github.com/itsLeonB/cashback/internal/core/service/storage"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
+	"github.com/itsLeonB/cashback/internal/domain/repository"
+	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 )
 
 type transferMethodServiceImpl struct {
-	transferMethodRepo crud.Repository[debts.TransferMethod]
+	transferMethodRepo repository.TransferMethodRepository
 	storageRepo        storage.StorageRepository
 	bucketName         string
 	fs                 embed.FS
+	urlCache           cache.Cache[string]
 }
 
 func NewTransferMethodService(
-	transferMethodRepo crud.Repository[debts.TransferMethod],
+	transferMethodRepo repository.TransferMethodRepository,
 	storageRepo storage.StorageRepository,
 	bucketName string,
 	fs embed.FS,
@@ -39,26 +44,51 @@ func NewTransferMethodService(
 		storageRepo,
 		bucketName,
 		fs,
+		cache.NewInMemoryCache[string](iconURLExpiry),
 	}
 }
 
 var spaceRegex = regexp.MustCompile(`\s+`)
+var iconURLExpiry = 7 * 24 * time.Hour // 7 days
 
-func (tms *transferMethodServiceImpl) GetAll(ctx context.Context) ([]dto.TransferMethodResponse, error) {
-	transferMethods, err := tms.transferMethodRepo.FindAll(ctx, crud.Specification[debts.TransferMethod]{})
+func (tms *transferMethodServiceImpl) GetAll(ctx context.Context, filter debts.ParentFilter, profileID uuid.UUID) ([]dto.TransferMethodResponse, error) {
+	methods, err := tms.transferMethodRepo.GetAllByParentFilter(ctx, filter, profileID)
 	if err != nil {
 		return nil, err
 	}
 
-	responses := make([]dto.TransferMethodResponse, 0, len(transferMethods))
-	for _, tm := range transferMethods {
-		if tm.ParentID.Valid {
-			continue
-		}
-		responses = append(responses, mapper.TransferMethodToResponse(tm))
-	}
+	return ezutil.MapSlice(methods, tms.SignedURLPopulator(ctx)), nil
+}
 
-	return responses, nil
+func (tms *transferMethodServiceImpl) SignedURLPopulator(ctx context.Context) func(debts.TransferMethod) dto.TransferMethodResponse {
+	return func(tm debts.TransferMethod) dto.TransferMethodResponse {
+		if !tm.IconURL.Valid {
+			return mapper.TransferMethodToResponse(tm, "")
+		}
+
+		url, ok := tms.urlCache.Get(ctx, tm.IconURL.String, tms.getIconURL)
+		if !ok {
+			return mapper.TransferMethodToResponse(tm, "")
+		}
+
+		return mapper.TransferMethodToResponse(tm, url)
+	}
+}
+
+func (tms *transferMethodServiceImpl) getIconURL(ctx context.Context, objectKey string) (string, bool) {
+	url, err := tms.storageRepo.GetSignedURL(
+		ctx,
+		storage.FileIdentifier{
+			BucketName: tms.bucketName,
+			ObjectKey:  objectKey,
+		},
+		iconURLExpiry,
+	)
+	if err != nil {
+		logger.Error(err)
+		return "", false
+	}
+	return url, true
 }
 
 func (tms *transferMethodServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (debts.TransferMethod, error) {
@@ -149,6 +179,10 @@ func (tms *transferMethodServiceImpl) SyncMethods(ctx context.Context) error {
 
 	_, err = tms.transferMethodRepo.SaveMany(ctx, newMethods)
 	return err
+}
+
+func (tms *transferMethodServiceImpl) Shutdown() error {
+	return tms.urlCache.Shutdown()
 }
 
 func (tms *transferMethodServiceImpl) prepareForMethodSync(ctx context.Context) ([]debts.TransferMethod, map[string]struct{}, error) {

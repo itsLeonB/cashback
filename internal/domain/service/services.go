@@ -44,6 +44,7 @@ type ProfileService interface {
 	Associate(ctx context.Context, userProfileID, realProfileID, anonProfileID uuid.UUID) error
 	GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]dto.ProfileResponse, error)
 	GetRealProfileID(ctx context.Context, anonProfileID uuid.UUID) (uuid.UUID, error)
+	GetEntityByID(ctx context.Context, id uuid.UUID) (users.UserProfile, error)
 }
 
 type FriendshipService interface {
@@ -77,10 +78,12 @@ type DebtService interface {
 }
 
 type TransferMethodService interface {
-	GetAll(ctx context.Context) ([]dto.TransferMethodResponse, error)
+	GetAll(ctx context.Context, filter debts.ParentFilter, profileID uuid.UUID) ([]dto.TransferMethodResponse, error)
 	GetByID(ctx context.Context, id uuid.UUID) (debts.TransferMethod, error)
 	GetByName(ctx context.Context, name string) (debts.TransferMethod, error)
 	SyncMethods(ctx context.Context) error
+	SignedURLPopulator(ctx context.Context) func(debts.TransferMethod) dto.TransferMethodResponse
+	Shutdown() error
 }
 
 type GroupExpenseService interface {
@@ -115,4 +118,10 @@ type ExpenseBillService interface {
 	ExtractBillText(ctx context.Context, msg message.ExpenseBillUploaded) error
 	Cleanup(ctx context.Context) error
 	TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) error
+}
+
+type ProfileTransferMethodService interface {
+	Add(ctx context.Context, req dto.NewProfileTransferMethodRequest) error
+	GetAllByProfileID(ctx context.Context, profileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error)
+	GetAllByFriendProfileID(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error)
 }

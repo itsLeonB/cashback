@@ -5,16 +5,17 @@ import (
 )
 
 type Handlers struct {
-	Auth              *AuthHandler
-	Friendship        *FriendshipHandler
-	FriendshipRequest *FriendshipRequestHandler
-	Profile           *ProfileHandler
-	TransferMethod    *TransferMethodHandler
-	Debt              *DebtHandler
-	GroupExpense      *groupExpenseHandler
-	ExpenseItem       *ExpenseItemHandler
-	OtherFee          *OtherFeeHandler
-	ExpenseBill       *ExpenseBillHandler
+	Auth                  *AuthHandler
+	Friendship            *FriendshipHandler
+	FriendshipRequest     *FriendshipRequestHandler
+	Profile               *ProfileHandler
+	TransferMethod        *TransferMethodHandler
+	Debt                  *DebtHandler
+	GroupExpense          *groupExpenseHandler
+	ExpenseItem           *ExpenseItemHandler
+	OtherFee              *OtherFeeHandler
+	ExpenseBill           *ExpenseBillHandler
+	ProfileTransferMethod *ProfileTransferMethodHandler
 }
 
 func ProvideHandlers(services *provider.Services) *Handlers {
@@ -29,5 +30,6 @@ func ProvideHandlers(services *provider.Services) *Handlers {
 		NewExpenseItemHandler(services.ExpenseItem),
 		NewOtherFeeHandler(services.OtherFee),
 		NewExpenseBillHandler(services.ExpenseBill),
+		&ProfileTransferMethodHandler{services.ProfileTransferMethod},
 	}
 }

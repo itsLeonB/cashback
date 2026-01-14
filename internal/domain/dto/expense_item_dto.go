@@ -21,13 +21,12 @@ type ExpenseItemResponse struct {
 }
 
 type UpdateExpenseItemRequest struct {
-	UserProfileID  uuid.UUID                `json:"-"`
-	ID             uuid.UUID                `json:"-"`
-	GroupExpenseID uuid.UUID                `json:"-"`
-	Name           string                   `json:"name" binding:"required,min=3"`
-	Amount         decimal.Decimal          `json:"amount" binding:"required"`
-	Quantity       int                      `json:"quantity" binding:"required,min=1"`
-	Participants   []ItemParticipantRequest `json:"participants" binding:"dive"`
+	UserProfileID  uuid.UUID       `json:"-"`
+	ID             uuid.UUID       `json:"-"`
+	GroupExpenseID uuid.UUID       `json:"-"`
+	Name           string          `json:"name" binding:"required,min=3"`
+	Amount         decimal.Decimal `json:"amount" binding:"required"`
+	Quantity       int             `json:"quantity" binding:"required,min=1"`
 }
 
 type ItemParticipantRequest struct {

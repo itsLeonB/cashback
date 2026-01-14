@@ -96,11 +96,12 @@ type GroupExpenseService interface {
 
 	GetUnconfirmedGroupExpenseForUpdate(ctx context.Context, profileID, id uuid.UUID) (expenses.GroupExpense, error)
 	ParseFromBillText(ctx context.Context, msg message.ExpenseBillTextExtracted) error
+	Recalculate(ctx context.Context, userProfileID, groupExpenseID uuid.UUID, amountChanged bool) error
 }
 
 type ExpenseItemService interface {
-	Add(ctx context.Context, request dto.NewExpenseItemRequest) (dto.ExpenseItemResponse, error)
-	Update(ctx context.Context, request dto.UpdateExpenseItemRequest) (dto.ExpenseItemResponse, error)
+	Add(ctx context.Context, request dto.NewExpenseItemRequest) error
+	Update(ctx context.Context, request dto.UpdateExpenseItemRequest) error
 	Remove(ctx context.Context, groupExpenseID, expenseItemID, userProfileID uuid.UUID) error
 	SyncParticipants(ctx context.Context, req dto.SyncItemParticipantsRequest) error
 }

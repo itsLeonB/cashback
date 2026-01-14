@@ -15,22 +15,6 @@ func NewExpenseItemRequestToData(req dto.NewExpenseItemRequest) expenses.Expense
 	}
 }
 
-func UpdateExpenseItemRequestToData(req dto.UpdateExpenseItemRequest) expenses.ExpenseItem {
-	return expenses.ExpenseItem{
-		Name:         req.Name,
-		Amount:       req.Amount,
-		Quantity:     req.Quantity,
-		Participants: ezutil.MapSlice(req.Participants, itemParticipantRequestToData),
-	}
-}
-
-func itemParticipantRequestToData(req dto.ItemParticipantRequest) expenses.ItemParticipant {
-	return expenses.ItemParticipant{
-		ProfileID: req.ProfileID,
-		Weight:    req.Weight,
-	}
-}
-
 func ExpenseItemRequestToEntity(request dto.NewExpenseItemRequest) expenses.ExpenseItem {
 	return expenses.ExpenseItem{
 		GroupExpenseID: request.GroupExpenseID,

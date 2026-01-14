@@ -17,6 +17,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
+	"github.com/itsLeonB/cashback/internal/domain/service/expense"
 	"github.com/itsLeonB/cashback/internal/domain/service/fee"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
@@ -34,6 +35,7 @@ type groupExpenseServiceImpl struct {
 	llmService            llm.LLMService
 	billSvc               ExpenseBillService
 	debtSvc               DebtService
+	calculationSvc        expense.CalculationService
 }
 
 func NewGroupExpenseService(
@@ -57,6 +59,7 @@ func NewGroupExpenseService(
 		llmService,
 		billSvc,
 		debtSvc,
+		expense.NewCalculationService(),
 	}
 }
 
@@ -446,6 +449,24 @@ func (ges *groupExpenseServiceImpl) UpdateDraft(ctx context.Context, expense exp
 	}
 
 	_, err := ges.expenseRepo.Update(ctx, expense)
+	return err
+}
+
+func (ges *groupExpenseServiceImpl) Recalculate(ctx context.Context, userProfileID, groupExpenseID uuid.UUID, amountChanged bool) error {
+	groupExpense, err := ges.GetUnconfirmedGroupExpenseForUpdate(ctx, userProfileID, groupExpenseID)
+	if err != nil {
+		return err
+	}
+
+	recalculatedExpense, recalculated, err := ges.calculationSvc.RecalculateExpense(groupExpense, amountChanged)
+	if err != nil {
+		return err
+	}
+	if !recalculated {
+		return nil
+	}
+
+	_, err = ges.expenseRepo.Update(ctx, recalculatedExpense)
 	return err
 }
 

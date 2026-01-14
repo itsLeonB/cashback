@@ -79,7 +79,7 @@ func ProvideServices(
 
 		GroupExpense: groupExpense,
 		ExpenseBill:  expenseBill,
-		ExpenseItem:  service.NewExpenseItemService(repos.Transactor, repos.GroupExpense, repos.ExpenseItem, groupExpense),
+		ExpenseItem:  service.NewExpenseItemService(repos.Transactor, repos.ExpenseItem, groupExpense),
 		OtherFee:     service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense),
 	}
 }

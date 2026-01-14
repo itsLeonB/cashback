@@ -43,7 +43,7 @@ func (geh *ExpenseItemHandler) HandleAdd() gin.HandlerFunc {
 		request.UserProfileID = userProfileID
 		request.GroupExpenseID = groupExpenseID
 
-		return geh.expenseItemSvc.Add(ctx, request)
+		return nil, geh.expenseItemSvc.Add(ctx, request)
 	})
 }
 
@@ -73,7 +73,7 @@ func (geh *ExpenseItemHandler) HandleUpdate() gin.HandlerFunc {
 		request.GroupExpenseID = groupExpenseID
 		request.ID = expenseItemID
 
-		return geh.expenseItemSvc.Update(ctx, request)
+		return nil, geh.expenseItemSvc.Update(ctx, request)
 	})
 }
 

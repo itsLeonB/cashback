@@ -17,207 +17,77 @@ import (
 )
 
 type expenseItemServiceImpl struct {
-	transactor             crud.Transactor
-	groupExpenseRepository repository.GroupExpenseRepository
-	expenseItemRepository  repository.ExpenseItemRepository
-	groupExpenseSvc        GroupExpenseService
-	allocationSvc          expense.AllocationService
+	transactor            crud.Transactor
+	expenseItemRepository repository.ExpenseItemRepository
+	groupExpenseSvc       GroupExpenseService
+	allocationSvc         expense.AllocationService
 }
 
 func NewExpenseItemService(
 	transactor crud.Transactor,
-	groupExpenseRepository repository.GroupExpenseRepository,
 	expenseItemRepository repository.ExpenseItemRepository,
 	groupExpenseSvc GroupExpenseService,
 ) ExpenseItemService {
 	return &expenseItemServiceImpl{
 		transactor,
-		groupExpenseRepository,
 		expenseItemRepository,
 		groupExpenseSvc,
 		expense.NewAllocationService(),
 	}
 }
 
-func (ges *expenseItemServiceImpl) Add(ctx context.Context, req dto.NewExpenseItemRequest) (dto.ExpenseItemResponse, error) {
-	var response dto.ExpenseItemResponse
-
-	if !req.Amount.IsPositive() {
-		return dto.ExpenseItemResponse{}, ungerr.UnprocessableEntityError(appconstant.ErrNonPositiveAmount)
+func (ges *expenseItemServiceImpl) Add(ctx context.Context, req dto.NewExpenseItemRequest) error {
+	if req.Amount.IsZero() {
+		return ungerr.UnprocessableEntityError(appconstant.ErrAmountZero)
 	}
 
-	err := ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		groupExpense, err := ges.groupExpenseSvc.GetUnconfirmedGroupExpenseForUpdate(ctx, req.UserProfileID, req.GroupExpenseID)
-		if err != nil {
-			return err
-		}
-
+	return ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		expenseItem := mapper.ExpenseItemRequestToEntity(req)
-
-		itemTotalAmount := expenseItem.TotalAmount()
-		groupExpense.TotalAmount = groupExpense.TotalAmount.Add(itemTotalAmount)
-		groupExpense.ItemsTotal = groupExpense.ItemsTotal.Add(itemTotalAmount)
-		groupExpense.Status = expenses.DraftExpense
-		if _, err = ges.groupExpenseRepository.Update(ctx, groupExpense); err != nil {
-			return err
-		}
-
-		insertedItem, err := ges.expenseItemRepository.Insert(ctx, expenseItem)
+		_, err := ges.expenseItemRepository.Insert(ctx, expenseItem)
 		if err != nil {
 			return err
 		}
 
-		response = mapper.ExpenseItemToResponse(insertedItem, req.UserProfileID)
-
-		return nil
+		return ges.groupExpenseSvc.Recalculate(ctx, req.UserProfileID, req.GroupExpenseID, true)
 	})
-	return response, err
 }
 
-func (ges *expenseItemServiceImpl) Update(ctx context.Context, req dto.UpdateExpenseItemRequest) (dto.ExpenseItemResponse, error) {
-	var response dto.ExpenseItemResponse
-
-	if !req.Amount.IsPositive() {
-		return dto.ExpenseItemResponse{}, ungerr.UnprocessableEntityError(appconstant.ErrNonPositiveAmount)
+func (ges *expenseItemServiceImpl) Update(ctx context.Context, req dto.UpdateExpenseItemRequest) error {
+	if req.Amount.IsZero() {
+		return ungerr.UnprocessableEntityError(appconstant.ErrAmountZero)
 	}
 
-	err := ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		expenseItem, err := ges.getExpenseItemByIDForUpdate(ctx, req.ID, req.GroupExpenseID)
+	return ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		// 1. Get expense item with validation
+		expenseItem, err := ges.getItemForUpdate(ctx, req.ID, req.GroupExpenseID)
 		if err != nil {
 			return err
 		}
 
-		if ezutil.CompareUUID(req.GroupExpenseID, expenseItem.GroupExpenseID) != 0 {
-			return ungerr.UnprocessableEntityError("mismatched group expense ID")
-		}
-
-		groupExpense, err := ges.groupExpenseSvc.GetUnconfirmedGroupExpenseForUpdate(ctx, req.UserProfileID, expenseItem.GroupExpenseID)
-		if err != nil {
-			return err
-		}
-
+		// 2. Patch and update expense item
 		patchedExpenseItem := mapper.PatchExpenseItemWithRequest(expenseItem, req)
-
 		updatedExpenseItem, err := ges.expenseItemRepository.Update(ctx, patchedExpenseItem)
 		if err != nil {
 			return err
 		}
 
-		if len(req.Participants) > 0 {
-			participantEntities := ezutil.MapSlice(req.Participants, mapper.ItemParticipantRequestToEntity)
+		amountChanged := expenseItem.TotalAmount().Compare(updatedExpenseItem.TotalAmount()) != 0
 
-			// Allocate amounts using the allocation service
-			allocatedParticipants, err := ges.allocationSvc.AllocateAmounts(updatedExpenseItem.TotalAmount(), participantEntities)
-			if err != nil {
-				return err
-			}
-
-			if err := ges.expenseItemRepository.SyncParticipants(ctx, updatedExpenseItem.ID, allocatedParticipants); err != nil {
-				return err
-			}
-
-			updatedExpenseItem.Participants = allocatedParticipants
-		}
-
-		newItemSet := []expenses.ExpenseItem{}
-		for _, item := range groupExpense.Items {
-			if item.ID == updatedExpenseItem.ID {
-				newItemSet = append(newItemSet, updatedExpenseItem)
-			} else {
-				newItemSet = append(newItemSet, item)
-			}
-		}
-
-		if isReadyExpense(newItemSet) {
-			groupExpense.Status = expenses.ReadyExpense
-		} else {
-			groupExpense.Status = expenses.DraftExpense
-		}
-
-		oldAmount := expenseItem.TotalAmount()
-		newAmount := updatedExpenseItem.TotalAmount()
-
-		if oldAmount.Cmp(newAmount) != 0 {
-			groupExpense.TotalAmount = groupExpense.TotalAmount.
-				Sub(oldAmount).
-				Add(newAmount)
-
-			groupExpense.ItemsTotal = groupExpense.ItemsTotal.
-				Sub(oldAmount).
-				Add(newAmount)
-
-			if _, err := ges.groupExpenseRepository.Update(ctx, groupExpense); err != nil {
+		// 3. Handle amount change - update allocations if amount changed
+		if amountChanged {
+			if _, err = ges.allocateAndSyncParticipants(ctx, updatedExpenseItem); err != nil {
 				return err
 			}
 		}
 
-		response = mapper.ExpenseItemToResponse(updatedExpenseItem, req.UserProfileID)
-
-		return nil
+		return ges.groupExpenseSvc.Recalculate(ctx, req.UserProfileID, req.GroupExpenseID, amountChanged)
 	})
-	return response, err
-}
-
-func isReadyExpense(items []expenses.ExpenseItem) bool {
-	if len(items) == 0 {
-		return false
-	}
-	for _, item := range items {
-		if len(item.Participants) == 0 {
-			return false
-		}
-	}
-	return true
-}
-
-func (ges *expenseItemServiceImpl) getExpenseItemByIDForUpdate(ctx context.Context, expenseItemID, groupExpenseID uuid.UUID) (expenses.ExpenseItem, error) {
-	spec := crud.Specification[expenses.ExpenseItem]{}
-	spec.Model.ID = expenseItemID
-	spec.Model.GroupExpenseID = groupExpenseID
-	spec.ForUpdate = true
-	spec.PreloadRelations = []string{"Participants"}
-
-	expenseItem, err := ges.getExpenseItemBySpec(ctx, spec)
-	if err != nil {
-		return expenses.ExpenseItem{}, err
-	}
-
-	return expenseItem, nil
-}
-
-func (ges *expenseItemServiceImpl) getExpenseItemBySpec(ctx context.Context, spec crud.Specification[expenses.ExpenseItem]) (expenses.ExpenseItem, error) {
-	expenseItem, err := ges.expenseItemRepository.FindFirst(ctx, spec)
-	if err != nil {
-		return expenses.ExpenseItem{}, err
-	}
-	if expenseItem.IsZero() {
-		return expenses.ExpenseItem{}, ungerr.NotFoundError(fmt.Sprintf("expense item with ID %s is not found", spec.Model.ID))
-	}
-	return expenseItem, nil
 }
 
 func (ges *expenseItemServiceImpl) Remove(ctx context.Context, groupExpenseID, expenseItemID, userProfileID uuid.UUID) error {
 	return ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		groupExpense, err := ges.groupExpenseSvc.GetUnconfirmedGroupExpenseForUpdate(ctx, userProfileID, groupExpenseID)
+		expenseItem, err := ges.getItemForUpdate(ctx, expenseItemID, groupExpenseID)
 		if err != nil {
-			return err
-		}
-
-		expenseItem, err := ges.getExpenseItemByIDForUpdate(ctx, expenseItemID, groupExpenseID)
-		if err != nil {
-			return err
-		}
-
-		itemAmount := expenseItem.TotalAmount()
-		groupExpense.TotalAmount = groupExpense.TotalAmount.Sub(itemAmount)
-		groupExpense.ItemsTotal = groupExpense.ItemsTotal.Sub(itemAmount)
-
-		if len(groupExpense.Items) <= 1 {
-			// Removing an item results in empty items
-			groupExpense.Status = expenses.DraftExpense
-		}
-
-		if _, err = ges.groupExpenseRepository.Update(ctx, groupExpense); err != nil {
 			return err
 		}
 
@@ -225,51 +95,55 @@ func (ges *expenseItemServiceImpl) Remove(ctx context.Context, groupExpenseID, e
 			return err
 		}
 
-		return nil
+		return ges.groupExpenseSvc.Recalculate(ctx, userProfileID, groupExpenseID, true)
 	})
 }
 
 func (ges *expenseItemServiceImpl) SyncParticipants(ctx context.Context, req dto.SyncItemParticipantsRequest) error {
 	return ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		expenseItem, err := ges.getExpenseItemByIDForUpdate(ctx, req.ID, req.GroupExpenseID)
+		expenseItem, err := ges.getItemForUpdate(ctx, req.ID, req.GroupExpenseID)
 		if err != nil {
 			return err
 		}
 
-		groupExpense, err := ges.groupExpenseSvc.GetUnconfirmedGroupExpenseForUpdate(ctx, req.ProfileID, expenseItem.GroupExpenseID)
+		expenseItem.Participants = ezutil.MapSlice(req.Participants, mapper.ItemParticipantRequestToEntity)
+		expenseItem, err = ges.allocateAndSyncParticipants(ctx, expenseItem)
 		if err != nil {
 			return err
 		}
 
-		participantEntities := ezutil.MapSlice(req.Participants, mapper.ItemParticipantRequestToEntity)
-
-		// Allocate amounts using the allocation service
-		allocatedParticipants, err := ges.allocationSvc.AllocateAmounts(expenseItem.TotalAmount(), participantEntities)
-		if err != nil {
-			return err
-		}
-
-		expenseItem.Participants = allocatedParticipants
-
-		newItemSet := []expenses.ExpenseItem{}
-		for _, item := range groupExpense.Items {
-			if item.ID == expenseItem.ID {
-				newItemSet = append(newItemSet, expenseItem)
-			} else {
-				newItemSet = append(newItemSet, item)
-			}
-		}
-
-		if isReadyExpense(newItemSet) {
-			groupExpense.Status = expenses.ReadyExpense
-		} else {
-			groupExpense.Status = expenses.DraftExpense
-		}
-
-		if _, err := ges.groupExpenseRepository.Update(ctx, groupExpense); err != nil {
-			return err
-		}
-
-		return ges.expenseItemRepository.SyncParticipants(ctx, expenseItem.ID, allocatedParticipants)
+		return ges.groupExpenseSvc.Recalculate(ctx, req.ProfileID, req.GroupExpenseID, false)
 	})
+}
+
+func (ges *expenseItemServiceImpl) allocateAndSyncParticipants(ctx context.Context, expenseItem expenses.ExpenseItem) (expenses.ExpenseItem, error) {
+	allocatedParticipants, err := ges.allocationSvc.AllocateAmounts(expenseItem.TotalAmount(), expenseItem.Participants)
+	if err != nil {
+		return expenses.ExpenseItem{}, err
+	}
+
+	if err := ges.expenseItemRepository.SyncParticipants(ctx, expenseItem.ID, allocatedParticipants); err != nil {
+		return expenses.ExpenseItem{}, err
+	}
+
+	expenseItem.Participants = allocatedParticipants
+	return expenseItem, nil
+}
+
+func (ges *expenseItemServiceImpl) getItemForUpdate(ctx context.Context, expenseItemID, groupExpenseID uuid.UUID) (expenses.ExpenseItem, error) {
+	spec := crud.Specification[expenses.ExpenseItem]{}
+	spec.Model.ID = expenseItemID
+	spec.Model.GroupExpenseID = groupExpenseID
+	spec.ForUpdate = true
+	spec.PreloadRelations = []string{"Participants"}
+
+	expenseItem, err := ges.expenseItemRepository.FindFirst(ctx, spec)
+	if err != nil {
+		return expenses.ExpenseItem{}, err
+	}
+	if expenseItem.IsZero() {
+		return expenses.ExpenseItem{}, ungerr.NotFoundError(fmt.Sprintf("expense item with ID %s is not found", spec.Model.ID))
+	}
+
+	return expenseItem, nil
 }

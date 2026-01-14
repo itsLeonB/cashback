@@ -134,6 +134,29 @@ func TestCalculationServiceRecalculateExpense(t *testing.T) {
 			wantErr:         false,
 		},
 		{
+			name: "negative total amount returns error",
+			args: args{
+				expense: expenses.GroupExpense{
+					Status: expenses.DraftExpense,
+					Items: []expenses.ExpenseItem{
+						{
+							Amount:   decimal.NewFromInt(-10),
+							Quantity: 1,
+							Participants: []expenses.ItemParticipant{
+								{ProfileID: uuid.New()},
+							},
+						},
+					},
+				},
+				amountChanged: true,
+			},
+			wantItemsTotal:  decimal.Zero,
+			wantTotalAmount: decimal.Zero,
+			wantStatus:      expenses.DraftExpense,
+			wantChanged:     false,
+			wantErr:         true,
+		},
+		{
 			name: "multiple items aggregated correctly",
 			args: args{
 				expense: expenses.GroupExpense{

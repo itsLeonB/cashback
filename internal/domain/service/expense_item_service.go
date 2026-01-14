@@ -64,11 +64,7 @@ func (ges *expenseItemServiceImpl) Update(ctx context.Context, req dto.UpdateExp
 			return err
 		}
 
-		if ezutil.CompareUUID(req.GroupExpenseID, expenseItem.GroupExpenseID) != 0 {
-			return ungerr.UnprocessableEntityError("mismatched group expense ID")
-		}
-
-		// 3. Patch and update expense item
+		// 2. Patch and update expense item
 		patchedExpenseItem := mapper.PatchExpenseItemWithRequest(expenseItem, req)
 		updatedExpenseItem, err := ges.expenseItemRepository.Update(ctx, patchedExpenseItem)
 		if err != nil {
@@ -77,7 +73,7 @@ func (ges *expenseItemServiceImpl) Update(ctx context.Context, req dto.UpdateExp
 
 		amountChanged := expenseItem.TotalAmount().Compare(updatedExpenseItem.TotalAmount()) != 0
 
-		// 4. Handle amount change - update allocations if amount changed
+		// 3. Handle amount change - update allocations if amount changed
 		if amountChanged {
 			if _, err = ges.allocateAndSyncParticipants(ctx, updatedExpenseItem); err != nil {
 				return err

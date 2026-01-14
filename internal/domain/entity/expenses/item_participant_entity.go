@@ -9,9 +9,10 @@ import (
 
 type ItemParticipant struct {
 	crud.BaseEntity
-	ExpenseItemID uuid.UUID
-	ProfileID     uuid.UUID
-	Share         decimal.Decimal
+	ExpenseItemID   uuid.UUID
+	ProfileID       uuid.UUID
+	Weight          int
+	AllocatedAmount decimal.Decimal
 
 	// Relationships
 	Profile users.UserProfile `gorm:"foreignKey:ProfileID"`

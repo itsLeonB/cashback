@@ -163,14 +163,20 @@ func ToConfirmationResponse(expense expenses.GroupExpense, userProfileID uuid.UU
 			}
 
 			baseAmount := item.TotalAmount()
-			shareAmount := baseAmount.Mul(itemParticipant.Share)
+			shareAmount := itemParticipant.AllocatedAmount
 			itemsTotal = itemsTotal.Add(shareAmount)
+
+			// Calculate share rate for display purposes
+			shareRate := decimal.Zero
+			if baseAmount.IsPositive() {
+				shareRate = shareAmount.Div(baseAmount)
+			}
 
 			items = append(items, dto.ConfirmedItemShare{
 				ID:          item.ID,
 				Name:        item.Name,
 				BaseAmount:  baseAmount,
-				ShareRate:   itemParticipant.Share,
+				ShareRate:   shareRate,
 				ShareAmount: shareAmount,
 			})
 		}
@@ -189,7 +195,7 @@ func ToConfirmationResponse(expense expenses.GroupExpense, userProfileID uuid.UU
 
 			var shareRate decimal.Decimal
 			if !feeParticipant.ShareAmount.IsZero() {
-				shareRate = fee.Amount.Div(feeParticipant.ShareAmount)
+				shareRate = feeParticipant.ShareAmount.Div(fee.Amount)
 			}
 
 			fees = append(fees, dto.ConfirmedItemShare{

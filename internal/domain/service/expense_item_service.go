@@ -10,6 +10,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
+	"github.com/itsLeonB/cashback/internal/domain/service/expense"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -20,6 +21,7 @@ type expenseItemServiceImpl struct {
 	groupExpenseRepository repository.GroupExpenseRepository
 	expenseItemRepository  repository.ExpenseItemRepository
 	groupExpenseSvc        GroupExpenseService
+	allocationSvc          expense.AllocationService
 }
 
 func NewExpenseItemService(
@@ -33,6 +35,7 @@ func NewExpenseItemService(
 		groupExpenseRepository,
 		expenseItemRepository,
 		groupExpenseSvc,
+		expense.NewAllocationService(),
 	}
 }
 
@@ -101,12 +104,19 @@ func (ges *expenseItemServiceImpl) Update(ctx context.Context, req dto.UpdateExp
 		}
 
 		if len(req.Participants) > 0 {
-			updatedParticipants := ezutil.MapSlice(req.Participants, mapper.ItemParticipantRequestToEntity)
-			if err := ges.expenseItemRepository.SyncParticipants(ctx, updatedExpenseItem.ID, updatedParticipants); err != nil {
+			participantEntities := ezutil.MapSlice(req.Participants, mapper.ItemParticipantRequestToEntity)
+
+			// Allocate amounts using the allocation service
+			allocatedParticipants, err := ges.allocationSvc.AllocateAmounts(updatedExpenseItem.TotalAmount(), participantEntities)
+			if err != nil {
 				return err
 			}
 
-			updatedExpenseItem.Participants = updatedParticipants
+			if err := ges.expenseItemRepository.SyncParticipants(ctx, updatedExpenseItem.ID, allocatedParticipants); err != nil {
+				return err
+			}
+
+			updatedExpenseItem.Participants = allocatedParticipants
 		}
 
 		newItemSet := []expenses.ExpenseItem{}
@@ -231,8 +241,15 @@ func (ges *expenseItemServiceImpl) SyncParticipants(ctx context.Context, req dto
 			return err
 		}
 
-		updatedParticipants := ezutil.MapSlice(req.Participants, mapper.ItemParticipantRequestToEntity)
-		expenseItem.Participants = updatedParticipants
+		participantEntities := ezutil.MapSlice(req.Participants, mapper.ItemParticipantRequestToEntity)
+
+		// Allocate amounts using the allocation service
+		allocatedParticipants, err := ges.allocationSvc.AllocateAmounts(expenseItem.TotalAmount(), participantEntities)
+		if err != nil {
+			return err
+		}
+
+		expenseItem.Participants = allocatedParticipants
 
 		newItemSet := []expenses.ExpenseItem{}
 		for _, item := range groupExpense.Items {
@@ -253,6 +270,6 @@ func (ges *expenseItemServiceImpl) SyncParticipants(ctx context.Context, req dto
 			return err
 		}
 
-		return ges.expenseItemRepository.SyncParticipants(ctx, expenseItem.ID, updatedParticipants)
+		return ges.expenseItemRepository.SyncParticipants(ctx, expenseItem.ID, allocatedParticipants)
 	})
 }

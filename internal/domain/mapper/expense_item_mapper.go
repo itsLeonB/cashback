@@ -27,7 +27,7 @@ func UpdateExpenseItemRequestToData(req dto.UpdateExpenseItemRequest) expenses.E
 func itemParticipantRequestToData(req dto.ItemParticipantRequest) expenses.ItemParticipant {
 	return expenses.ItemParticipant{
 		ProfileID: req.ProfileID,
-		Share:     req.Share,
+		Weight:    req.Weight,
 	}
 }
 
@@ -50,7 +50,7 @@ func PatchExpenseItemWithRequest(expenseItem expenses.ExpenseItem, request dto.U
 func ItemParticipantRequestToEntity(itemParticipant dto.ItemParticipantRequest) expenses.ItemParticipant {
 	return expenses.ItemParticipant{
 		ProfileID: itemParticipant.ProfileID,
-		Share:     itemParticipant.Share,
+		Weight:    itemParticipant.Weight,
 	}
 }
 
@@ -79,7 +79,8 @@ func getItemParticipantSimpleMapper(userProfileID uuid.UUID) func(itemParticipan
 
 func itemParticipantToResponse(itemParticipant expenses.ItemParticipant, userProfileID uuid.UUID) dto.ItemParticipantResponse {
 	return dto.ItemParticipantResponse{
-		Profile:    ProfileToSimple(itemParticipant.Profile, userProfileID),
-		ShareRatio: itemParticipant.Share,
+		Profile:         ProfileToSimple(itemParticipant.Profile, userProfileID),
+		Weight:          itemParticipant.Weight,
+		AllocatedAmount: itemParticipant.AllocatedAmount,
 	}
 }

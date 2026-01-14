@@ -6,8 +6,9 @@ import (
 )
 
 type ItemParticipantResponse struct {
-	Profile    SimpleProfile   `json:"profile"`
-	ShareRatio decimal.Decimal `json:"shareRatio"`
+	Profile         SimpleProfile   `json:"profile"`
+	Weight          int             `json:"weight"`
+	AllocatedAmount decimal.Decimal `json:"allocatedAmount"`
 }
 
 type ExpenseItemResponse struct {
@@ -30,8 +31,8 @@ type UpdateExpenseItemRequest struct {
 }
 
 type ItemParticipantRequest struct {
-	ProfileID uuid.UUID       `json:"profileId" binding:"required"`
-	Share     decimal.Decimal `json:"share" binding:"required"`
+	ProfileID uuid.UUID `json:"profileId" binding:"required"`
+	Weight    int       `json:"weight"`
 }
 
 type NewExpenseItemRequest struct {

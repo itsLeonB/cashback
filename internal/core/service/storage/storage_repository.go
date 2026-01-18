@@ -10,9 +10,11 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/ungerr"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
+	"google.golang.org/api/option"
 )
 
 type StorageRepository interface {
@@ -30,7 +32,12 @@ type gcsStorageRepository struct {
 }
 
 func NewGCSStorageRepository() (StorageRepository, error) {
-	client, err := storage.NewClient(context.Background())
+	creds, err := config.LoadGoogleCredentials()
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := storage.NewClient(context.Background(), option.WithCredentials(creds))
 	if err != nil {
 		return nil, ungerr.Unknownf("failed to create GCS client: %v", err)
 	}

@@ -19,6 +19,7 @@ type Config struct {
 	Mail
 	OAuthProviders
 	Valkey
+	Google
 }
 
 var Global *Config
@@ -61,7 +62,8 @@ func Load() error {
 		errs = errors.Join(errs, err)
 	}
 
-	if err = loadGoogleConfig(); err != nil {
+	var google Google
+	if err = envconfig.Process("GOOGLE", &google); err != nil {
 		errs = errors.Join(errs, err)
 	}
 
@@ -77,6 +79,7 @@ func Load() error {
 		mail,
 		oAuthProviders,
 		valkey,
+		google,
 	}
 
 	return nil

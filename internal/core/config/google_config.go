@@ -1,10 +1,11 @@
 package config
 
 import (
-	"os"
+	"context"
+	"sync"
 
 	"github.com/itsLeonB/ungerr"
-	"github.com/kelseyhightower/envconfig"
+	"golang.org/x/oauth2/google"
 )
 
 type Google struct {
@@ -15,20 +16,21 @@ func (Google) Prefix() string {
 	return "GOOGLE"
 }
 
-func loadGoogleConfig() error {
-	var google Google
-	if err := envconfig.Process(google.Prefix(), &google); err != nil {
-		return ungerr.Wrap(err, "error processing google config")
-	}
+var (
+	googleCreds     *google.Credentials
+	googleCredsOnce sync.Once
+)
 
-	credsPath := "/tmp/gcp.json"
-	if err := os.WriteFile(credsPath, []byte(google.ServiceAccount), 0600); err != nil {
-		return ungerr.Wrap(err, "error writing service account JSON file")
-	}
+func LoadGoogleCredentials() (*google.Credentials, error) {
+	var err error
+	googleCredsOnce.Do(func() {
+		creds, e := google.CredentialsFromJSON(context.Background(), []byte(Global.Google.ServiceAccount))
+		if err != nil {
+			err = ungerr.Wrap(e, "error parsing google credentials")
+			return
+		}
 
-	if err := os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", credsPath); err != nil {
-		return ungerr.Wrapf(err, "error setting GOOGLE_APP_CREDENTIALS to %s", credsPath)
-	}
-
-	return nil
+		googleCreds = creds
+	})
+	return googleCreds, err
 }

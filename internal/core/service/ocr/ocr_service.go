@@ -5,7 +5,9 @@ import (
 
 	vision "cloud.google.com/go/vision/apiv1"
 	"cloud.google.com/go/vision/v2/apiv1/visionpb"
+	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/ungerr"
+	"google.golang.org/api/option"
 )
 
 type OCRService interface {
@@ -18,7 +20,12 @@ type cloudVisionClient struct {
 }
 
 func NewOCRClient() (*cloudVisionClient, error) {
-	client, err := vision.NewImageAnnotatorClient(context.Background())
+	creds, err := config.LoadGoogleCredentials()
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := vision.NewImageAnnotatorClient(context.Background(), option.WithCredentials(creds))
 	if err != nil {
 		return nil, ungerr.Wrap(err, "error initializing vision client")
 	}

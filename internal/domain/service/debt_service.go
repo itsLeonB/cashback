@@ -91,12 +91,35 @@ func (ds *debtServiceImpl) selectCalculator(action debts.DebtTransactionAction) 
 }
 
 func (ds *debtServiceImpl) GetTransactions(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
-	transactions, err := ds.debtTransactionRepository.FindAllByUserProfileID(ctx, profileID)
+	profile, err := ds.profileService.GetByID(ctx, profileID)
+	if err != nil {
+		return nil, err
+	}
+
+	profileIDs := ds.getAssociatedIDs(profile)
+
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs)
 	if err != nil {
 		return nil, err
 	}
 
 	return ezutil.MapSlice(transactions, mapper.DebtTransactionSimpleMapper(profileID)), nil
+}
+
+func (ds *debtServiceImpl) GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (dto.FriendBalance, error) {
+	profile, err := ds.profileService.GetByID(ctx, profileID)
+	if err != nil {
+		return dto.FriendBalance{}, err
+	}
+
+	profileIDs := ds.getAssociatedIDs(profile)
+
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs)
+	if err != nil {
+		return dto.FriendBalance{}, err
+	}
+
+	return mapper.MapToFriendBalanceSummary(transactions, profileIDs), nil
 }
 
 func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, groupExpense expenses.GroupExpense) error {

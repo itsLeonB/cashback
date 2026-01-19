@@ -68,8 +68,13 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 				}
 
 				protectedRoutes.GET(transferMethodsRoute, handlers.TransferMethod.HandleGetAll())
-				protectedRoutes.POST("/debts", handlers.Debt.HandleCreate())
-				protectedRoutes.GET("/debts", handlers.Debt.HandleGetAll())
+
+				debtsRoutes := protectedRoutes.Group("/debts")
+				{
+					debtsRoutes.POST("", handlers.Debt.HandleCreate())
+					debtsRoutes.GET("", handlers.Debt.HandleGetAll())
+					debtsRoutes.GET("/summary", handlers.Debt.HandleGetTransactionSummary())
+				}
 
 				groupExpenseRoutes := protectedRoutes.Group("/group-expenses")
 				{

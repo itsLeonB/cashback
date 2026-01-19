@@ -75,6 +75,7 @@ type DebtService interface {
 	GetTransactions(ctx context.Context, userProfileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
 	ProcessConfirmedGroupExpense(ctx context.Context, groupExpense expenses.GroupExpense) error
 	GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]debts.DebtTransaction, []uuid.UUID, error)
+	GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (dto.FriendBalance, error)
 }
 
 type TransferMethodService interface {

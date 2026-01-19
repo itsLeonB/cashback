@@ -5,6 +5,7 @@ import (
 
 	"github.com/itsLeonB/ungerr"
 	"github.com/kelseyhightower/envconfig"
+	"golang.org/x/oauth2/google"
 )
 
 // type configurable interface {
@@ -19,6 +20,7 @@ type Config struct {
 	Mail
 	OAuthProviders
 	Valkey
+	GoogleCreds *google.Credentials
 }
 
 var Global *Config
@@ -61,7 +63,12 @@ func Load() error {
 		errs = errors.Join(errs, err)
 	}
 
-	if err = loadGoogleConfig(); err != nil {
+	var google Google
+	if err = envconfig.Process(google.Prefix(), &google); err != nil {
+		errs = errors.Join(errs, err)
+	}
+	googleCreds, err := google.LoadCredentials()
+	if err != nil {
 		errs = errors.Join(errs, err)
 	}
 
@@ -77,6 +84,7 @@ func Load() error {
 		mail,
 		oAuthProviders,
 		valkey,
+		googleCreds,
 	}
 
 	return nil

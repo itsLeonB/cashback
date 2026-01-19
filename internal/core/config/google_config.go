@@ -1,10 +1,12 @@
 package config
 
 import (
-	"os"
+	"context"
 
+	"cloud.google.com/go/storage"
+	vision "cloud.google.com/go/vision/apiv1"
 	"github.com/itsLeonB/ungerr"
-	"github.com/kelseyhightower/envconfig"
+	"golang.org/x/oauth2/google"
 )
 
 type Google struct {
@@ -15,20 +17,11 @@ func (Google) Prefix() string {
 	return "GOOGLE"
 }
 
-func loadGoogleConfig() error {
-	var google Google
-	if err := envconfig.Process(google.Prefix(), &google); err != nil {
-		return ungerr.Wrap(err, "error processing google config")
+func (g *Google) LoadCredentials() (*google.Credentials, error) {
+	scopes := append(vision.DefaultAuthScopes(), storage.ScopeFullControl)
+	creds, err := google.CredentialsFromJSON(context.Background(), []byte(g.ServiceAccount), scopes...)
+	if err != nil {
+		return nil, ungerr.Wrap(err, "error parsing google credentials")
 	}
-
-	credsPath := "/tmp/gcp.json"
-	if err := os.WriteFile(credsPath, []byte(google.ServiceAccount), 0600); err != nil {
-		return ungerr.Wrap(err, "error writing service account JSON file")
-	}
-
-	if err := os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", credsPath); err != nil {
-		return ungerr.Wrapf(err, "error setting GOOGLE_APP_CREDENTIALS to %s", credsPath)
-	}
-
-	return nil
+	return creds, nil
 }

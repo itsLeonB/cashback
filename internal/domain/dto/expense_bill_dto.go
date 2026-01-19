@@ -9,6 +9,7 @@ import (
 
 type NewExpenseBillRequest struct {
 	ImageReader    io.ReadCloser
+	ProfileID      uuid.UUID
 	GroupExpenseID uuid.UUID
 	ContentType    string
 	Filename       string

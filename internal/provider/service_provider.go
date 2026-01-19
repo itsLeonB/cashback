@@ -53,8 +53,7 @@ func ProvideServices(
 	transferMethod := service.NewTransferMethodService(repos.TransferMethod, coreSvc.Storage, appConfig.BucketNameTransferMethods, appembed.TransferMethodAssets)
 	debt := service.NewDebtService(debt.NewDebtCalculatorStrategies(), repos.DebtTransaction, transferMethod, friendship, profile)
 
-	expenseBill := service.NewExpenseBillService(appConfig.BucketNameExpenseBill, queues.taskQueue, repos.ExpenseBill, repos.Transactor, coreSvc.Image, coreSvc.OCR)
-	groupExpense := service.NewGroupExpenseService(friendship, repos.GroupExpense, repos.Transactor, fee.NewFeeCalculatorRegistry(), repos.OtherFee, repos.ExpenseBill, coreSvc.LLM, expenseBill, debt)
+	groupExpense := service.NewGroupExpenseService(friendship, repos.GroupExpense, repos.Transactor, fee.NewFeeCalculatorRegistry(), repos.OtherFee, repos.ExpenseBill, coreSvc.LLM, debt, coreSvc.Image)
 
 	return &Services{
 		Auth: service.NewAuthService(
@@ -78,7 +77,7 @@ func ProvideServices(
 		ProfileTransferMethod: service.NewProfileTransferMethodService(profile, repos.ProfileTransferMethod, transferMethod, friendship),
 
 		GroupExpense: groupExpense,
-		ExpenseBill:  expenseBill,
+		ExpenseBill:  service.NewExpenseBillService(queues.taskQueue, repos.ExpenseBill, repos.Transactor, coreSvc.Image, coreSvc.OCR, groupExpense),
 		ExpenseItem:  service.NewExpenseItemService(repos.Transactor, repos.ExpenseItem, groupExpense),
 		OtherFee:     service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense),
 	}

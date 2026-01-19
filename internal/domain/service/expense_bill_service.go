@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/service/ocr"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
@@ -15,7 +16,6 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
-	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
@@ -23,36 +23,39 @@ import (
 )
 
 type expenseBillServiceImpl struct {
-	bucketName string
 	taskQueue  queue.TaskQueue
 	billRepo   crud.Repository[expenses.ExpenseBill]
 	transactor crud.Transactor
 	imageSvc   storage.ImageService
 	ocrSvc     ocr.OCRService
+	expenseSvc GroupExpenseService
 }
 
 func NewExpenseBillService(
-	bucketName string,
 	taskQueue queue.TaskQueue,
 	billRepo crud.Repository[expenses.ExpenseBill],
 	transactor crud.Transactor,
 	imageSvc storage.ImageService,
 	ocrSvc ocr.OCRService,
+	expenseSvc GroupExpenseService,
 ) ExpenseBillService {
 	return &expenseBillServiceImpl{
-		bucketName,
 		taskQueue,
 		billRepo,
 		transactor,
 		imageSvc,
 		ocrSvc,
+		expenseSvc,
 	}
 }
 
-func (ebs *expenseBillServiceImpl) Save(ctx context.Context, req *dto.NewExpenseBillRequest) (dto.ExpenseBillResponse, error) {
-	var response dto.ExpenseBillResponse
-	err := ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		fileID := ebs.objectKeyToFileID(util.GenerateObjectKey(req.Filename))
+func (ebs *expenseBillServiceImpl) Save(ctx context.Context, req *dto.NewExpenseBillRequest) error {
+	return ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		if err := ebs.ensureSingleBill(ctx, req.ProfileID, req.GroupExpenseID); err != nil {
+			return err
+		}
+
+		fileID := ObjectKeyToFileID(util.GenerateObjectKey(req.Filename))
 		newBill := expenses.ExpenseBill{
 			GroupExpenseID: req.GroupExpenseID,
 			ImageName:      fileID.ObjectKey,
@@ -73,16 +76,24 @@ func (ebs *expenseBillServiceImpl) Save(ctx context.Context, req *dto.NewExpense
 			return err
 		}
 
-		response = mapper.ExpenseBillToResponse(savedBill, "")
-
 		return nil
 	})
-
-	return response, err
 }
 
-func (ebs *expenseBillServiceImpl) GetURL(ctx context.Context, billName string) (string, error) {
-	return ebs.imageSvc.GetURL(ctx, ebs.objectKeyToFileID(billName))
+func (ebs *expenseBillServiceImpl) ensureSingleBill(ctx context.Context, profileID, expenseID uuid.UUID) error {
+	expense, err := ebs.expenseSvc.GetUnconfirmedGroupExpenseForUpdate(ctx, profileID, expenseID)
+	if err != nil {
+		return err
+	}
+	if expense.Bill.IsZero() {
+		return nil
+	}
+
+	if expense.Bill.Status != expenses.NotDetectedBill {
+		return ungerr.UnprocessableEntityError("cannot upload another bill")
+	}
+
+	return ebs.billRepo.Delete(ctx, expense.Bill)
 }
 
 func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg message.ExpenseBillUploaded) error {
@@ -98,7 +109,7 @@ func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg mess
 			return ungerr.NotFoundError(fmt.Sprintf("expense bill with ID %s is not found", spec.Model.ID))
 		}
 
-		uri := ebs.imageSvc.GetURI(ebs.objectKeyToFileID(bill.ImageName))
+		uri := ebs.imageSvc.GetURI(ObjectKeyToFileID(bill.ImageName))
 		text, err := ebs.ocrSvc.ExtractFromURI(ctx, uri)
 		if err != nil {
 			bill.Status = expenses.FailedExtracting
@@ -183,7 +194,7 @@ func (ebs *expenseBillServiceImpl) Cleanup(ctx context.Context) error {
 
 	logger.Infof("obtained object keys from DB:\n%s", strings.Join(validObjectKeys, "\n"))
 
-	return ebs.imageSvc.DeleteAllInvalid(ctx, ebs.bucketName, validObjectKeys)
+	return ebs.imageSvc.DeleteAllInvalid(ctx, config.Global.BucketNameExpenseBill, validObjectKeys)
 }
 
 func (ebs *expenseBillServiceImpl) rollbackUpload(ctx context.Context, fileID storage.FileIdentifier) {
@@ -210,9 +221,9 @@ func (ebs *expenseBillServiceImpl) doUpload(
 	})
 }
 
-func (ebs *expenseBillServiceImpl) objectKeyToFileID(objectKey string) storage.FileIdentifier {
+func ObjectKeyToFileID(objectKey string) storage.FileIdentifier {
 	return storage.FileIdentifier{
-		BucketName: ebs.bucketName,
+		BucketName: config.Global.BucketNameExpenseBill,
 		ObjectKey:  objectKey,
 	}
 }

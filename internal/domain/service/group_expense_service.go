@@ -12,6 +12,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/service/llm"
+	"github.com/itsLeonB/cashback/internal/core/service/storage"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
@@ -33,9 +34,9 @@ type groupExpenseServiceImpl struct {
 	otherFeeRepository    repository.OtherFeeRepository
 	billRepo              crud.Repository[expenses.ExpenseBill]
 	llmService            llm.LLMService
-	billSvc               ExpenseBillService
 	debtSvc               DebtService
 	calculationSvc        expense.CalculationService
+	imageSvc              storage.ImageService
 }
 
 func NewGroupExpenseService(
@@ -46,8 +47,8 @@ func NewGroupExpenseService(
 	otherFeeRepository repository.OtherFeeRepository,
 	billRepo crud.Repository[expenses.ExpenseBill],
 	llmService llm.LLMService,
-	billSvc ExpenseBillService,
 	debtSvc DebtService,
+	imageSvc storage.ImageService,
 ) GroupExpenseService {
 	return &groupExpenseServiceImpl{
 		friendshipService,
@@ -57,9 +58,9 @@ func NewGroupExpenseService(
 		otherFeeRepository,
 		billRepo,
 		llmService,
-		billSvc,
 		debtSvc,
 		expense.NewCalculationService(),
+		imageSvc,
 	}
 }
 
@@ -112,7 +113,7 @@ func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProf
 		return dto.GroupExpenseResponse{}, err
 	}
 
-	billURL, err := ges.billSvc.GetURL(ctx, groupExpense.Bill.ImageName)
+	billURL, err := ges.imageSvc.GetURL(ctx, ObjectKeyToFileID(groupExpense.Bill.ImageName))
 	if err != nil {
 		logger.Errorf("error retrieving bill image URL: %v", err)
 	}
@@ -372,7 +373,7 @@ func (ges *groupExpenseServiceImpl) GetUnconfirmedGroupExpenseForUpdate(ctx cont
 		spec.Model.CreatorProfileID = profileID
 	}
 	spec.ForUpdate = true
-	spec.PreloadRelations = []string{"Items", "Items.Participants"}
+	spec.PreloadRelations = []string{"Items", "Items.Participants", "Bill"}
 	groupExpense, err := ges.getGroupExpense(ctx, spec)
 	if err != nil {
 		return expenses.GroupExpense{}, err

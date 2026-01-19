@@ -24,7 +24,7 @@ var (
 func LoadGoogleCredentials() (*google.Credentials, error) {
 	var err error
 	googleCredsOnce.Do(func() {
-		creds, e := google.CredentialsFromJSON(context.Background(), []byte(Global.Google.ServiceAccount))
+		creds, e := google.CredentialsFromJSON(context.Background(), []byte(Global.ServiceAccount))
 		if err != nil {
 			err = ungerr.Wrap(e, "error parsing google credentials")
 			return

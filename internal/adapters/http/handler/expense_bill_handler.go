@@ -23,6 +23,11 @@ func NewExpenseBillHandler(expenseBillService service.ExpenseBillService) *Expen
 
 func (geh *ExpenseBillHandler) HandleSave() gin.HandlerFunc {
 	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
+		profileID, err := getProfileID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
 		expenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
 		if err != nil {
 			return nil, err
@@ -43,20 +48,16 @@ func (geh *ExpenseBillHandler) HandleSave() gin.HandlerFunc {
 			}
 		}()
 
-		request := dto.NewExpenseBillRequest{
-			GroupExpenseID: expenseID,
+		request := &dto.NewExpenseBillRequest{
 			ImageReader:    file,
+			ProfileID:      profileID,
+			GroupExpenseID: expenseID,
 			ContentType:    fileHeader.Header.Get("Content-Type"),
 			Filename:       fileHeader.Filename,
 			FileSize:       fileHeader.Size,
 		}
 
-		response, err := geh.expenseBillService.Save(ctx, &request)
-		if err != nil {
-			return nil, err
-		}
-
-		return response, nil
+		return nil, geh.expenseBillService.Save(ctx, request)
 	})
 }
 

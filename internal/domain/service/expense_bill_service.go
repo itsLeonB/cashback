@@ -163,8 +163,6 @@ func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID
 		switch bill.Status {
 		case expenses.PendingBill:
 			return ungerr.UnprocessableEntityError(fmt.Sprintf("bill %s is still pending to be extracted", billID))
-		case expenses.FailedExtracting:
-			return ungerr.UnprocessableEntityError(fmt.Sprintf("bill %s is failed while extracting text", billID))
 		case expenses.NotDetectedBill:
 			return ungerr.UnprocessableEntityError(fmt.Sprintf("bill %s already parsed with no detected data", billID))
 		}

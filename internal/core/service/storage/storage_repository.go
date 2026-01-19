@@ -32,12 +32,7 @@ type gcsStorageRepository struct {
 }
 
 func NewGCSStorageRepository() (StorageRepository, error) {
-	creds, err := config.LoadGoogleCredentials()
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := storage.NewClient(context.Background(), option.WithCredentials(creds))
+	client, err := storage.NewClient(context.Background(), option.WithCredentials(config.Global.GoogleCreds))
 	if err != nil {
 		return nil, ungerr.Unknownf("failed to create GCS client: %v", err)
 	}

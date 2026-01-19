@@ -2,7 +2,6 @@ package config
 
 import (
 	"context"
-	"sync"
 
 	"github.com/itsLeonB/ungerr"
 	"golang.org/x/oauth2/google"
@@ -16,21 +15,10 @@ func (Google) Prefix() string {
 	return "GOOGLE"
 }
 
-var (
-	googleCreds     *google.Credentials
-	googleCredsOnce sync.Once
-)
-
-func LoadGoogleCredentials() (*google.Credentials, error) {
-	var err error
-	googleCredsOnce.Do(func() {
-		creds, e := google.CredentialsFromJSON(context.Background(), []byte(Global.ServiceAccount))
-		if err != nil {
-			err = ungerr.Wrap(e, "error parsing google credentials")
-			return
-		}
-
-		googleCreds = creds
-	})
-	return googleCreds, err
+func (g *Google) LoadCredentials() (*google.Credentials, error) {
+	creds, err := google.CredentialsFromJSON(context.Background(), []byte(g.ServiceAccount))
+	if err != nil {
+		return nil, ungerr.Wrap(err, "error parsing google credentials")
+	}
+	return creds, nil
 }

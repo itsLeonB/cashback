@@ -20,12 +20,7 @@ type cloudVisionClient struct {
 }
 
 func NewOCRClient() (*cloudVisionClient, error) {
-	creds, err := config.LoadGoogleCredentials()
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := vision.NewImageAnnotatorClient(context.Background(), option.WithCredentials(creds))
+	client, err := vision.NewImageAnnotatorClient(context.Background(), option.WithCredentials(config.Global.GoogleCreds))
 	if err != nil {
 		return nil, ungerr.Wrap(err, "error initializing vision client")
 	}

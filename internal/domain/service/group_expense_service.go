@@ -413,11 +413,6 @@ func (ges *groupExpenseServiceImpl) parseFlow(ctx context.Context, expenseBill e
 }
 
 func (ges *groupExpenseServiceImpl) processAndGetStatus(ctx context.Context, expenseBill expenses.ExpenseBill) (expenses.BillStatus, error) {
-	expense, err := ges.GetUnconfirmedGroupExpenseForUpdate(ctx, uuid.Nil, expenseBill.GroupExpenseID)
-	if err != nil {
-		return expenses.FailedParsingBill, err
-	}
-
 	request, err := ges.parseExpenseBillTextToExpenseRequest(ctx, expenseBill.ExtractedText)
 	if err != nil {
 		if errors.Is(err, expenses.ErrExpenseNotDetected) {
@@ -428,6 +423,11 @@ func (ges *groupExpenseServiceImpl) processAndGetStatus(ctx context.Context, exp
 
 	request.Items = slices.DeleteFunc(request.Items, func(item dto.NewExpenseItemRequest) bool { return item.Amount.Equal(decimal.Zero) })
 	request.OtherFees = slices.DeleteFunc(request.OtherFees, func(fee dto.NewOtherFeeRequest) bool { return fee.Amount.Equal(decimal.Zero) })
+
+	expense, err := ges.GetUnconfirmedGroupExpenseForUpdate(ctx, uuid.Nil, expenseBill.GroupExpenseID)
+	if err != nil {
+		return expenses.FailedParsingBill, err
+	}
 
 	if err = ges.UpdateDraft(ctx, expense, request); err != nil {
 		return expenses.FailedParsingBill, err

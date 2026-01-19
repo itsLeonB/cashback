@@ -3,6 +3,8 @@ package config
 import (
 	"context"
 
+	"cloud.google.com/go/storage"
+	vision "cloud.google.com/go/vision/apiv1"
 	"github.com/itsLeonB/ungerr"
 	"golang.org/x/oauth2/google"
 )
@@ -16,7 +18,8 @@ func (Google) Prefix() string {
 }
 
 func (g *Google) LoadCredentials() (*google.Credentials, error) {
-	creds, err := google.CredentialsFromJSON(context.Background(), []byte(g.ServiceAccount))
+	scopes := append(vision.DefaultAuthScopes(), storage.ScopeFullControl)
+	creds, err := google.CredentialsFromJSON(context.Background(), []byte(g.ServiceAccount), scopes...)
 	if err != nil {
 		return nil, ungerr.Wrap(err, "error parsing google credentials")
 	}

@@ -75,6 +75,10 @@ func (dtr *debtTransactionRepositoryGorm) FindAllByUserProfileID(ctx context.Con
 }
 
 func (dtr *debtTransactionRepositoryGorm) FindAllByProfileIDs(ctx context.Context, profileIDs []uuid.UUID) ([]debts.DebtTransaction, error) {
+	if len(profileIDs) < 1 {
+		return []debts.DebtTransaction{}, nil
+	}
+
 	var transactions []debts.DebtTransaction
 
 	db, err := dtr.GetGormInstance(ctx)

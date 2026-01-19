@@ -113,9 +113,12 @@ func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProf
 		return dto.GroupExpenseResponse{}, err
 	}
 
-	billURL, err := ges.imageSvc.GetURL(ctx, ObjectKeyToFileID(groupExpense.Bill.ImageName))
-	if err != nil {
-		logger.Errorf("error retrieving bill image URL: %v", err)
+	var billURL string
+	if !groupExpense.Bill.IsZero() {
+		billURL, err = ges.imageSvc.GetURL(ctx, ObjectKeyToFileID(groupExpense.Bill.ImageName))
+		if err != nil {
+			logger.Errorf("error retrieving bill image URL: %v", err)
+		}
 	}
 
 	return mapper.GroupExpenseToResponse(groupExpense, userProfileID, billURL, groupExpense.Status == expenses.ConfirmedExpense), nil

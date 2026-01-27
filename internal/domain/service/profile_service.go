@@ -90,6 +90,29 @@ func (ps *profileServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (dto.Pr
 	return mapper.ProfileToResponse(profile, email, anonProfileIDs, realProfileID), nil
 }
 
+func (ps *profileServiceImpl) GetAssociatedIDs(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error) {
+	profile, err := ps.GetEntityByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	anonProfileIDs, realProfileID, err := ps.getAssociations(ctx, profile)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := []uuid.UUID{id}
+	if profile.UserID.Valid {
+		ids = append(ids, anonProfileIDs...)
+	} else {
+		if realProfileID != uuid.Nil {
+			ids = append(ids, realProfileID)
+		}
+	}
+
+	return ids, nil
+}
+
 func (ps *profileServiceImpl) getAssociations(ctx context.Context, profile users.UserProfile) ([]uuid.UUID, uuid.UUID, error) {
 	if profile.IsReal() {
 		anonProfileIDs, err := ps.getAssociatedProfileIDs(ctx, profile.ID)

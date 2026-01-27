@@ -23,7 +23,7 @@ type NewDebtTransactionRequest struct {
 
 type DebtTransactionResponse struct {
 	BaseDTO
-	ProfileID      uuid.UUID       `json:"profileId"`
+	Profile        SimpleProfile   `json:"profile"`
 	Type           string          `json:"type"` // "LENT" or "BORROWED"
 	Amount         decimal.Decimal `json:"amount"`
 	TransferMethod string          `json:"transferMethod"`

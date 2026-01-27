@@ -67,7 +67,7 @@ func calculateBalances(userAssociatedIDs []uuid.UUID, transactions []debts.DebtT
 	return totalLent, totalBorrowed, history
 }
 
-func DebtTransactionToResponse(userProfileID uuid.UUID, transaction debts.DebtTransaction) dto.DebtTransactionResponse {
+func DebtTransactionToResponse(userProfileID uuid.UUID, transaction debts.DebtTransaction, profilesByID map[uuid.UUID]dto.ProfileResponse) dto.DebtTransactionResponse {
 	var profileID uuid.UUID
 	var txType string
 
@@ -80,8 +80,13 @@ func DebtTransactionToResponse(userProfileID uuid.UUID, transaction debts.DebtTr
 	}
 
 	return dto.DebtTransactionResponse{
-		BaseDTO:        BaseToDTO(transaction.BaseEntity),
-		ProfileID:      profileID,
+		BaseDTO: BaseToDTO(transaction.BaseEntity),
+		Profile: dto.SimpleProfile{
+			ID:     profileID,
+			Name:   profilesByID[profileID].Name,
+			Avatar: profilesByID[profileID].Avatar,
+			IsUser: profileID == userProfileID,
+		},
 		Type:           txType,
 		Amount:         transaction.Amount,
 		TransferMethod: transaction.TransferMethod.Display,
@@ -91,8 +96,8 @@ func DebtTransactionToResponse(userProfileID uuid.UUID, transaction debts.DebtTr
 	}
 }
 
-func DebtTransactionSimpleMapper(userProfileID uuid.UUID) func(debts.DebtTransaction) dto.DebtTransactionResponse {
+func DebtTransactionSimpleMapper(userProfileID uuid.UUID, profilesByID map[uuid.UUID]dto.ProfileResponse) func(debts.DebtTransaction) dto.DebtTransactionResponse {
 	return func(transaction debts.DebtTransaction) dto.DebtTransactionResponse {
-		return DebtTransactionToResponse(userProfileID, transaction)
+		return DebtTransactionToResponse(userProfileID, transaction, profilesByID)
 	}
 }

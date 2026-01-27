@@ -74,6 +74,7 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 					debtsRoutes.POST("", handlers.Debt.HandleCreate())
 					debtsRoutes.GET("", handlers.Debt.HandleGetAll())
 					debtsRoutes.GET("/summary", handlers.Debt.HandleGetTransactionSummary())
+					debtsRoutes.GET("/recent", handlers.Debt.HandleGetRecent())
 				}
 
 				groupExpenseRoutes := protectedRoutes.Group("/group-expenses")

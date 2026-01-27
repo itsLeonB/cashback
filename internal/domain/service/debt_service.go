@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
@@ -76,34 +77,41 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 	}
 
 	insertedDebt.TransferMethod = transferMethod
-	return mapper.DebtTransactionToResponse(req.UserProfileID, insertedDebt), nil
+	return mapper.DebtTransactionToResponse(req.UserProfileID, insertedDebt, make(map[uuid.UUID]dto.ProfileResponse)), nil
 }
 
 func (ds *debtServiceImpl) GetTransactions(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
-	profile, err := ds.profileService.GetByID(ctx, profileID)
+	profileIDs, err := ds.profileService.GetAssociatedIDs(ctx, profileID)
 	if err != nil {
 		return nil, err
 	}
 
-	profileIDs := ds.getAssociatedIDs(profile)
-
-	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs)
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs, -1, false)
 	if err != nil {
 		return nil, err
 	}
 
-	return ezutil.MapSlice(transactions, mapper.DebtTransactionSimpleMapper(profileID)), nil
+	trxProfileIDs := mapset.NewSet[uuid.UUID]()
+	for _, transaction := range transactions {
+		trxProfileIDs.Add(transaction.LenderProfileID)
+		trxProfileIDs.Add(transaction.BorrowerProfileID)
+	}
+
+	profilesByID, err := ds.profileService.GetByIDs(ctx, trxProfileIDs.ToSlice())
+	if err != nil {
+		return nil, err
+	}
+
+	return ezutil.MapSlice(transactions, mapper.DebtTransactionSimpleMapper(profileID, profilesByID)), nil
 }
 
 func (ds *debtServiceImpl) GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (dto.FriendBalance, error) {
-	profile, err := ds.profileService.GetByID(ctx, profileID)
+	profileIDs, err := ds.profileService.GetAssociatedIDs(ctx, profileID)
 	if err != nil {
 		return dto.FriendBalance{}, err
 	}
 
-	profileIDs := ds.getAssociatedIDs(profile)
-
-	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs)
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs, -1, false)
 	if err != nil {
 		return dto.FriendBalance{}, err
 	}
@@ -146,6 +154,31 @@ func (ds *debtServiceImpl) GetAllByProfileIDs(ctx context.Context, userProfileID
 
 	transactions, err := ds.debtTransactionRepository.FindAllByMultipleProfileIDs(ctx, userIDs, friendIDs)
 	return transactions, userIDs, err
+}
+
+func (ds *debtServiceImpl) GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
+	profileIDs, err := ds.profileService.GetAssociatedIDs(ctx, profileID)
+	if err != nil {
+		return nil, err
+	}
+
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs, 5, true)
+	if err != nil {
+		return nil, err
+	}
+
+	trxProfileIDs := mapset.NewSet[uuid.UUID]()
+	for _, transaction := range transactions {
+		trxProfileIDs.Add(transaction.LenderProfileID)
+		trxProfileIDs.Add(transaction.BorrowerProfileID)
+	}
+
+	profilesByID, err := ds.profileService.GetByIDs(ctx, trxProfileIDs.ToSlice())
+	if err != nil {
+		return nil, err
+	}
+
+	return ezutil.MapSlice(transactions, mapper.DebtTransactionSimpleMapper(profileID, profilesByID)), nil
 }
 
 func (ds *debtServiceImpl) getAssociatedIDs(profile dto.ProfileResponse) []uuid.UUID {

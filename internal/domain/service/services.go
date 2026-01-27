@@ -45,6 +45,7 @@ type ProfileService interface {
 	GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]dto.ProfileResponse, error)
 	GetRealProfileID(ctx context.Context, anonProfileID uuid.UUID) (uuid.UUID, error)
 	GetEntityByID(ctx context.Context, id uuid.UUID) (users.UserProfile, error)
+	GetAssociatedIDs(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error)
 }
 
 type FriendshipService interface {
@@ -76,6 +77,7 @@ type DebtService interface {
 	ProcessConfirmedGroupExpense(ctx context.Context, msg message.ExpenseConfirmed) error
 	GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]debts.DebtTransaction, []uuid.UUID, error)
 	GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (dto.FriendBalance, error)
+	GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
 }
 
 type TransferMethodService interface {

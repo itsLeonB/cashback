@@ -6,7 +6,6 @@ import (
 	appembed "github.com/itsLeonB/cashback"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	"github.com/itsLeonB/cashback/internal/domain/service/debt"
 	"github.com/itsLeonB/cashback/internal/domain/service/fee"
 	"github.com/itsLeonB/sekure"
 )
@@ -51,7 +50,7 @@ func ProvideServices(
 	friendship := service.NewFriendshipService(repos.Transactor, repos.Friendship, profile)
 
 	transferMethod := service.NewTransferMethodService(repos.TransferMethod, coreSvc.Storage, appConfig.BucketNameTransferMethods, appembed.TransferMethodAssets)
-	debt := service.NewDebtService(debt.NewDebtCalculatorStrategies(), repos.DebtTransaction, transferMethod, friendship, profile)
+	debt := service.NewDebtService(repos.DebtTransaction, transferMethod, friendship, profile)
 
 	groupExpense := service.NewGroupExpenseService(friendship, repos.GroupExpense, repos.Transactor, fee.NewFeeCalculatorRegistry(), repos.OtherFee, repos.ExpenseBill, coreSvc.LLM, debt, coreSvc.Image)
 

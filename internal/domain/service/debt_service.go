@@ -9,14 +9,12 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
-	"github.com/itsLeonB/cashback/internal/domain/service/debt"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/ungerr"
 	"github.com/shopspring/decimal"
 )
 
 type debtServiceImpl struct {
-	debtCalculatorStrategy    map[debts.DebtTransactionAction]debt.DebtCalculator
 	debtTransactionRepository repository.DebtTransactionRepository
 	transferMethodService     TransferMethodService
 	friendshipService         FriendshipService
@@ -24,14 +22,12 @@ type debtServiceImpl struct {
 }
 
 func NewDebtService(
-	debtCalculatorStrategy map[debts.DebtTransactionAction]debt.DebtCalculator,
 	debtTransactionRepository repository.DebtTransactionRepository,
 	transferMethodService TransferMethodService,
 	friendshipService FriendshipService,
 	profileService ProfileService,
 ) DebtService {
 	return &debtServiceImpl{
-		debtCalculatorStrategy,
 		debtTransactionRepository,
 		transferMethodService,
 		friendshipService,
@@ -67,27 +63,24 @@ func (ds *debtServiceImpl) recordNew(ctx context.Context, request dto.NewDebtTra
 		return dto.DebtTransactionResponse{}, err
 	}
 
-	calculator, err := ds.selectCalculator(request.Action)
-	if err != nil {
-		return dto.DebtTransactionResponse{}, err
+	lenderID, borrowerID := request.UserProfileID, request.FriendProfileID
+	if request.Direction == dto.IncomingDebt {
+		lenderID, borrowerID = request.FriendProfileID, request.UserProfileID
 	}
 
-	insertedDebt, err := ds.debtTransactionRepository.Insert(ctx, calculator.MapRequestToEntity(request))
+	insertedDebt, err := ds.debtTransactionRepository.Insert(ctx, debts.DebtTransaction{
+		LenderProfileID:   lenderID,
+		BorrowerProfileID: borrowerID,
+		Amount:            request.Amount,
+		TransferMethodID:  request.TransferMethodID,
+		Description:       request.Description,
+	})
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
 
 	insertedDebt.TransferMethod = transferMethod
-	return calculator.MapEntityToResponse(insertedDebt), nil
-}
-
-func (ds *debtServiceImpl) selectCalculator(action debts.DebtTransactionAction) (debt.DebtCalculator, error) {
-	calculator, ok := ds.debtCalculatorStrategy[action]
-	if !ok {
-		return nil, ungerr.Unknownf("unsupported debt calculator action: %s", action)
-	}
-
-	return calculator, nil
+	return mapper.DebtTransactionToResponse(request.UserProfileID, insertedDebt), nil
 }
 
 func (ds *debtServiceImpl) GetTransactions(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {

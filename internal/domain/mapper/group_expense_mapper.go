@@ -101,11 +101,6 @@ func ExpenseParticipantToData(participant expenses.ExpenseParticipant) (expenses
 }
 
 func GroupExpenseToDebtTransactions(groupExpense expenses.GroupExpense, transferMethodID uuid.UUID) []debts.DebtTransaction {
-	action := debts.BorrowAction
-	if groupExpense.PayerProfileID.UUID == groupExpense.CreatorProfileID {
-		action = debts.LendAction
-	}
-
 	debtTransactions := make([]debts.DebtTransaction, 0, len(groupExpense.Participants))
 	for _, participant := range groupExpense.Participants {
 		if groupExpense.PayerProfileID.UUID == participant.ParticipantProfileID {
@@ -114,8 +109,6 @@ func GroupExpenseToDebtTransactions(groupExpense expenses.GroupExpense, transfer
 		debtTransactions = append(debtTransactions, debts.DebtTransaction{
 			LenderProfileID:   groupExpense.PayerProfileID.UUID,
 			BorrowerProfileID: participant.ParticipantProfileID,
-			Type:              debts.Lend,
-			Action:            action,
 			Amount:            participant.ShareAmount,
 			TransferMethodID:  transferMethodID,
 			Description:       fmt.Sprintf("Share for group expense %s: %s", groupExpense.ID, groupExpense.Description),

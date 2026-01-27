@@ -8,6 +8,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
+	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/ungerr"
@@ -19,6 +20,7 @@ type debtServiceImpl struct {
 	transferMethodService     TransferMethodService
 	friendshipService         FriendshipService
 	profileService            ProfileService
+	expenseService            GroupExpenseService
 }
 
 func NewDebtService(
@@ -26,12 +28,14 @@ func NewDebtService(
 	transferMethodService TransferMethodService,
 	friendshipService FriendshipService,
 	profileService ProfileService,
+	expenseService GroupExpenseService,
 ) DebtService {
 	return &debtServiceImpl{
 		debtTransactionRepository,
 		transferMethodService,
 		friendshipService,
 		profileService,
+		expenseService,
 	}
 }
 
@@ -115,12 +119,17 @@ func (ds *debtServiceImpl) GetTransactionSummary(ctx context.Context, profileID 
 	return mapper.MapToFriendBalanceSummary(transactions, profileIDs), nil
 }
 
-func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, groupExpense expenses.GroupExpense) error {
+func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, msg message.ExpenseConfirmed) error {
+	groupExpense, err := ds.expenseService.GetByID(ctx, msg.ID)
+	if err != nil {
+		return err
+	}
+
 	if groupExpense.Status != expenses.ConfirmedExpense {
-		return ungerr.UnprocessableEntityError("group expense is not confirmed")
+		return ungerr.Unknown("group expense is not confirmed")
 	}
 	if len(groupExpense.Participants) < 1 {
-		return ungerr.UnprocessableEntityError("no participants to process")
+		return ungerr.Unknown("no participants to process")
 	}
 
 	transferMethod, err := ds.transferMethodService.GetByName(ctx, debts.GroupExpenseTransferMethod)

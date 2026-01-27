@@ -51,29 +51,6 @@ func (dtr *debtTransactionRepositoryGorm) FindAllByMultipleProfileIDs(ctx contex
 	return transactions, nil
 }
 
-func (dtr *debtTransactionRepositoryGorm) FindAllByUserProfileID(ctx context.Context, userProfileID uuid.UUID) ([]debts.DebtTransaction, error) {
-	var transactions []debts.DebtTransaction
-
-	db, err := dtr.GetGormInstance(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	err = db.
-		Where("lender_profile_id = ?", userProfileID).
-		Or("borrower_profile_id = ?", userProfileID).
-		Preload("TransferMethod").
-		Scopes(crud.DefaultOrder()).
-		Find(&transactions).
-		Error
-
-	if err != nil {
-		return nil, ungerr.Wrap(err, appconstant.ErrDataSelect)
-	}
-
-	return transactions, nil
-}
-
 func (dtr *debtTransactionRepositoryGorm) FindAllByProfileIDs(ctx context.Context, profileIDs []uuid.UUID) ([]debts.DebtTransaction, error) {
 	if len(profileIDs) < 1 {
 		return []debts.DebtTransaction{}, nil

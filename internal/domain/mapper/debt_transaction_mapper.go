@@ -86,6 +86,8 @@ func DebtTransactionToResponse(userProfileID uuid.UUID, transaction debts.DebtTr
 		Amount:         transaction.Amount,
 		TransferMethod: transaction.TransferMethod.Display,
 		Description:    transaction.Description,
+		GroupExpenseID: transaction.GroupExpenseID.UUID,
+		IsFromExpense:  transaction.GroupExpenseID.Valid,
 	}
 }
 

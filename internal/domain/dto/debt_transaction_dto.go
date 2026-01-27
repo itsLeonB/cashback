@@ -28,4 +28,6 @@ type DebtTransactionResponse struct {
 	Amount         decimal.Decimal `json:"amount"`
 	TransferMethod string          `json:"transferMethod"`
 	Description    string          `json:"description"`
+	GroupExpenseID uuid.UUID       `json:"groupExpenseId"`
+	IsFromExpense  bool            `json:"isFromExpense"`
 }

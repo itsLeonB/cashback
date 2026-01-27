@@ -111,7 +111,11 @@ func GroupExpenseToDebtTransactions(groupExpense expenses.GroupExpense, transfer
 			BorrowerProfileID: participant.ParticipantProfileID,
 			Amount:            participant.ShareAmount,
 			TransferMethodID:  transferMethodID,
-			Description:       fmt.Sprintf("Share for group expense %s: %s", groupExpense.ID, groupExpense.Description),
+			GroupExpenseID: uuid.NullUUID{
+				UUID:  groupExpense.ID,
+				Valid: true,
+			},
+			Description: fmt.Sprintf("Share for group expense: %s", groupExpense.Description),
 		})
 	}
 

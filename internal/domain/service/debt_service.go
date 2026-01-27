@@ -12,7 +12,6 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/repository"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/ungerr"
-	"github.com/shopspring/decimal"
 )
 
 type debtServiceImpl struct {
@@ -40,12 +39,13 @@ func NewDebtService(
 }
 
 func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.NewDebtTransactionRequest) (dto.DebtTransactionResponse, error) {
-	if req.Amount.Compare(decimal.Zero) < 1 {
+	if !req.Amount.IsPositive() {
 		return dto.DebtTransactionResponse{}, ungerr.ValidationError("amount must be greater than 0")
 	}
 	if req.UserProfileID == req.FriendProfileID {
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("cannot do self transactions")
 	}
+
 	isFriends, _, err := ds.friendshipService.IsFriends(ctx, req.UserProfileID, req.FriendProfileID)
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
@@ -54,37 +54,29 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("both profiles are not friends")
 	}
 
-	return ds.recordNew(ctx, req)
-}
-
-func (ds *debtServiceImpl) recordNew(ctx context.Context, request dto.NewDebtTransactionRequest) (dto.DebtTransactionResponse, error) {
-	if !request.Amount.IsPositive() {
-		return dto.DebtTransactionResponse{}, ungerr.ValidationError("amount must be greater than 0")
-	}
-
-	transferMethod, err := ds.transferMethodService.GetByID(ctx, request.TransferMethodID)
+	transferMethod, err := ds.transferMethodService.GetByID(ctx, req.TransferMethodID)
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
 
-	lenderID, borrowerID := request.UserProfileID, request.FriendProfileID
-	if request.Direction == dto.IncomingDebt {
-		lenderID, borrowerID = request.FriendProfileID, request.UserProfileID
+	lenderID, borrowerID := req.UserProfileID, req.FriendProfileID
+	if req.Direction == dto.IncomingDebt {
+		lenderID, borrowerID = req.FriendProfileID, req.UserProfileID
 	}
 
 	insertedDebt, err := ds.debtTransactionRepository.Insert(ctx, debts.DebtTransaction{
 		LenderProfileID:   lenderID,
 		BorrowerProfileID: borrowerID,
-		Amount:            request.Amount,
-		TransferMethodID:  request.TransferMethodID,
-		Description:       request.Description,
+		Amount:            req.Amount,
+		TransferMethodID:  req.TransferMethodID,
+		Description:       req.Description,
 	})
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
 
 	insertedDebt.TransferMethod = transferMethod
-	return mapper.DebtTransactionToResponse(request.UserProfileID, insertedDebt), nil
+	return mapper.DebtTransactionToResponse(req.UserProfileID, insertedDebt), nil
 }
 
 func (ds *debtServiceImpl) GetTransactions(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {

@@ -222,14 +222,14 @@ func (ds *debtServiceImpl) ConstructNotification(ctx context.Context, msg messag
 		return entity.Notification{}, err
 	}
 
-	toNotifyProfile := friendship.Profile1
+	otherParty := friendship.Profile2
 	if toNotifyProfileID == friendship.ProfileID2 {
-		toNotifyProfile = friendship.Profile2
+		otherParty = friendship.Profile1
 	}
 
 	msgMeta := message.DebtCreatedMetadata{
 		FriendshipID: friendship.ID,
-		FriendName:   toNotifyProfile.Name,
+		FriendName:   otherParty.Name,
 	}
 
 	metadata, err := json.Marshal(msgMeta)

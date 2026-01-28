@@ -3,49 +3,50 @@ package service
 import (
 	"context"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
+	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
-	"github.com/itsLeonB/cashback/internal/domain/service/debt"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/ungerr"
-	"github.com/shopspring/decimal"
 )
 
 type debtServiceImpl struct {
-	debtCalculatorStrategy    map[debts.DebtTransactionAction]debt.DebtCalculator
 	debtTransactionRepository repository.DebtTransactionRepository
 	transferMethodService     TransferMethodService
 	friendshipService         FriendshipService
 	profileService            ProfileService
+	expenseService            GroupExpenseService
 }
 
 func NewDebtService(
-	debtCalculatorStrategy map[debts.DebtTransactionAction]debt.DebtCalculator,
 	debtTransactionRepository repository.DebtTransactionRepository,
 	transferMethodService TransferMethodService,
 	friendshipService FriendshipService,
 	profileService ProfileService,
+	expenseService GroupExpenseService,
 ) DebtService {
 	return &debtServiceImpl{
-		debtCalculatorStrategy,
 		debtTransactionRepository,
 		transferMethodService,
 		friendshipService,
 		profileService,
+		expenseService,
 	}
 }
 
 func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.NewDebtTransactionRequest) (dto.DebtTransactionResponse, error) {
-	if req.Amount.Compare(decimal.Zero) < 1 {
+	if !req.Amount.IsPositive() {
 		return dto.DebtTransactionResponse{}, ungerr.ValidationError("amount must be greater than 0")
 	}
 	if req.UserProfileID == req.FriendProfileID {
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("cannot do self transactions")
 	}
+
 	isFriends, _, err := ds.friendshipService.IsFriends(ctx, req.UserProfileID, req.FriendProfileID)
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
@@ -54,57 +55,81 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 		return dto.DebtTransactionResponse{}, ungerr.UnprocessableEntityError("both profiles are not friends")
 	}
 
-	return ds.recordNew(ctx, req)
-}
-
-func (ds *debtServiceImpl) recordNew(ctx context.Context, request dto.NewDebtTransactionRequest) (dto.DebtTransactionResponse, error) {
-	if !request.Amount.IsPositive() {
-		return dto.DebtTransactionResponse{}, ungerr.ValidationError("amount must be greater than 0")
-	}
-
-	transferMethod, err := ds.transferMethodService.GetByID(ctx, request.TransferMethodID)
+	transferMethod, err := ds.transferMethodService.GetByID(ctx, req.TransferMethodID)
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
 
-	calculator, err := ds.selectCalculator(request.Action)
-	if err != nil {
-		return dto.DebtTransactionResponse{}, err
+	lenderID, borrowerID := req.UserProfileID, req.FriendProfileID
+	if req.Direction == dto.IncomingDebt {
+		lenderID, borrowerID = req.FriendProfileID, req.UserProfileID
 	}
 
-	insertedDebt, err := ds.debtTransactionRepository.Insert(ctx, calculator.MapRequestToEntity(request))
+	insertedDebt, err := ds.debtTransactionRepository.Insert(ctx, debts.DebtTransaction{
+		LenderProfileID:   lenderID,
+		BorrowerProfileID: borrowerID,
+		Amount:            req.Amount,
+		TransferMethodID:  req.TransferMethodID,
+		Description:       req.Description,
+	})
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
 
 	insertedDebt.TransferMethod = transferMethod
-	return calculator.MapEntityToResponse(insertedDebt), nil
-}
-
-func (ds *debtServiceImpl) selectCalculator(action debts.DebtTransactionAction) (debt.DebtCalculator, error) {
-	calculator, ok := ds.debtCalculatorStrategy[action]
-	if !ok {
-		return nil, ungerr.Unknownf("unsupported debt calculator action: %s", action)
-	}
-
-	return calculator, nil
+	return mapper.DebtTransactionToResponse(req.UserProfileID, insertedDebt, make(map[uuid.UUID]dto.ProfileResponse)), nil
 }
 
 func (ds *debtServiceImpl) GetTransactions(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
-	transactions, err := ds.debtTransactionRepository.FindAllByUserProfileID(ctx, profileID)
+	profileIDs, err := ds.profileService.GetAssociatedIDs(ctx, profileID)
 	if err != nil {
 		return nil, err
 	}
 
-	return ezutil.MapSlice(transactions, mapper.DebtTransactionSimpleMapper(profileID)), nil
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs, -1, false)
+	if err != nil {
+		return nil, err
+	}
+
+	trxProfileIDs := mapset.NewSet[uuid.UUID]()
+	for _, transaction := range transactions {
+		trxProfileIDs.Add(transaction.LenderProfileID)
+		trxProfileIDs.Add(transaction.BorrowerProfileID)
+	}
+
+	profilesByID, err := ds.profileService.GetByIDs(ctx, trxProfileIDs.ToSlice())
+	if err != nil {
+		return nil, err
+	}
+
+	return ezutil.MapSlice(transactions, mapper.DebtTransactionSimpleMapper(profileID, profilesByID)), nil
 }
 
-func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, groupExpense expenses.GroupExpense) error {
+func (ds *debtServiceImpl) GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (dto.FriendBalance, error) {
+	profileIDs, err := ds.profileService.GetAssociatedIDs(ctx, profileID)
+	if err != nil {
+		return dto.FriendBalance{}, err
+	}
+
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs, -1, false)
+	if err != nil {
+		return dto.FriendBalance{}, err
+	}
+
+	return mapper.MapToFriendBalanceSummary(transactions, profileIDs), nil
+}
+
+func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, msg message.ExpenseConfirmed) error {
+	groupExpense, err := ds.expenseService.GetByID(ctx, msg.ID)
+	if err != nil {
+		return err
+	}
+
 	if groupExpense.Status != expenses.ConfirmedExpense {
-		return ungerr.UnprocessableEntityError("group expense is not confirmed")
+		return ungerr.Unknown("group expense is not confirmed")
 	}
 	if len(groupExpense.Participants) < 1 {
-		return ungerr.UnprocessableEntityError("no participants to process")
+		return ungerr.Unknown("no participants to process")
 	}
 
 	transferMethod, err := ds.transferMethodService.GetByName(ctx, debts.GroupExpenseTransferMethod)
@@ -129,6 +154,31 @@ func (ds *debtServiceImpl) GetAllByProfileIDs(ctx context.Context, userProfileID
 
 	transactions, err := ds.debtTransactionRepository.FindAllByMultipleProfileIDs(ctx, userIDs, friendIDs)
 	return transactions, userIDs, err
+}
+
+func (ds *debtServiceImpl) GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
+	profileIDs, err := ds.profileService.GetAssociatedIDs(ctx, profileID)
+	if err != nil {
+		return nil, err
+	}
+
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs, 5, true)
+	if err != nil {
+		return nil, err
+	}
+
+	trxProfileIDs := mapset.NewSet[uuid.UUID]()
+	for _, transaction := range transactions {
+		trxProfileIDs.Add(transaction.LenderProfileID)
+		trxProfileIDs.Add(transaction.BorrowerProfileID)
+	}
+
+	profilesByID, err := ds.profileService.GetByIDs(ctx, trxProfileIDs.ToSlice())
+	if err != nil {
+		return nil, err
+	}
+
+	return ezutil.MapSlice(transactions, mapper.DebtTransactionSimpleMapper(profileID, profilesByID)), nil
 }
 
 func (ds *debtServiceImpl) getAssociatedIDs(profile dto.ProfileResponse) []uuid.UUID {

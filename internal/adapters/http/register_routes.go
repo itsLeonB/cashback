@@ -68,8 +68,14 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 				}
 
 				protectedRoutes.GET(transferMethodsRoute, handlers.TransferMethod.HandleGetAll())
-				protectedRoutes.POST("/debts", handlers.Debt.HandleCreate())
-				protectedRoutes.GET("/debts", handlers.Debt.HandleGetAll())
+
+				debtsRoutes := protectedRoutes.Group("/debts")
+				{
+					debtsRoutes.POST("", handlers.Debt.HandleCreate())
+					debtsRoutes.GET("", handlers.Debt.HandleGetAll())
+					debtsRoutes.GET("/summary", handlers.Debt.HandleGetTransactionSummary())
+					debtsRoutes.GET("/recent", handlers.Debt.HandleGetRecent())
+				}
 
 				groupExpenseRoutes := protectedRoutes.Group("/group-expenses")
 				{
@@ -82,6 +88,7 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 					groupExpenseRoutes.PUT(fmt.Sprintf("/:%s/participants", appconstant.ContextGroupExpenseID.String()), handlers.GroupExpense.HandleSyncParticipants())
 					groupExpenseRoutes.POST(fmt.Sprintf("/:%s/bills", appconstant.ContextGroupExpenseID.String()), handlers.ExpenseBill.HandleSave())
 					groupExpenseRoutes.PUT(fmt.Sprintf("/:%s/bills/%s", appconstant.ContextGroupExpenseID.String(), appconstant.ContextExpenseBillID.String()), handlers.ExpenseBill.HandleTriggerParsing())
+					groupExpenseRoutes.GET("/recent", handlers.GroupExpense.HandleGetRecent())
 				}
 
 				expenseItemRoutes := groupExpenseRoutes.Group(fmt.Sprintf("/:%s/items", appconstant.ContextGroupExpenseID))

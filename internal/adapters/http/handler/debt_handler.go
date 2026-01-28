@@ -45,3 +45,25 @@ func (dh *DebtHandler) HandleGetAll() gin.HandlerFunc {
 		return dh.debtService.GetTransactions(ctx, profileID)
 	})
 }
+
+func (dh *DebtHandler) HandleGetTransactionSummary() gin.HandlerFunc {
+	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+		profileID, err := getProfileID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return dh.debtService.GetTransactionSummary(ctx, profileID)
+	})
+}
+
+func (dh *DebtHandler) HandleGetRecent() gin.HandlerFunc {
+	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+		profileID, err := getProfileID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return dh.debtService.GetRecent(ctx, profileID)
+	})
+}

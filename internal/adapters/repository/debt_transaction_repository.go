@@ -51,7 +51,16 @@ func (dtr *debtTransactionRepositoryGorm) FindAllByMultipleProfileIDs(ctx contex
 	return transactions, nil
 }
 
-func (dtr *debtTransactionRepositoryGorm) FindAllByUserProfileID(ctx context.Context, userProfileID uuid.UUID) ([]debts.DebtTransaction, error) {
+func (dtr *debtTransactionRepositoryGorm) FindAllByProfileIDs(
+	ctx context.Context,
+	profileIDs []uuid.UUID,
+	limit int,
+	debtsOnly bool,
+) ([]debts.DebtTransaction, error) {
+	if len(profileIDs) < 1 {
+		return []debts.DebtTransaction{}, nil
+	}
+
 	var transactions []debts.DebtTransaction
 
 	db, err := dtr.GetGormInstance(ctx)
@@ -59,15 +68,21 @@ func (dtr *debtTransactionRepositoryGorm) FindAllByUserProfileID(ctx context.Con
 		return nil, err
 	}
 
-	err = db.
-		Where("lender_profile_id = ?", userProfileID).
-		Or("borrower_profile_id = ?", userProfileID).
+	query := db.
+		Where(db.Where("lender_profile_id IN ?", profileIDs).
+			Or("borrower_profile_id IN ?", profileIDs)).
 		Preload("TransferMethod").
-		Scopes(crud.DefaultOrder()).
-		Find(&transactions).
-		Error
+		Scopes(crud.DefaultOrder())
 
-	if err != nil {
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	if debtsOnly {
+		query = query.Where("group_expense_id IS NULL")
+	}
+
+	if err = query.Find(&transactions).Error; err != nil {
 		return nil, ungerr.Wrap(err, appconstant.ErrDataSelect)
 	}
 

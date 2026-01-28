@@ -9,7 +9,6 @@ import (
 
 type Providers struct {
 	*DataSources
-	*Queues
 	*Repositories
 	*CoreServices
 	*Services
@@ -18,9 +17,6 @@ type Providers struct {
 func (p *Providers) Shutdown() error {
 	var errs error
 	if e := p.DataSources.Shutdown(); e != nil {
-		errs = errors.Join(errs, e)
-	}
-	if e := p.Queues.Shutdown(); e != nil {
 		errs = errors.Join(errs, e)
 	}
 	if e := p.CoreServices.Shutdown(); e != nil {
@@ -38,13 +34,6 @@ func All() (*Providers, error) {
 		return nil, err
 	}
 
-	queues, err := ProvideQueues(config.Global.Valkey)
-	if err != nil {
-		if e := dataSources.Shutdown(); e != nil {
-			logger.Error(e)
-		}
-		return nil, err
-	}
 	repos := ProvideRepositories(dataSources)
 
 	coreSvcs, err := ProvideCoreServices()
@@ -52,17 +41,13 @@ func All() (*Providers, error) {
 		if e := dataSources.Shutdown(); e != nil {
 			logger.Error(e)
 		}
-		if e := queues.Shutdown(); e != nil {
-			logger.Error(e)
-		}
 		return nil, err
 	}
 
 	return &Providers{
 		DataSources:  dataSources,
-		Queues:       queues,
 		Repositories: repos,
 		CoreServices: coreSvcs,
-		Services:     ProvideServices(repos, coreSvcs, queues, config.Global.Auth, config.Global.App),
+		Services:     ProvideServices(repos, coreSvcs, config.Global.Auth, config.Global.App),
 	}, nil
 }

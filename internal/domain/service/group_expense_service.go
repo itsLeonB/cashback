@@ -12,6 +12,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/service/llm"
+	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/core/service/storage"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
@@ -34,9 +35,9 @@ type groupExpenseServiceImpl struct {
 	otherFeeRepository    repository.OtherFeeRepository
 	billRepo              crud.Repository[expenses.ExpenseBill]
 	llmService            llm.LLMService
-	debtSvc               DebtService
 	calculationSvc        expense.CalculationService
 	imageSvc              storage.ImageService
+	taskQueue             queue.TaskQueue
 }
 
 func NewGroupExpenseService(
@@ -47,8 +48,8 @@ func NewGroupExpenseService(
 	otherFeeRepository repository.OtherFeeRepository,
 	billRepo crud.Repository[expenses.ExpenseBill],
 	llmService llm.LLMService,
-	debtSvc DebtService,
 	imageSvc storage.ImageService,
+	taskQueue queue.TaskQueue,
 ) GroupExpenseService {
 	return &groupExpenseServiceImpl{
 		friendshipService,
@@ -58,9 +59,9 @@ func NewGroupExpenseService(
 		otherFeeRepository,
 		billRepo,
 		llmService,
-		debtSvc,
 		expense.NewCalculationService(),
 		imageSvc,
+		taskQueue,
 	}
 }
 
@@ -173,13 +174,12 @@ func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, profil
 		groupExpense.Participants = updatedParticipants
 
 		if !dryRun {
-			if err = ges.debtSvc.ProcessConfirmedGroupExpense(ctx, groupExpense); err != nil {
+			if err = ges.taskQueue.Enqueue(ctx, message.ExpenseConfirmed{ID: id}); err != nil {
 				return err
 			}
 		}
 
 		response = mapper.ToConfirmationResponse(groupExpense, profileID)
-
 		return nil
 	})
 	return response, err
@@ -474,6 +474,15 @@ func (ges *groupExpenseServiceImpl) Recalculate(ctx context.Context, userProfile
 	return err
 }
 
+func (ges *groupExpenseServiceImpl) GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.GroupExpenseResponse, error) {
+	expenses, err := ges.expenseRepo.FindAllByParticipatingProfileID(ctx, profileID, 5)
+	if err != nil {
+		return nil, err
+	}
+
+	return ezutil.MapSlice(expenses, mapper.GroupExpenseSimpleMapper(profileID, "", false)), nil
+}
+
 func (ges *groupExpenseServiceImpl) validate(request dto.NewGroupExpenseRequest) error {
 	if request.TotalAmount.IsZero() {
 		return ungerr.UnprocessableEntityError(appconstant.ErrAmountZero)
@@ -579,4 +588,23 @@ func (ges *groupExpenseServiceImpl) getPendingForProcessingExpenseBill(ctx conte
 		return expenses.ExpenseBill{}, ungerr.Unknownf("expense bill ID: %s already parsed", expenseBill.GroupExpenseID)
 	}
 	return expenseBill, nil
+}
+
+func (ges *groupExpenseServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (expenses.GroupExpense, error) {
+	spec := crud.Specification[expenses.GroupExpense]{}
+	spec.Model.ID = id
+	spec.PreloadRelations = []string{
+		"Items",
+		"OtherFees",
+		"Payer",
+		"Creator",
+		"Items.Participants",
+		"Items.Participants.Profile",
+		"OtherFees.Participants",
+		"OtherFees.Participants.Profile",
+		"Participants",
+		"Participants.Profile",
+	}
+
+	return ges.getGroupExpense(ctx, spec)
 }

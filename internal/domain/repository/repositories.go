@@ -13,13 +13,14 @@ import (
 type DebtTransactionRepository interface {
 	crud.Repository[debts.DebtTransaction]
 	FindAllByMultipleProfileIDs(ctx context.Context, userProfileIDs, friendProfileIDs []uuid.UUID) ([]debts.DebtTransaction, error)
-	FindAllByUserProfileID(ctx context.Context, userProfileID uuid.UUID) ([]debts.DebtTransaction, error)
+	FindAllByProfileIDs(ctx context.Context, profileIDs []uuid.UUID, limit int, debtsOnly bool) ([]debts.DebtTransaction, error)
 }
 
 type GroupExpenseRepository interface {
 	crud.Repository[expenses.GroupExpense]
 	SyncParticipants(ctx context.Context, groupExpenseID uuid.UUID, participants []expenses.ExpenseParticipant) error
 	DeleteItemParticipants(ctx context.Context, expenseID uuid.UUID, newParticipantProfileIDs []uuid.UUID) error
+	FindAllByParticipatingProfileID(ctx context.Context, profileID uuid.UUID, limit int) ([]expenses.GroupExpense, error)
 }
 
 type ExpenseItemRepository interface {

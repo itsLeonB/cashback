@@ -1,0 +1,40 @@
+package subscriber
+
+import (
+	"github.com/hibiken/asynq"
+	"github.com/itsLeonB/cashback/internal/domain/message"
+	"github.com/itsLeonB/cashback/internal/provider"
+)
+
+type queueConfig struct {
+	name     string
+	handler  asynq.Handler
+	priority int
+}
+
+func configureQueues(providers *provider.Providers) ([]queueConfig, map[string]int) {
+	queues := []queueConfig{
+		{
+			message.ExpenseBillUploaded{}.Type(),
+			withLogging(message.ExpenseBillUploaded{}.Type(), providers.Services.ExpenseBill.ExtractBillText),
+			3,
+		},
+		{
+			message.ExpenseBillTextExtracted{}.Type(),
+			withLogging(message.ExpenseBillTextExtracted{}.Type(), providers.Services.GroupExpense.ParseFromBillText),
+			3,
+		},
+		{
+			message.ExpenseConfirmed{}.Type(),
+			withLogging(message.ExpenseConfirmed{}.Type(), providers.Debt.ProcessConfirmedGroupExpense),
+			3,
+		},
+	}
+
+	queuePriorities := make(map[string]int, len(queues))
+	for _, q := range queues {
+		queuePriorities[q.name] = q.priority
+	}
+
+	return queues, queuePriorities
+}

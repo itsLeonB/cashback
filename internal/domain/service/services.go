@@ -45,6 +45,7 @@ type ProfileService interface {
 	GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]dto.ProfileResponse, error)
 	GetRealProfileID(ctx context.Context, anonProfileID uuid.UUID) (uuid.UUID, error)
 	GetEntityByID(ctx context.Context, id uuid.UUID) (users.UserProfile, error)
+	GetAssociatedIDs(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error)
 }
 
 type FriendshipService interface {
@@ -73,8 +74,10 @@ type FriendDetailsService interface {
 type DebtService interface {
 	RecordNewTransaction(ctx context.Context, request dto.NewDebtTransactionRequest) (dto.DebtTransactionResponse, error)
 	GetTransactions(ctx context.Context, userProfileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
-	ProcessConfirmedGroupExpense(ctx context.Context, groupExpense expenses.GroupExpense) error
+	ProcessConfirmedGroupExpense(ctx context.Context, msg message.ExpenseConfirmed) error
 	GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]debts.DebtTransaction, []uuid.UUID, error)
+	GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (dto.FriendBalance, error)
+	GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
 }
 
 type TransferMethodService interface {
@@ -93,10 +96,12 @@ type GroupExpenseService interface {
 	ConfirmDraft(ctx context.Context, id, userProfileID uuid.UUID, dryRun bool) (dto.ExpenseConfirmationResponse, error)
 	Delete(ctx context.Context, userProfileID, id uuid.UUID) error
 	SyncParticipants(ctx context.Context, req dto.ExpenseParticipantsRequest) error
+	GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.GroupExpenseResponse, error)
 
 	GetUnconfirmedGroupExpenseForUpdate(ctx context.Context, profileID, id uuid.UUID) (expenses.GroupExpense, error)
 	ParseFromBillText(ctx context.Context, msg message.ExpenseBillTextExtracted) error
 	Recalculate(ctx context.Context, userProfileID, groupExpenseID uuid.UUID, amountChanged bool) error
+	GetByID(ctx context.Context, id uuid.UUID) (expenses.GroupExpense, error)
 }
 
 type ExpenseItemService interface {

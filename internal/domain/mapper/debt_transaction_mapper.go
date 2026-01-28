@@ -43,20 +43,12 @@ func calculateBalances(userAssociatedIDs []uuid.UUID, transactions []debts.DebtT
 			// User is the lender
 			transactionType = "LENT"
 			amount = tx.Amount
-			if tx.Type == debts.Lend {
-				totalLent = totalLent.Add(tx.Amount)
-			} else { // Repay
-				totalLent = totalLent.Sub(tx.Amount)
-			}
+			totalLent = totalLent.Add(tx.Amount)
 		} else if userIsBorrower && !userIsLender {
 			// User is the borrower
 			transactionType = "BORROWED"
 			amount = tx.Amount
-			if tx.Type == debts.Lend {
-				totalBorrowed = totalBorrowed.Add(tx.Amount)
-			} else { // Repay
-				totalBorrowed = totalBorrowed.Sub(tx.Amount)
-			}
+			totalBorrowed = totalBorrowed.Add(tx.Amount)
 		} else {
 			// Skip transactions where user is both or neither (shouldn't happen)
 			logger.Errorf("orphaned transaction %s. userIsLender: %t. userIsBorrower: %t", tx.ID, userIsLender, userIsBorrower)
@@ -75,27 +67,37 @@ func calculateBalances(userAssociatedIDs []uuid.UUID, transactions []debts.DebtT
 	return totalLent, totalBorrowed, history
 }
 
-func DebtTransactionToResponse(userProfileID uuid.UUID, transaction debts.DebtTransaction) dto.DebtTransactionResponse {
+func DebtTransactionToResponse(userProfileID uuid.UUID, transaction debts.DebtTransaction, profilesByID map[uuid.UUID]dto.ProfileResponse) dto.DebtTransactionResponse {
 	var profileID uuid.UUID
-	if userProfileID == transaction.BorrowerProfileID && userProfileID != transaction.LenderProfileID {
+	var txType string
+
+	if userProfileID == transaction.BorrowerProfileID {
 		profileID = transaction.LenderProfileID
-	} else if userProfileID == transaction.LenderProfileID && userProfileID != transaction.BorrowerProfileID {
+		txType = "BORROWED"
+	} else {
 		profileID = transaction.BorrowerProfileID
+		txType = "LENT"
 	}
 
 	return dto.DebtTransactionResponse{
-		BaseDTO:        BaseToDTO(transaction.BaseEntity),
-		ProfileID:      profileID,
-		Type:           transaction.Type,
-		Action:         transaction.Action,
+		BaseDTO: BaseToDTO(transaction.BaseEntity),
+		Profile: dto.SimpleProfile{
+			ID:     profileID,
+			Name:   profilesByID[profileID].Name,
+			Avatar: profilesByID[profileID].Avatar,
+			IsUser: profileID == userProfileID,
+		},
+		Type:           txType,
 		Amount:         transaction.Amount,
 		TransferMethod: transaction.TransferMethod.Display,
 		Description:    transaction.Description,
+		GroupExpenseID: transaction.GroupExpenseID.UUID,
+		IsFromExpense:  transaction.GroupExpenseID.Valid,
 	}
 }
 
-func DebtTransactionSimpleMapper(userProfileID uuid.UUID) func(debts.DebtTransaction) dto.DebtTransactionResponse {
+func DebtTransactionSimpleMapper(userProfileID uuid.UUID, profilesByID map[uuid.UUID]dto.ProfileResponse) func(debts.DebtTransaction) dto.DebtTransactionResponse {
 	return func(transaction debts.DebtTransaction) dto.DebtTransactionResponse {
-		return DebtTransactionToResponse(userProfileID, transaction)
+		return DebtTransactionToResponse(userProfileID, transaction, profilesByID)
 	}
 }

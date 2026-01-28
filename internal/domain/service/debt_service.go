@@ -91,7 +91,7 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 			ID:               insertedDebt.ID,
 			CreatorProfileID: req.UserProfileID,
 		}
-		if e := ds.taskQueue.Enqueue(ctx, msg); e != nil {
+		if e := ds.taskQueue.Enqueue(context.Background(), msg); e != nil {
 			logger.Errorf("error enqueuing %s: %v", msg.Type(), e)
 		}
 	}()

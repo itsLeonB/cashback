@@ -15,6 +15,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/core/service/storage"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/cashback/internal/domain/message"
@@ -617,4 +618,31 @@ func (ges *groupExpenseServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (
 	}
 
 	return ges.getGroupExpense(ctx, spec)
+}
+
+func (ges *groupExpenseServiceImpl) ConstructNotifications(ctx context.Context, msg message.ExpenseConfirmed) ([]entity.Notification, error) {
+	expense, err := ges.GetByID(ctx, msg.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	metadata, err := json.Marshal(message.ExpenseConfirmedMetadata{CreatorName: expense.Creator.Name})
+	if err != nil {
+		return nil, ungerr.Wrap(err, "error marshaling metadata to json")
+	}
+
+	notifications := make([]entity.Notification, 0, len(expense.Participants))
+	for _, participant := range expense.Participants {
+		if participant.ParticipantProfileID != expense.CreatorProfileID {
+			notifications = append(notifications, entity.Notification{
+				ProfileID:  participant.ParticipantProfileID,
+				Type:       msg.Type(),
+				EntityType: "group-expense",
+				EntityID:   msg.ID,
+				Metadata:   metadata,
+			})
+		}
+	}
+
+	return notifications, nil
 }

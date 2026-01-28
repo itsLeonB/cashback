@@ -42,6 +42,27 @@ func (nr *notificationRepositoryGorm) New(ctx context.Context, notification enti
 	return notification, nil
 }
 
+func (nr *notificationRepositoryGorm) InsertMany(ctx context.Context, notifications []entity.Notification) ([]entity.Notification, error) {
+	if len(notifications) == 0 {
+		return []entity.Notification{}, nil
+	}
+
+	db, err := nr.GetGormInstance(ctx)
+	if err != nil {
+		return []entity.Notification{}, err
+	}
+
+	err = db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "profile_id"}, {Name: "type"}, {Name: "entity_type"}, {Name: "entity_id"}},
+		DoNothing: true,
+	}).Create(&notifications).Error
+	if err != nil {
+		return []entity.Notification{}, ungerr.Wrap(err, appconstant.ErrDataInsert)
+	}
+
+	return notifications, nil
+}
+
 func (nr *notificationRepositoryGorm) GetByProfileID(ctx context.Context, profileID uuid.UUID, unreadOnly bool) ([]entity.Notification, error) {
 	db, err := nr.GetGormInstance(ctx)
 	if err != nil {

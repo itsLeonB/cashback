@@ -110,6 +110,7 @@ type GroupExpenseService interface {
 	ParseFromBillText(ctx context.Context, msg message.ExpenseBillTextExtracted) error
 	Recalculate(ctx context.Context, userProfileID, groupExpenseID uuid.UUID, amountChanged bool) error
 	GetByID(ctx context.Context, id uuid.UUID) (expenses.GroupExpense, error)
+	ConstructNotifications(ctx context.Context, msg message.ExpenseConfirmed) ([]entity.Notification, error)
 }
 
 type ExpenseItemService interface {
@@ -143,6 +144,7 @@ type NotificationService interface {
 	HandleDebtCreated(ctx context.Context, msg message.DebtCreated) error
 	HandleFriendRequestSent(ctx context.Context, msg message.FriendRequestSent) error
 	HandleFriendRequestAccepted(ctx context.Context, msg message.FriendRequestAccepted) error
+	HandleExpenseConfirmed(ctx context.Context, msg message.ExpenseConfirmed) error
 
 	GetUnread(ctx context.Context, profileID uuid.UUID) ([]dto.NotificationResponse, error)
 	MarkAsRead(ctx context.Context, profileID, notificationID uuid.UUID) error

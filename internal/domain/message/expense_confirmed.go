@@ -9,3 +9,7 @@ type ExpenseConfirmed struct {
 func (ExpenseConfirmed) Type() string {
 	return "expense-confirmed"
 }
+
+type ExpenseConfirmedMetadata struct {
+	CreatorName string `json:"creatorName"`
+}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
@@ -54,6 +55,9 @@ type FriendshipService interface {
 	GetDetails(ctx context.Context, profileID, friendshipID uuid.UUID) (dto.FriendDetails, error)
 	IsFriends(ctx context.Context, profileID1, profileID2 uuid.UUID) (bool, bool, error)
 	CreateReal(ctx context.Context, userProfileID, friendProfileID uuid.UUID) (dto.FriendshipResponse, error)
+	GetByProfileIDs(ctx context.Context, profileID1, profileID2 uuid.UUID) (users.Friendship, error)
+
+	ConstructNotification(ctx context.Context, msg message.FriendRequestAccepted) (entity.Notification, error)
 }
 
 type FriendshipRequestService interface {
@@ -65,6 +69,8 @@ type FriendshipRequestService interface {
 	Block(ctx context.Context, userProfileID, reqID uuid.UUID) error
 	Unblock(ctx context.Context, userProfileID, reqID uuid.UUID) error
 	Accept(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipResponse, error)
+
+	ConstructNotification(ctx context.Context, msg message.FriendRequestSent) (entity.Notification, error)
 }
 
 type FriendDetailsService interface {
@@ -78,6 +84,8 @@ type DebtService interface {
 	GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]debts.DebtTransaction, []uuid.UUID, error)
 	GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (dto.FriendBalance, error)
 	GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
+
+	ConstructNotification(ctx context.Context, msg message.DebtCreated) (entity.Notification, error)
 }
 
 type TransferMethodService interface {
@@ -129,4 +137,14 @@ type ProfileTransferMethodService interface {
 	Add(ctx context.Context, req dto.NewProfileTransferMethodRequest) error
 	GetAllByProfileID(ctx context.Context, profileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error)
 	GetAllByFriendProfileID(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error)
+}
+
+type NotificationService interface {
+	HandleDebtCreated(ctx context.Context, msg message.DebtCreated) error
+	HandleFriendRequestSent(ctx context.Context, msg message.FriendRequestSent) error
+	HandleFriendRequestAccepted(ctx context.Context, msg message.FriendRequestAccepted) error
+
+	GetUnread(ctx context.Context, profileID uuid.UUID) ([]dto.NotificationResponse, error)
+	MarkAsRead(ctx context.Context, profileID, notificationID uuid.UUID) error
+	MarkAllAsRead(ctx context.Context, profileID uuid.UUID) error
 }

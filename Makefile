@@ -2,6 +2,7 @@
 http \
 http-hot \
 worker \
+worker-hot \
 job \
 lint \
 test \
@@ -19,6 +20,7 @@ help:
 	@echo "  make http                    - Start the HTTP server"
 	@echo "  make http-hot                - Start the HTTP server with hot reload (requires air)"
 	@echo "  make worker                  - Start the worker"
+	@echo "  make worker-hot              - Start the worker with hot reload (requires air)"
 	@echo "  make job                     - Run migrations + asset sync (production)"
 	@echo "  make lint                    - Run golangci-lint on the codebase"
 	@echo "  make test                    - Run all tests"
@@ -35,11 +37,13 @@ http:
 	go run ./cmd/http
 
 http-hot:
-	@echo "🚀 Starting HTTP server with hot reload..."
 	air --build.cmd "go build -o bin/http ./cmd/http" --build.bin "./bin/http"
 
 worker:
 	go run ./cmd/worker
+
+worker-hot:
+	air --build.cmd "go build -o bin/worker ./cmd/worker" --build.bin "./bin/worker"
 
 job:
 	go run -tags job ./cmd/job

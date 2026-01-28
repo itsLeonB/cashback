@@ -29,6 +29,21 @@ func configureQueues(providers *provider.Providers) ([]queueConfig, map[string]i
 			withLogging(message.ExpenseConfirmed{}.Type(), providers.Debt.ProcessConfirmedGroupExpense),
 			3,
 		},
+		{
+			message.DebtCreated{}.Type(),
+			withLogging(message.DebtCreated{}.Type(), providers.Services.Notification.HandleDebtCreated),
+			3,
+		},
+		{
+			message.FriendRequestSent{}.Type(),
+			withLogging(message.FriendRequestSent{}.Type(), providers.Services.Notification.HandleFriendRequestSent),
+			3,
+		},
+		{
+			message.FriendRequestAccepted{}.Type(),
+			withLogging(message.FriendRequestAccepted{}.Type(), providers.Services.Notification.HandleFriendRequestAccepted),
+			3,
+		},
 	}
 
 	queuePriorities := make(map[string]int, len(queues))

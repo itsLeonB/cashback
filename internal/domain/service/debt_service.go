@@ -2,17 +2,23 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
 	"github.com/itsLeonB/ezutil/v2"
+	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
+	"gorm.io/datatypes"
 )
 
 type debtServiceImpl struct {
@@ -21,6 +27,7 @@ type debtServiceImpl struct {
 	friendshipService         FriendshipService
 	profileService            ProfileService
 	expenseService            GroupExpenseService
+	taskQueue                 queue.TaskQueue
 }
 
 func NewDebtService(
@@ -29,6 +36,7 @@ func NewDebtService(
 	friendshipService FriendshipService,
 	profileService ProfileService,
 	expenseService GroupExpenseService,
+	taskQueue queue.TaskQueue,
 ) DebtService {
 	return &debtServiceImpl{
 		debtTransactionRepository,
@@ -36,6 +44,7 @@ func NewDebtService(
 		friendshipService,
 		profileService,
 		expenseService,
+		taskQueue,
 	}
 }
 
@@ -75,6 +84,11 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
 	}
+
+	go ds.taskQueue.AsyncEnqueue(message.DebtCreated{
+		ID:               insertedDebt.ID,
+		CreatorProfileID: req.UserProfileID,
+	})
 
 	insertedDebt.TransferMethod = transferMethod
 	return mapper.DebtTransactionToResponse(req.UserProfileID, insertedDebt, make(map[uuid.UUID]dto.ProfileResponse)), nil
@@ -179,6 +193,51 @@ func (ds *debtServiceImpl) GetRecent(ctx context.Context, profileID uuid.UUID) (
 	}
 
 	return ezutil.MapSlice(transactions, mapper.DebtTransactionSimpleMapper(profileID, profilesByID)), nil
+}
+
+func (ds *debtServiceImpl) ConstructNotification(ctx context.Context, msg message.DebtCreated) (entity.Notification, error) {
+	spec := crud.Specification[debts.DebtTransaction]{}
+	spec.Model.ID = msg.ID
+	trx, err := ds.debtTransactionRepository.FindFirst(ctx, spec)
+	if err != nil {
+		return entity.Notification{}, err
+	}
+	if trx.IsZero() {
+		return entity.Notification{}, ungerr.NotFoundError(fmt.Sprintf("debt transaction with ID: %s is not found", msg.ID))
+	}
+
+	toNotifyProfileID := trx.LenderProfileID
+	if trx.LenderProfileID == msg.CreatorProfileID {
+		toNotifyProfileID = trx.BorrowerProfileID
+	}
+
+	friendship, err := ds.friendshipService.GetByProfileIDs(ctx, trx.LenderProfileID, trx.BorrowerProfileID)
+	if err != nil {
+		return entity.Notification{}, err
+	}
+
+	otherParty := friendship.Profile2
+	if toNotifyProfileID == friendship.ProfileID2 {
+		otherParty = friendship.Profile1
+	}
+
+	msgMeta := message.DebtCreatedMetadata{
+		FriendshipID: friendship.ID,
+		FriendName:   otherParty.Name,
+	}
+
+	metadata, err := json.Marshal(msgMeta)
+	if err != nil {
+		return entity.Notification{}, err
+	}
+
+	return entity.Notification{
+		ProfileID:  toNotifyProfileID,
+		Type:       msg.Type(),
+		EntityType: "debt-transaction",
+		EntityID:   msg.ID,
+		Metadata:   datatypes.JSON(metadata),
+	}, nil
 }
 
 func (ds *debtServiceImpl) getAssociatedIDs(profile dto.ProfileResponse) []uuid.UUID {

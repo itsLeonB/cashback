@@ -106,6 +106,13 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 					otherFeeRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextOtherFeeID), handlers.OtherFee.HandleUpdate())
 					otherFeeRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextOtherFeeID), handlers.OtherFee.HandleRemove())
 				}
+
+				notificationRoutes := protectedRoutes.Group("/notifications")
+				{
+					notificationRoutes.GET("", handlers.Notification.HandleGetUnread())
+					notificationRoutes.PATCH(fmt.Sprintf("/:%s", appconstant.ContextNotificationID), handlers.Notification.HandleMarkAsRead())
+					notificationRoutes.PATCH("", handlers.Notification.HandleMarkAllAsRead())
+				}
 			}
 		}
 	}

@@ -9,4 +9,5 @@ type TaskMessage interface {
 type TaskQueue interface {
 	Enqueue(ctx context.Context, message TaskMessage) error
 	Shutdown() error
+	AsyncEnqueue(message TaskMessage)
 }

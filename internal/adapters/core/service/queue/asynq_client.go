@@ -46,3 +46,9 @@ func (ac *asynqClient) Shutdown() error {
 	}
 	return nil
 }
+
+func (ac *asynqClient) AsyncEnqueue(msg queue.TaskMessage) {
+	if err := ac.Enqueue(context.Background(), msg); err != nil {
+		logger.Error(err)
+	}
+}

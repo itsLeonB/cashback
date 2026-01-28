@@ -15,17 +15,20 @@ type notificationService struct {
 	repo         repository.NotificationRepository
 	debtSvc      DebtService
 	friendReqSvc FriendshipRequestService
+	friendSvc    FriendshipService
 }
 
 func NewNotificationService(
 	repo repository.NotificationRepository,
 	debtSvc DebtService,
 	friendReqSvc FriendshipRequestService,
+	friendSvc FriendshipService,
 ) *notificationService {
 	return &notificationService{
 		repo,
 		debtSvc,
 		friendReqSvc,
+		friendSvc,
 	}
 }
 
@@ -41,6 +44,16 @@ func (ns *notificationService) HandleDebtCreated(ctx context.Context, msg messag
 
 func (ns *notificationService) HandleFriendRequestSent(ctx context.Context, msg message.FriendRequestSent) error {
 	notification, err := ns.friendReqSvc.ConstructNotification(ctx, msg)
+	if err != nil {
+		return err
+	}
+
+	_, err = ns.repo.New(ctx, notification)
+	return err
+}
+
+func (ns *notificationService) HandleFriendRequestAccepted(ctx context.Context, msg message.FriendRequestAccepted) error {
+	notification, err := ns.friendSvc.ConstructNotification(ctx, msg)
 	if err != nil {
 		return err
 	}

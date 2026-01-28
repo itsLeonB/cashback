@@ -219,6 +219,7 @@ func (frs *friendshipRequestServiceImpl) Unblock(ctx context.Context, userProfil
 
 func (frs *friendshipRequestServiceImpl) Accept(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipResponse, error) {
 	var response dto.FriendshipResponse
+	var senderProfileID uuid.UUID
 	err := frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[users.FriendshipRequest]{}
 		spec.Model.ID = reqID
@@ -229,6 +230,8 @@ func (frs *friendshipRequestServiceImpl) Accept(ctx context.Context, userProfile
 			return err
 		}
 
+		senderProfileID = request.SenderProfileID
+
 		response, err = frs.friendshipSvc.CreateReal(ctx, userProfileID, request.SenderProfileID)
 		if err != nil {
 			return err
@@ -236,7 +239,16 @@ func (frs *friendshipRequestServiceImpl) Accept(ctx context.Context, userProfile
 
 		return frs.requestRepo.Delete(ctx, request)
 	})
-	return response, err
+	if err != nil {
+		return dto.FriendshipResponse{}, err
+	}
+
+	go frs.taskQueue.AsyncEnqueue(message.FriendRequestAccepted{
+		FriendshipID:    response.ID,
+		SenderProfileID: senderProfileID,
+	})
+
+	return response, nil
 }
 
 func (frs *friendshipRequestServiceImpl) ConstructNotification(ctx context.Context, msg message.FriendRequestSent) (entity.Notification, error) {

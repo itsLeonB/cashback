@@ -2,16 +2,20 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
+	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
+	"gorm.io/datatypes"
 )
 
 type friendshipServiceImpl struct {
@@ -223,4 +227,24 @@ func (fs *friendshipServiceImpl) CreateReal(ctx context.Context, userProfileID, 
 		return err
 	})
 	return response, err
+}
+
+func (fs *friendshipServiceImpl) ConstructNotification(ctx context.Context, msg message.FriendRequestAccepted) (entity.Notification, error) {
+	friendDetail, err := fs.GetDetails(ctx, msg.SenderProfileID, msg.FriendshipID)
+	if err != nil {
+		return entity.Notification{}, err
+	}
+
+	metadata, err := json.Marshal(message.FriendRequestAcceptedMetadata{FriendName: friendDetail.Name})
+	if err != nil {
+		return entity.Notification{}, err
+	}
+
+	return entity.Notification{
+		ProfileID:  msg.SenderProfileID,
+		Type:       "friendship-created",
+		EntityType: "friendship",
+		EntityID:   msg.FriendshipID,
+		Metadata:   datatypes.JSON(metadata),
+	}, nil
 }

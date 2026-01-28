@@ -56,6 +56,8 @@ type FriendshipService interface {
 	IsFriends(ctx context.Context, profileID1, profileID2 uuid.UUID) (bool, bool, error)
 	CreateReal(ctx context.Context, userProfileID, friendProfileID uuid.UUID) (dto.FriendshipResponse, error)
 	GetByProfileIDs(ctx context.Context, profileID1, profileID2 uuid.UUID) (users.Friendship, error)
+
+	ConstructNotification(ctx context.Context, msg message.FriendRequestAccepted) (entity.Notification, error)
 }
 
 type FriendshipRequestService interface {
@@ -140,6 +142,7 @@ type ProfileTransferMethodService interface {
 type NotificationService interface {
 	HandleDebtCreated(ctx context.Context, msg message.DebtCreated) error
 	HandleFriendRequestSent(ctx context.Context, msg message.FriendRequestSent) error
+	HandleFriendRequestAccepted(ctx context.Context, msg message.FriendRequestAccepted) error
 
 	GetUnread(ctx context.Context, profileID uuid.UUID) ([]dto.NotificationResponse, error)
 	MarkAsRead(ctx context.Context, profileID, notificationID uuid.UUID) error

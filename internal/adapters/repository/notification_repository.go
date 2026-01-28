@@ -2,7 +2,9 @@ package repository
 
 import (
 	"context"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/go-crud"
@@ -24,7 +26,12 @@ func NewNotificationRepository(db *gorm.DB) *notificationRepositoryGorm {
 }
 
 func (nr *notificationRepositoryGorm) New(ctx context.Context, notification entity.Notification) (entity.Notification, error) {
-	err := nr.db.Clauses(clause.OnConflict{
+	db, err := nr.GetGormInstance(ctx)
+	if err != nil {
+		return entity.Notification{}, err
+	}
+
+	err = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "profile_id"}, {Name: "type"}, {Name: "entity_type"}, {Name: "entity_id"}},
 		DoNothing: true,
 	}).Create(&notification).Error
@@ -33,4 +40,56 @@ func (nr *notificationRepositoryGorm) New(ctx context.Context, notification enti
 	}
 
 	return notification, nil
+}
+
+func (nr *notificationRepositoryGorm) GetByProfileID(ctx context.Context, profileID uuid.UUID, unreadOnly bool) ([]entity.Notification, error) {
+	db, err := nr.GetGormInstance(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	query := db.Where("profile_id = ?", profileID)
+
+	if unreadOnly {
+		query = query.Where("read_at IS NULL")
+	}
+
+	var notifications []entity.Notification
+	if err = query.Order("created_at DESC").Find(&notifications).Error; err != nil {
+		return nil, ungerr.Wrap(err, appconstant.ErrDataSelect)
+	}
+
+	return notifications, nil
+}
+
+func (nr *notificationRepositoryGorm) MarkAsRead(ctx context.Context, profileID, notificationID uuid.UUID) error {
+	db, err := nr.GetGormInstance(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err = db.
+		Model(&entity.Notification{}).
+		Where("id = ? AND profile_id = ?", notificationID, profileID).
+		Update("read_at", time.Now()).Error; err != nil {
+		return ungerr.Wrap(err, appconstant.ErrDataUpdate)
+	}
+
+	return nil
+}
+
+func (nr *notificationRepositoryGorm) MarkAllAsRead(ctx context.Context, profileID uuid.UUID) error {
+	db, err := nr.GetGormInstance(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err = db.
+		Model(&entity.Notification{}).
+		Where("profile_id = ? AND read_at IS NULL", profileID).
+		Update("read_at", time.Now()).Error; err != nil {
+		return ungerr.Wrap(err, appconstant.ErrDataUpdate)
+	}
+
+	return nil
 }

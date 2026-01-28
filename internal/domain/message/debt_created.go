@@ -12,5 +12,6 @@ func (DebtCreated) Type() string {
 }
 
 type DebtCreatedMetadata struct {
-	CreatorProfileID uuid.UUID `json:"creatorProfileId"`
+	FriendshipID uuid.UUID `json:"friendshipId"`
+	FriendName   string    `json:"friendName"`
 }

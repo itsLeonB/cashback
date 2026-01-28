@@ -217,7 +217,22 @@ func (ds *debtServiceImpl) ConstructNotification(ctx context.Context, msg messag
 		toNotifyProfileID = trx.BorrowerProfileID
 	}
 
-	metadata, err := json.Marshal(message.DebtCreatedMetadata{CreatorProfileID: msg.CreatorProfileID})
+	friendship, err := ds.friendshipService.GetByProfileIDs(ctx, trx.LenderProfileID, trx.BorrowerProfileID)
+	if err != nil {
+		return entity.Notification{}, err
+	}
+
+	toNotifyProfile := friendship.Profile1
+	if toNotifyProfileID == friendship.ProfileID2 {
+		toNotifyProfile = friendship.Profile2
+	}
+
+	msgMeta := message.DebtCreatedMetadata{
+		FriendshipID: friendship.ID,
+		FriendName:   toNotifyProfile.Name,
+	}
+
+	metadata, err := json.Marshal(msgMeta)
 	if err != nil {
 		return entity.Notification{}, err
 	}

@@ -103,6 +103,8 @@ func (fr *friendshipRepositoryGorm) FindByProfileIDs(ctx context.Context, profil
 
 	var friendship users.Friendship
 	err = db.Where("(profile_id1 = ? AND profile_id2 = ?) OR (profile_id1 = ? AND profile_id2 = ?)", profileID1, profileID2, profileID2, profileID1).
+		Preload("Profile1").
+		Preload("Profile2").
 		First(&friendship).
 		Error
 

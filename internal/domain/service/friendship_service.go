@@ -183,6 +183,19 @@ func (fs *friendshipServiceImpl) IsFriends(ctx context.Context, profileID1, prof
 	return true, friendship.Type == users.Anonymous, nil
 }
 
+func (fs *friendshipServiceImpl) GetByProfileIDs(ctx context.Context, profileID1, profileID2 uuid.UUID) (users.Friendship, error) {
+	friendship, err := fs.friendshipRepository.FindByProfileIDs(ctx, profileID1, profileID2)
+	if err != nil {
+		return users.Friendship{}, err
+	}
+
+	if friendship.IsZero() {
+		return users.Friendship{}, ungerr.NotFoundError("friendship not found")
+	}
+
+	return friendship, nil
+}
+
 func (fs *friendshipServiceImpl) CreateReal(ctx context.Context, userProfileID, friendProfileID uuid.UUID) (dto.FriendshipResponse, error) {
 	var response dto.FriendshipResponse
 	err := fs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {

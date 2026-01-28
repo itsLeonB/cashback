@@ -47,6 +47,7 @@ func ProvideServices(
 ) *Services {
 	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile)
 	friendship := service.NewFriendshipService(repos.Transactor, repos.Friendship, profile)
+	friendReq := service.NewFriendshipRequestService(repos.Transactor, friendship, profile, repos.FriendshipRequest, coreSvc.Queue)
 
 	groupExpense := service.NewGroupExpenseService(friendship, repos.GroupExpense, repos.Transactor, fee.NewFeeCalculatorRegistry(), repos.OtherFee, repos.ExpenseBill, coreSvc.LLM, coreSvc.Image, coreSvc.Queue)
 
@@ -58,7 +59,7 @@ func ProvideServices(
 
 		Profile:           profile,
 		Friendship:        friendship,
-		FriendshipRequest: service.NewFriendshipRequestService(repos.Transactor, friendship, profile, repos.FriendshipRequest),
+		FriendshipRequest: friendReq,
 		FriendDetails:     service.NewFriendDetailsService(debt, profile, friendship),
 
 		Debt:                  debt,
@@ -70,7 +71,7 @@ func ProvideServices(
 		ExpenseItem:  service.NewExpenseItemService(repos.Transactor, repos.ExpenseItem, groupExpense),
 		OtherFee:     service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense),
 
-		Notification: service.NewNotificationService(repos.Notification, debt),
+		Notification: service.NewNotificationService(repos.Notification, debt, friendReq),
 	}
 }
 

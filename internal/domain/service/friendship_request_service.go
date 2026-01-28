@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
+	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -19,6 +22,7 @@ type friendshipRequestServiceImpl struct {
 	friendshipSvc  FriendshipService
 	profileService ProfileService
 	requestRepo    crud.Repository[users.FriendshipRequest]
+	taskQueue      queue.TaskQueue
 }
 
 func NewFriendshipRequestService(
@@ -26,12 +30,14 @@ func NewFriendshipRequestService(
 	friendshipSvc FriendshipService,
 	profileService ProfileService,
 	requestRepo crud.Repository[users.FriendshipRequest],
+	taskQueue queue.TaskQueue,
 ) FriendshipRequestService {
 	return &friendshipRequestServiceImpl{
 		transactor,
 		friendshipSvc,
 		profileService,
 		requestRepo,
+		taskQueue,
 	}
 }
 
@@ -51,30 +57,39 @@ func (frs *friendshipRequestServiceImpl) Send(ctx context.Context, userProfileID
 			return ungerr.UnprocessableEntityError("user still has existing request")
 		}
 
-		isFriends, _, err := frs.friendshipSvc.IsFriends(ctx, userProfileID, friendProfileID)
-		if err != nil {
+		if err = frs.validateFriendProfile(ctx, userProfileID, friendProfileID); err != nil {
 			return err
 		}
-		if isFriends {
-			return ungerr.UnprocessableEntityError("already friends")
-		}
 
-		friendProfile, err := frs.profileService.GetByID(ctx, friendProfileID)
-		if err != nil {
-			return err
-		}
-		if friendProfile.UserID == uuid.Nil {
-			return ungerr.UnprocessableEntityError("cannot request friendship with anonymous profile")
-		}
-
-		newRequest := users.FriendshipRequest{
+		insertedRequest, err := frs.requestRepo.Insert(ctx, users.FriendshipRequest{
 			SenderProfileID:    userProfileID,
 			RecipientProfileID: friendProfileID,
+		})
+		if err != nil {
+			return err
 		}
 
-		_, err = frs.requestRepo.Insert(ctx, newRequest)
-		return err
+		go frs.taskQueue.AsyncEnqueue(message.FriendRequestSent{ID: insertedRequest.ID})
+		return nil
 	})
+}
+
+func (frs *friendshipRequestServiceImpl) validateFriendProfile(ctx context.Context, userProfileID, friendProfileID uuid.UUID) error {
+	isFriends, _, err := frs.friendshipSvc.IsFriends(ctx, userProfileID, friendProfileID)
+	if err != nil {
+		return err
+	}
+	if isFriends {
+		return ungerr.UnprocessableEntityError("already friends")
+	}
+	friendProfile, err := frs.profileService.GetByID(ctx, friendProfileID)
+	if err != nil {
+		return err
+	}
+	if friendProfile.UserID == uuid.Nil {
+		return ungerr.UnprocessableEntityError("cannot request friendship with anonymous profile")
+	}
+	return nil
 }
 
 func (frs *friendshipRequestServiceImpl) GetAllSent(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error) {
@@ -222,4 +237,27 @@ func (frs *friendshipRequestServiceImpl) Accept(ctx context.Context, userProfile
 		return frs.requestRepo.Delete(ctx, request)
 	})
 	return response, err
+}
+
+func (frs *friendshipRequestServiceImpl) ConstructNotification(ctx context.Context, msg message.FriendRequestSent) (entity.Notification, error) {
+	var notification entity.Notification
+	err := frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		spec := crud.Specification[users.FriendshipRequest]{}
+		spec.Model.ID = msg.ID
+		spec.ForUpdate = true
+		req, err := frs.getPendingRequest(ctx, spec)
+		if err != nil {
+			return err
+		}
+
+		notification = entity.Notification{
+			ProfileID:  req.RecipientProfileID,
+			Type:       "friend-request-received",
+			EntityType: "friend-request",
+			EntityID:   req.ID,
+		}
+
+		return err
+	})
+	return notification, err
 }

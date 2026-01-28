@@ -67,6 +67,8 @@ type FriendshipRequestService interface {
 	Block(ctx context.Context, userProfileID, reqID uuid.UUID) error
 	Unblock(ctx context.Context, userProfileID, reqID uuid.UUID) error
 	Accept(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipResponse, error)
+
+	ConstructNotification(ctx context.Context, msg message.FriendRequestSent) (entity.Notification, error)
 }
 
 type FriendDetailsService interface {
@@ -137,6 +139,8 @@ type ProfileTransferMethodService interface {
 
 type NotificationService interface {
 	HandleDebtCreated(ctx context.Context, msg message.DebtCreated) error
+	HandleFriendRequestSent(ctx context.Context, msg message.FriendRequestSent) error
+
 	GetUnread(ctx context.Context, profileID uuid.UUID) ([]dto.NotificationResponse, error)
 	MarkAsRead(ctx context.Context, profileID, notificationID uuid.UUID) error
 	MarkAllAsRead(ctx context.Context, profileID uuid.UUID) error

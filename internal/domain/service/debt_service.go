@@ -7,7 +7,6 @@ import (
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity"
@@ -86,15 +85,10 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 		return dto.DebtTransactionResponse{}, err
 	}
 
-	go func() {
-		msg := message.DebtCreated{
-			ID:               insertedDebt.ID,
-			CreatorProfileID: req.UserProfileID,
-		}
-		if e := ds.taskQueue.Enqueue(context.Background(), msg); e != nil {
-			logger.Errorf("error enqueuing %s: %v", msg.Type(), e)
-		}
-	}()
+	go ds.taskQueue.AsyncEnqueue(message.DebtCreated{
+		ID:               insertedDebt.ID,
+		CreatorProfileID: req.UserProfileID,
+	})
 
 	insertedDebt.TransferMethod = transferMethod
 	return mapper.DebtTransactionToResponse(req.UserProfileID, insertedDebt, make(map[uuid.UUID]dto.ProfileResponse)), nil

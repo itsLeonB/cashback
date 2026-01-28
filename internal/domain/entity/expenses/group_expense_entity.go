@@ -15,6 +15,13 @@ const (
 	ConfirmedExpense ExpenseStatus = "CONFIRMED"
 )
 
+type ExpenseOwnership string
+
+const (
+	OwnedExpense        ExpenseOwnership = "OWNED"
+	ParticipatingExpense ExpenseOwnership = "PARTICIPATING"
+)
+
 type GroupExpense struct {
 	crud.BaseEntity
 	PayerProfileID   uuid.NullUUID

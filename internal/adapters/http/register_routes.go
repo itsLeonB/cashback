@@ -80,7 +80,7 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 				groupExpenseRoutes := protectedRoutes.Group("/group-expenses")
 				{
 					groupExpenseRoutes.POST("", handlers.GroupExpense.HandleCreateDraft())
-					groupExpenseRoutes.GET("", handlers.GroupExpense.HandleGetAllCreated())
+					groupExpenseRoutes.GET("", handlers.GroupExpense.HandleGetAll())
 					groupExpenseRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextGroupExpenseID), handlers.GroupExpense.HandleGetDetails())
 					groupExpenseRoutes.PATCH(fmt.Sprintf("/:%s/confirmed", appconstant.ContextGroupExpenseID), handlers.GroupExpense.HandleConfirmDraft())
 					groupExpenseRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextGroupExpenseID), handlers.GroupExpense.HandleDelete())

@@ -601,9 +601,10 @@ func (ges *groupExpenseServiceImpl) getPendingForProcessingExpenseBill(ctx conte
 	return expenseBill, nil
 }
 
-func (ges *groupExpenseServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (expenses.GroupExpense, error) {
+func (ges *groupExpenseServiceImpl) GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (expenses.GroupExpense, error) {
 	spec := crud.Specification[expenses.GroupExpense]{}
 	spec.Model.ID = id
+	spec.ForUpdate = forUpdate
 	spec.PreloadRelations = []string{
 		"Items",
 		"OtherFees",
@@ -621,7 +622,7 @@ func (ges *groupExpenseServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (
 }
 
 func (ges *groupExpenseServiceImpl) ConstructNotifications(ctx context.Context, msg message.ExpenseConfirmed) ([]entity.Notification, error) {
-	expense, err := ges.GetByID(ctx, msg.ID)
+	expense, err := ges.GetByID(ctx, msg.ID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -645,4 +646,33 @@ func (ges *groupExpenseServiceImpl) ConstructNotifications(ctx context.Context, 
 	}
 
 	return notifications, nil
+}
+
+func (ges *groupExpenseServiceImpl) ProcessCallback(ctx context.Context, id uuid.UUID, callbackFn func(context.Context, expenses.GroupExpense) error) error {
+	return ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		expense, err := ges.GetByID(ctx, id, true)
+		if err != nil {
+			return err
+		}
+
+		// Idempotency guard
+		if expense.Processed {
+			return nil
+		}
+
+		if expense.Status != expenses.ConfirmedExpense {
+			return ungerr.Unknown("group expense is not confirmed")
+		}
+		if len(expense.Participants) < 1 {
+			return ungerr.Unknown("no participants to process")
+		}
+
+		if err = callbackFn(ctx, expense); err != nil {
+			return err
+		}
+
+		expense.Processed = true
+		_, err = ges.expenseRepo.Update(ctx, expense)
+		return err
+	})
 }

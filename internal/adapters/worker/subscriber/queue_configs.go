@@ -27,7 +27,12 @@ func configureQueues(providers *provider.Providers) ([]queueConfig, map[string]i
 		},
 		{
 			message.ExpenseConfirmed{}.Type(),
-			withLogging(message.ExpenseConfirmed{}.Type(), handler.ExpenseConfirmedHandler(providers.Debt, providers.Services.Notification)),
+			withLogging(message.ExpenseConfirmed{}.Type(),
+				handler.ExpenseConfirmedHandler(
+					providers.Debt,
+					providers.Services.Notification,
+					providers.Services.GroupExpense,
+				)),
 			3,
 		},
 		{

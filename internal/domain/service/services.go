@@ -80,12 +80,12 @@ type FriendDetailsService interface {
 type DebtService interface {
 	RecordNewTransaction(ctx context.Context, request dto.NewDebtTransactionRequest) (dto.DebtTransactionResponse, error)
 	GetTransactions(ctx context.Context, userProfileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
-	ProcessConfirmedGroupExpense(ctx context.Context, msg message.ExpenseConfirmed) error
 	GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]debts.DebtTransaction, []uuid.UUID, error)
 	GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (dto.FriendBalance, error)
 	GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
 
 	ConstructNotification(ctx context.Context, msg message.DebtCreated) (entity.Notification, error)
+	ProcessConfirmedGroupExpense(ctx context.Context, groupExpense expenses.GroupExpense) error
 }
 
 type TransferMethodService interface {
@@ -109,8 +109,9 @@ type GroupExpenseService interface {
 	GetUnconfirmedGroupExpenseForUpdate(ctx context.Context, profileID, id uuid.UUID) (expenses.GroupExpense, error)
 	ParseFromBillText(ctx context.Context, msg message.ExpenseBillTextExtracted) error
 	Recalculate(ctx context.Context, userProfileID, groupExpenseID uuid.UUID, amountChanged bool) error
-	GetByID(ctx context.Context, id uuid.UUID) (expenses.GroupExpense, error)
+	GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (expenses.GroupExpense, error)
 	ConstructNotifications(ctx context.Context, msg message.ExpenseConfirmed) ([]entity.Notification, error)
+	ProcessCallback(ctx context.Context, id uuid.UUID, callbackFn func(context.Context, expenses.GroupExpense) error) error
 }
 
 type ExpenseItemService interface {

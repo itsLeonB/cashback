@@ -18,7 +18,7 @@ const (
 type ExpenseOwnership string
 
 const (
-	OwnedExpense        ExpenseOwnership = "OWNED"
+	OwnedExpense         ExpenseOwnership = "OWNED"
 	ParticipatingExpense ExpenseOwnership = "PARTICIPATING"
 )
 
@@ -31,6 +31,7 @@ type GroupExpense struct {
 	Description      string
 	Status           ExpenseStatus
 	CreatorProfileID uuid.UUID
+	Processed        bool
 
 	// Relationships
 	Payer        users.UserProfile    `gorm:"foreignKey:PayerProfileID"`

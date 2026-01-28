@@ -29,6 +29,11 @@ func configureQueues(providers *provider.Providers) ([]queueConfig, map[string]i
 			withLogging(message.ExpenseConfirmed{}.Type(), providers.Debt.ProcessConfirmedGroupExpense),
 			3,
 		},
+		{
+			message.DebtCreated{}.Type(),
+			withLogging(message.DebtCreated{}.Type(), providers.Services.Notification.HandleDebtCreated),
+			3,
+		},
 	}
 
 	queuePriorities := make(map[string]int, len(queues))

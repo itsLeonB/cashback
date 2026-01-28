@@ -30,6 +30,9 @@ type Services struct {
 	ExpenseBill  service.ExpenseBillService
 	ExpenseItem  service.ExpenseItemService
 	OtherFee     service.OtherFeeService
+
+	// Infra
+	Notification service.NotificationService
 }
 
 func (s *Services) Shutdown() error {
@@ -48,7 +51,7 @@ func ProvideServices(
 	groupExpense := service.NewGroupExpenseService(friendship, repos.GroupExpense, repos.Transactor, fee.NewFeeCalculatorRegistry(), repos.OtherFee, repos.ExpenseBill, coreSvc.LLM, coreSvc.Image, coreSvc.Queue)
 
 	transferMethod := service.NewTransferMethodService(repos.TransferMethod, coreSvc.Storage, appConfig.BucketNameTransferMethods, appembed.TransferMethodAssets)
-	debt := service.NewDebtService(repos.DebtTransaction, transferMethod, friendship, profile, groupExpense)
+	debt := service.NewDebtService(repos.DebtTransaction, transferMethod, friendship, profile, groupExpense, coreSvc.Queue)
 
 	return &Services{
 		Auth: provideAuth(authConfig, repos, profile, appConfig, coreSvc),
@@ -66,6 +69,8 @@ func ProvideServices(
 		ExpenseBill:  service.NewExpenseBillService(coreSvc.Queue, repos.ExpenseBill, repos.Transactor, coreSvc.Image, coreSvc.OCR, groupExpense),
 		ExpenseItem:  service.NewExpenseItemService(repos.Transactor, repos.ExpenseItem, groupExpense),
 		OtherFee:     service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense),
+
+		Notification: service.NewNotificationService(repos.Notification, debt),
 	}
 }
 

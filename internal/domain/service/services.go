@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
@@ -78,6 +79,8 @@ type DebtService interface {
 	GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]debts.DebtTransaction, []uuid.UUID, error)
 	GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (dto.FriendBalance, error)
 	GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
+
+	ConstructNotification(ctx context.Context, msg message.DebtCreated) (entity.Notification, error)
 }
 
 type TransferMethodService interface {
@@ -129,4 +132,8 @@ type ProfileTransferMethodService interface {
 	Add(ctx context.Context, req dto.NewProfileTransferMethodRequest) error
 	GetAllByProfileID(ctx context.Context, profileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error)
 	GetAllByFriendProfileID(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error)
+}
+
+type NotificationService interface {
+	HandleDebtCreated(ctx context.Context, msg message.DebtCreated) error
 }

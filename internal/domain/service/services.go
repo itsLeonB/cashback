@@ -96,6 +96,7 @@ type GroupExpenseService interface {
 	ConfirmDraft(ctx context.Context, id, userProfileID uuid.UUID, dryRun bool) (dto.ExpenseConfirmationResponse, error)
 	Delete(ctx context.Context, userProfileID, id uuid.UUID) error
 	SyncParticipants(ctx context.Context, req dto.ExpenseParticipantsRequest) error
+	GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.GroupExpenseResponse, error)
 
 	GetUnconfirmedGroupExpenseForUpdate(ctx context.Context, profileID, id uuid.UUID) (expenses.GroupExpense, error)
 	ParseFromBillText(ctx context.Context, msg message.ExpenseBillTextExtracted) error

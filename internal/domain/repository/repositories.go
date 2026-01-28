@@ -20,6 +20,7 @@ type GroupExpenseRepository interface {
 	crud.Repository[expenses.GroupExpense]
 	SyncParticipants(ctx context.Context, groupExpenseID uuid.UUID, participants []expenses.ExpenseParticipant) error
 	DeleteItemParticipants(ctx context.Context, expenseID uuid.UUID, newParticipantProfileIDs []uuid.UUID) error
+	FindAllByParticipatingProfileID(ctx context.Context, profileID uuid.UUID, limit int) ([]expenses.GroupExpense, error)
 }
 
 type ExpenseItemRepository interface {

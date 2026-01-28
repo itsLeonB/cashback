@@ -132,3 +132,14 @@ func (geh *groupExpenseHandler) HandleSyncParticipants() gin.HandlerFunc {
 		return nil, geh.groupExpenseService.SyncParticipants(ctx, req)
 	})
 }
+
+func (geh *groupExpenseHandler) HandleGetRecent() gin.HandlerFunc {
+	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+		profileID, err := getProfileID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return geh.groupExpenseService.GetRecent(ctx, profileID)
+	})
+}

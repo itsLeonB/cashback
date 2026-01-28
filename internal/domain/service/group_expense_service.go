@@ -474,6 +474,15 @@ func (ges *groupExpenseServiceImpl) Recalculate(ctx context.Context, userProfile
 	return err
 }
 
+func (ges *groupExpenseServiceImpl) GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.GroupExpenseResponse, error) {
+	expenses, err := ges.expenseRepo.FindAllByParticipatingProfileID(ctx, profileID, 5)
+	if err != nil {
+		return nil, err
+	}
+
+	return ezutil.MapSlice(expenses, mapper.GroupExpenseSimpleMapper(profileID, "", false)), nil
+}
+
 func (ges *groupExpenseServiceImpl) validate(request dto.NewGroupExpenseRequest) error {
 	if request.TotalAmount.IsZero() {
 		return ungerr.UnprocessableEntityError(appconstant.ErrAmountZero)

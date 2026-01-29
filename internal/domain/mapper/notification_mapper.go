@@ -22,7 +22,7 @@ func NotificationToResponse(n entity.Notification) dto.NotificationResponse {
 	}
 
 	if title, err := notification.ResolveTitle(n); err != nil {
-		logger.Error("error resolving notification title: %v", err)
+		logger.Errorf("error resolving notification title: %v", err)
 		resp.Title = "Notification"
 	} else {
 		resp.Title = title

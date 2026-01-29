@@ -63,3 +63,11 @@ func (wc *webpushClient) Send(subscription Subscription) error {
 
 	return nil
 }
+
+func GenerateKeys() (string, string, error) {
+	privateKey, publicKey, err := webpush.GenerateVAPIDKeys()
+	if err != nil {
+		return "", "", ungerr.Wrap(err, "error generating VAPID keys")
+	}
+	return privateKey, publicKey, nil
+}

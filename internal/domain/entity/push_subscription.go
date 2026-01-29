@@ -9,7 +9,7 @@ import (
 )
 
 type PushSubscription struct {
-	ID        uuid.UUID
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:uuidv7()"`
 	ProfileID uuid.UUID
 	Endpoint  string
 	Keys      datatypes.JSON

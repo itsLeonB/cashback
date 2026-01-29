@@ -32,7 +32,8 @@ type Services struct {
 	OtherFee     service.OtherFeeService
 
 	// Infra
-	Notification service.NotificationService
+	Notification     service.NotificationService
+	PushSubscription service.PushSubscriptionService
 }
 
 func (s *Services) Shutdown() error {
@@ -71,7 +72,8 @@ func ProvideServices(
 		ExpenseItem:  service.NewExpenseItemService(repos.Transactor, repos.ExpenseItem, groupExpense),
 		OtherFee:     service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense),
 
-		Notification: service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense),
+		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense),
+		PushSubscription: service.NewPushSubscriptionService(repos.PushSubscription),
 	}
 }
 

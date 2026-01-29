@@ -20,13 +20,13 @@ import (
 )
 
 type pushNotificationService struct {
-	repo             crud.Repository[entity.PushSubscription]
+	repo             repository.PushSubscriptionRepository
 	notificationRepo repository.NotificationRepository
 	webPushClient    webpush.Client
 }
 
 func NewPushNotificationService(
-	repo crud.Repository[entity.PushSubscription],
+	repo repository.PushSubscriptionRepository,
 	notificationRepo repository.NotificationRepository,
 	webPushClient webpush.Client,
 ) *pushNotificationService {
@@ -38,45 +38,23 @@ func NewPushNotificationService(
 }
 
 func (s *pushNotificationService) Subscribe(ctx context.Context, req dto.PushSubscriptionRequest) error {
-	// Check if subscription already exists
-	spec := crud.Specification[entity.PushSubscription]{}
-	spec.Model.ProfileID = req.ProfileID
-	spec.Model.Endpoint = req.Endpoint
-	existing, err := s.repo.FindFirst(ctx, spec)
-	if err != nil {
-		return err
-	}
-	// If exists, update is handled by unique constraint on endpoint
-	if existing.ID != uuid.Nil {
-		return nil // Gracefully handle re-subscription
-	}
-
-	keys := entity.PushSubscriptionKeys{
+	keysJSON, err := json.Marshal(entity.PushSubscriptionKeys{
 		P256dh: req.Keys.P256dh,
 		Auth:   req.Keys.Auth,
-	}
-
-	keysJSON, err := json.Marshal(keys)
+	})
 	if err != nil {
 		return ungerr.Wrap(err, "failed to marshal keys")
 	}
 
-	subscription := entity.PushSubscription{
-		ID:        uuid.New(),
+	return s.repo.Upsert(ctx, entity.PushSubscription{
 		ProfileID: req.ProfileID,
 		Endpoint:  req.Endpoint,
 		Keys:      datatypes.JSON(keysJSON),
-	}
-
-	if req.UserAgent != "" {
-		subscription.UserAgent = sql.NullString{
+		UserAgent: sql.NullString{
 			String: req.UserAgent,
-			Valid:  true,
-		}
-	}
-
-	_, err = s.repo.Insert(ctx, subscription)
-	return err
+			Valid:  req.UserAgent != "",
+		},
+	})
 }
 
 func (s *pushNotificationService) Unsubscribe(ctx context.Context, req dto.PushUnsubscribeRequest) error {

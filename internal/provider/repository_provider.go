@@ -2,7 +2,6 @@ package provider
 
 import (
 	adapters "github.com/itsLeonB/cashback/internal/adapters/repository"
-	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
@@ -35,7 +34,7 @@ type Repositories struct {
 
 	// Infra
 	Notification     repository.NotificationRepository
-	PushSubscription crud.Repository[entity.PushSubscription]
+	PushSubscription repository.PushSubscriptionRepository
 }
 
 func ProvideRepositories(dataSource *DataSources) *Repositories {
@@ -56,6 +55,6 @@ func ProvideRepositories(dataSource *DataSources) *Repositories {
 		OtherFee:              adapters.NewOtherFeeRepository(dataSource.Gorm),
 		ExpenseBill:           crud.NewRepository[expenses.ExpenseBill](dataSource.Gorm),
 		Notification:          adapters.NewNotificationRepository(dataSource.Gorm),
-		PushSubscription:      crud.NewRepository[entity.PushSubscription](dataSource.Gorm),
+		PushSubscription:      adapters.NewPushSubscriptionRepository(dataSource.Gorm),
 	}
 }

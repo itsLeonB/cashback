@@ -71,7 +71,7 @@ func ProvideServices(
 		ExpenseItem:  service.NewExpenseItemService(repos.Transactor, repos.ExpenseItem, groupExpense),
 		OtherFee:     service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense),
 
-		Notification: service.NewNotificationService(repos.Notification, debt, friendReq, friendship),
+		Notification: service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense),
 	}
 }
 

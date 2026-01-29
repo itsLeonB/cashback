@@ -40,14 +40,22 @@ func (geh *groupExpenseHandler) HandleCreateDraft() gin.HandlerFunc {
 	})
 }
 
-func (geh *groupExpenseHandler) HandleGetAllCreated() gin.HandlerFunc {
+func (geh *groupExpenseHandler) HandleGetAll() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		groupExpenses, err := geh.groupExpenseService.GetAllCreated(ctx, userProfileID, expenses.ExpenseStatus(ctx.Query("status")))
+		status := expenses.ExpenseStatus(ctx.Query("status"))
+		ownership := expenses.ExpenseOwnership(ctx.Query("ownership"))
+
+		// Default to OWNED if ownership not specified (backward compatibility)
+		if ownership == "" {
+			ownership = expenses.OwnedExpense
+		}
+
+		groupExpenses, err := geh.groupExpenseService.GetAll(ctx, userProfileID, ownership, status)
 		if err != nil {
 			return nil, err
 		}

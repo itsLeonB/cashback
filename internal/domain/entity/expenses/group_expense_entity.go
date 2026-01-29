@@ -15,6 +15,13 @@ const (
 	ConfirmedExpense ExpenseStatus = "CONFIRMED"
 )
 
+type ExpenseOwnership string
+
+const (
+	OwnedExpense         ExpenseOwnership = "OWNED"
+	ParticipatingExpense ExpenseOwnership = "PARTICIPATING"
+)
+
 type GroupExpense struct {
 	crud.BaseEntity
 	PayerProfileID   uuid.NullUUID
@@ -24,6 +31,7 @@ type GroupExpense struct {
 	Description      string
 	Status           ExpenseStatus
 	CreatorProfileID uuid.UUID
+	Processed        bool
 
 	// Relationships
 	Payer        users.UserProfile    `gorm:"foreignKey:PayerProfileID"`

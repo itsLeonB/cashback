@@ -15,6 +15,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/core/service/storage"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/cashback/internal/domain/message"
@@ -80,13 +81,8 @@ func (ges *groupExpenseServiceImpl) CreateDraft(ctx context.Context, userProfile
 	return mapper.GroupExpenseToResponse(insertedDraftExpense, userProfileID, "", false), nil
 }
 
-func (ges *groupExpenseServiceImpl) GetAllCreated(ctx context.Context, userProfileID uuid.UUID, status expenses.ExpenseStatus) ([]dto.GroupExpenseResponse, error) {
-	spec := crud.Specification[expenses.GroupExpense]{}
-	spec.Model.CreatorProfileID = userProfileID
-	spec.PreloadRelations = []string{"Items", "OtherFees", "Participants", "Payer", "Creator"}
-	spec.Model.Status = status
-
-	groupExpenses, err := ges.expenseRepo.FindAll(ctx, spec)
+func (ges *groupExpenseServiceImpl) GetAll(ctx context.Context, userProfileID uuid.UUID, ownership expenses.ExpenseOwnership, status expenses.ExpenseStatus) ([]dto.GroupExpenseResponse, error) {
+	groupExpenses, err := ges.expenseRepo.FindAllByOwnership(ctx, userProfileID, ownership, status, -1)
 	if err != nil {
 		return nil, err
 	}
@@ -112,6 +108,20 @@ func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProf
 	groupExpense, err := ges.getGroupExpense(ctx, spec)
 	if err != nil {
 		return dto.GroupExpenseResponse{}, err
+	}
+
+	// Check if user has permission to view this expense (creator or participant)
+	isCreator := groupExpense.CreatorProfileID == userProfileID
+	isParticipant := false
+	for _, participant := range groupExpense.Participants {
+		if participant.ParticipantProfileID == userProfileID {
+			isParticipant = true
+			break
+		}
+	}
+
+	if !isCreator && !isParticipant {
+		return dto.GroupExpenseResponse{}, ungerr.NotFoundError("expense not found")
 	}
 
 	var billURL string
@@ -475,7 +485,8 @@ func (ges *groupExpenseServiceImpl) Recalculate(ctx context.Context, userProfile
 }
 
 func (ges *groupExpenseServiceImpl) GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.GroupExpenseResponse, error) {
-	expenses, err := ges.expenseRepo.FindAllByParticipatingProfileID(ctx, profileID, 5)
+	// Get recent expenses (both owned and participating) with DB-level limit
+	expenses, err := ges.expenseRepo.FindRecentByProfileID(ctx, profileID, 5)
 	if err != nil {
 		return nil, err
 	}
@@ -590,9 +601,10 @@ func (ges *groupExpenseServiceImpl) getPendingForProcessingExpenseBill(ctx conte
 	return expenseBill, nil
 }
 
-func (ges *groupExpenseServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (expenses.GroupExpense, error) {
+func (ges *groupExpenseServiceImpl) GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (expenses.GroupExpense, error) {
 	spec := crud.Specification[expenses.GroupExpense]{}
 	spec.Model.ID = id
+	spec.ForUpdate = forUpdate
 	spec.PreloadRelations = []string{
 		"Items",
 		"OtherFees",
@@ -607,4 +619,60 @@ func (ges *groupExpenseServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (
 	}
 
 	return ges.getGroupExpense(ctx, spec)
+}
+
+func (ges *groupExpenseServiceImpl) ConstructNotifications(ctx context.Context, msg message.ExpenseConfirmed) ([]entity.Notification, error) {
+	expense, err := ges.GetByID(ctx, msg.ID, false)
+	if err != nil {
+		return nil, err
+	}
+
+	metadata, err := json.Marshal(message.ExpenseConfirmedMetadata{CreatorName: expense.Creator.Name})
+	if err != nil {
+		return nil, ungerr.Wrap(err, "error marshaling metadata to json")
+	}
+
+	notifications := make([]entity.Notification, 0, len(expense.Participants))
+	for _, participant := range expense.Participants {
+		if participant.ParticipantProfileID != expense.CreatorProfileID {
+			notifications = append(notifications, entity.Notification{
+				ProfileID:  participant.ParticipantProfileID,
+				Type:       msg.Type(),
+				EntityType: "group-expense",
+				EntityID:   msg.ID,
+				Metadata:   metadata,
+			})
+		}
+	}
+
+	return notifications, nil
+}
+
+func (ges *groupExpenseServiceImpl) ProcessCallback(ctx context.Context, id uuid.UUID, callbackFn func(context.Context, expenses.GroupExpense) error) error {
+	return ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		expense, err := ges.GetByID(ctx, id, true)
+		if err != nil {
+			return err
+		}
+
+		// Idempotency guard
+		if expense.Processed {
+			return nil
+		}
+
+		if expense.Status != expenses.ConfirmedExpense {
+			return ungerr.Unknown("group expense is not confirmed")
+		}
+		if len(expense.Participants) < 1 {
+			return ungerr.Unknown("no participants to process")
+		}
+
+		if err = callbackFn(ctx, expense); err != nil {
+			return err
+		}
+
+		expense.Processed = true
+		_, err = ges.expenseRepo.Update(ctx, expense)
+		return err
+	})
 }

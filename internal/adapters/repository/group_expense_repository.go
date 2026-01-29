@@ -87,7 +87,49 @@ func (ger *groupExpenseRepositoryGorm) DeleteItemParticipants(ctx context.Contex
 	return nil
 }
 
-func (ger *groupExpenseRepositoryGorm) FindAllByParticipatingProfileID(ctx context.Context, profileID uuid.UUID, limit int) ([]expenses.GroupExpense, error) {
+func (ger *groupExpenseRepositoryGorm) FindAllByOwnership(ctx context.Context, profileID uuid.UUID, ownership expenses.ExpenseOwnership, status expenses.ExpenseStatus, limit int) ([]expenses.GroupExpense, error) {
+	db, err := ger.GetGormInstance(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var groupExpenses []expenses.GroupExpense
+	query := db.Preload("Items").Preload("OtherFees").Preload("Participants").Preload("Payer").Preload("Creator")
+
+	switch ownership {
+	case expenses.OwnedExpense:
+		query = query.Where("creator_profile_id = ?", profileID)
+	case expenses.ParticipatingExpense:
+		query = query.Joins("JOIN group_expense_participants ON group_expenses.id = group_expense_participants.group_expense_id").
+			Where("group_expense_participants.participant_profile_id = ? AND creator_profile_id != ?", profileID, profileID)
+	default:
+		return nil, ungerr.BadRequestError("invalid ownership filter")
+	}
+
+	// Handle status filtering
+	if status != "" {
+		if status == "UNCONFIRMED" {
+			query = query.Where("status IN ?", []expenses.ExpenseStatus{expenses.DraftExpense, expenses.ReadyExpense})
+		} else {
+			query = query.Where("status = ?", status)
+		}
+	}
+
+	query = query.Order("updated_at DESC")
+
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	err = query.Find(&groupExpenses).Error
+	if err != nil {
+		return nil, ungerr.Wrap(err, appconstant.ErrDataSelect)
+	}
+
+	return groupExpenses, nil
+}
+
+func (ger *groupExpenseRepositoryGorm) FindRecentByProfileID(ctx context.Context, profileID uuid.UUID, limit int) ([]expenses.GroupExpense, error) {
 	db, err := ger.GetGormInstance(ctx)
 	if err != nil {
 		return nil, err
@@ -95,17 +137,15 @@ func (ger *groupExpenseRepositoryGorm) FindAllByParticipatingProfileID(ctx conte
 
 	var groupExpenses []expenses.GroupExpense
 
-	if limit < 1 {
-		limit = -1
+	query := db.Preload("Creator").
+		Where("creator_profile_id = ? OR id IN (SELECT group_expense_id FROM group_expense_participants WHERE participant_profile_id = ?)", profileID, profileID).
+		Order("updated_at DESC")
+
+	if limit > 0 {
+		query = query.Limit(limit)
 	}
 
-	err = db.Joins("JOIN group_expense_participants ON group_expenses.id = group_expense_participants.group_expense_id").
-		Where("group_expense_participants.participant_profile_id = ?", profileID).
-		Order("group_expenses.updated_at DESC").
-		Limit(limit).
-		Preload("Creator").
-		Find(&groupExpenses).Error
-
+	err = query.Find(&groupExpenses).Error
 	if err != nil {
 		return nil, ungerr.Wrap(err, appconstant.ErrDataSelect)
 	}

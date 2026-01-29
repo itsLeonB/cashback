@@ -2,6 +2,7 @@ package subscriber
 
 import (
 	"github.com/hibiken/asynq"
+	"github.com/itsLeonB/cashback/internal/adapters/worker/subscriber/handler"
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/provider"
 )
@@ -26,7 +27,12 @@ func configureQueues(providers *provider.Providers) ([]queueConfig, map[string]i
 		},
 		{
 			message.ExpenseConfirmed{}.Type(),
-			withLogging(message.ExpenseConfirmed{}.Type(), providers.Debt.ProcessConfirmedGroupExpense),
+			withLogging(message.ExpenseConfirmed{}.Type(),
+				handler.ExpenseConfirmedHandler(
+					providers.Debt,
+					providers.Services.Notification,
+					providers.Services.GroupExpense,
+				)),
 			3,
 		},
 		{

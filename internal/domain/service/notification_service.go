@@ -16,6 +16,7 @@ type notificationService struct {
 	debtSvc      DebtService
 	friendReqSvc FriendshipRequestService
 	friendSvc    FriendshipService
+	expenseSvc   GroupExpenseService
 }
 
 func NewNotificationService(
@@ -23,12 +24,14 @@ func NewNotificationService(
 	debtSvc DebtService,
 	friendReqSvc FriendshipRequestService,
 	friendSvc FriendshipService,
+	expenseSvc GroupExpenseService,
 ) *notificationService {
 	return &notificationService{
 		repo,
 		debtSvc,
 		friendReqSvc,
 		friendSvc,
+		expenseSvc,
 	}
 }
 
@@ -59,6 +62,16 @@ func (ns *notificationService) HandleFriendRequestAccepted(ctx context.Context, 
 	}
 
 	_, err = ns.repo.New(ctx, notification)
+	return err
+}
+
+func (ns *notificationService) HandleExpenseConfirmed(ctx context.Context, msg message.ExpenseConfirmed) error {
+	notifications, err := ns.expenseSvc.ConstructNotifications(ctx, msg)
+	if err != nil {
+		return err
+	}
+
+	_, err = ns.repo.InsertMany(ctx, notifications)
 	return err
 }
 

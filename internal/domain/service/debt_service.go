@@ -133,19 +133,7 @@ func (ds *debtServiceImpl) GetTransactionSummary(ctx context.Context, profileID 
 	return mapper.MapToFriendBalanceSummary(transactions, profileIDs), nil
 }
 
-func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, msg message.ExpenseConfirmed) error {
-	groupExpense, err := ds.expenseService.GetByID(ctx, msg.ID)
-	if err != nil {
-		return err
-	}
-
-	if groupExpense.Status != expenses.ConfirmedExpense {
-		return ungerr.Unknown("group expense is not confirmed")
-	}
-	if len(groupExpense.Participants) < 1 {
-		return ungerr.Unknown("no participants to process")
-	}
-
+func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, groupExpense expenses.GroupExpense) error {
 	transferMethod, err := ds.transferMethodService.GetByName(ctx, debts.GroupExpenseTransferMethod)
 	if err != nil {
 		return err

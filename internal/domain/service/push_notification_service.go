@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/logger"
@@ -85,50 +87,71 @@ func (s *pushNotificationService) Deliver(ctx context.Context, msg message.Notif
 			return nil
 		}
 
-		title, err := notification.ResolveTitle(notif)
-		if err != nil {
-			logger.Error(err)
-			logger.Warn("using default notification title")
-			title = "Notification"
-		}
-
-		// Get all push subscriptions for the profile
-		spec := crud.Specification[entity.PushSubscription]{}
-		spec.Model.ProfileID = notif.ProfileID
-		subscriptions, err := s.repo.FindAll(ctx, spec)
-		if err != nil {
+		if err = s.deliverToSubs(ctx, notif); err != nil {
 			return err
 		}
 
-		// No subscriptions - silent no-op
-		if len(subscriptions) == 0 {
-			logger.Warnf("profileID %s has no subscriptions", notif.ProfileID)
-			return nil
+		notif.PushedAt = sql.NullTime{
+			Time:  time.Now(),
+			Valid: true,
 		}
 
-		// Construct push payload
-		payloadBytes, err := json.Marshal(
-			map[string]interface{}{
-				"title": title,
-				"data": map[string]interface{}{
-					"notification_id": msg.ID.String(),
-				},
-			},
-		)
+		_, err = s.notificationRepo.Update(ctx, notif)
 		if err != nil {
-			return ungerr.Wrap(err, "failed to marshal push payload")
-		}
-
-		// Send to all subscriptions
-		for _, subscription := range subscriptions {
-			s.send(subscription, payloadBytes)
+			logger.Error(err)
 		}
 
 		return nil
 	})
 }
 
-func (s *pushNotificationService) send(subscription entity.PushSubscription, payload []byte) {
+func (s *pushNotificationService) deliverToSubs(ctx context.Context, notif entity.Notification) error {
+	title, err := notification.ResolveTitle(notif)
+	if err != nil {
+		logger.Error(err)
+		logger.Warn("using default notification title")
+		title = "Notification"
+	}
+
+	// Get all push subscriptions for the profile
+	spec := crud.Specification[entity.PushSubscription]{}
+	spec.Model.ProfileID = notif.ProfileID
+	subscriptions, err := s.repo.FindAll(ctx, spec)
+	if err != nil {
+		return err
+	}
+
+	// No subscriptions - silent no-op
+	if len(subscriptions) == 0 {
+		logger.Warnf("profileID %s has no subscriptions", notif.ProfileID)
+		return nil
+	}
+
+	// Construct push payload
+	payloadBytes, err := json.Marshal(
+		map[string]interface{}{
+			"title": title,
+			"data": map[string]interface{}{
+				"notification_id": notif.ID.String(),
+			},
+		},
+	)
+	if err != nil {
+		return ungerr.Wrap(err, "failed to marshal push payload")
+	}
+
+	var wg sync.WaitGroup
+	// Send to all subscriptions
+	for _, subscription := range subscriptions {
+		wg.Go(func() {
+			s.sendSubscription(subscription, payloadBytes)
+		})
+	}
+	wg.Wait()
+	return nil
+}
+
+func (s *pushNotificationService) sendSubscription(subscription entity.PushSubscription, payload []byte) {
 	keys, err := ezutil.Unmarshal[webpush.Keys](subscription.Keys)
 	if err != nil {
 		logger.Errorf("error unmarshaling key for subscription %s: %v", subscription.ID, err)

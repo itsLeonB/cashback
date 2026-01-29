@@ -5,6 +5,7 @@ import (
 
 	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/cashback/internal/domain/message"
+	"github.com/itsLeonB/ezutil/v2"
 )
 
 type expenseConfirmedResolver struct{}
@@ -14,7 +15,7 @@ func (expenseConfirmedResolver) Type() string {
 }
 
 func (expenseConfirmedResolver) ResolveTitle(n entity.Notification) (string, error) {
-	metadata, err := unmarshal[message.ExpenseConfirmedMetadata](n.Metadata)
+	metadata, err := ezutil.Unmarshal[message.ExpenseConfirmedMetadata](n.Metadata)
 	if err != nil {
 		return "", err
 	}

@@ -2,12 +2,12 @@ package oauth
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"net/http"
 
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/ungerr"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -87,9 +87,9 @@ func (gps *googleProviderService) HandleCallback(ctx context.Context, code strin
 		return UserInfo{}, ungerr.Unknownf("error getting user info: %s", string(body))
 	}
 
-	var userInfo googleUserInfo
-	if err = json.Unmarshal(body, &userInfo); err != nil {
-		return UserInfo{}, ungerr.Wrap(err, "error unmarshaling google user info")
+	userInfo, err := ezutil.Unmarshal[googleUserInfo](body)
+	if err != nil {
+		return UserInfo{}, err
 	}
 
 	return UserInfo{

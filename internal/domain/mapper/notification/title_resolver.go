@@ -1,7 +1,6 @@
 package notification
 
 import (
-	"encoding/json"
 	"sync"
 
 	"github.com/itsLeonB/cashback/internal/domain/entity"
@@ -49,12 +48,4 @@ func constructResolverMap() map[string]TitleResolver {
 	}
 
 	return resolverMap
-}
-
-func unmarshal[T any](data []byte) (T, error) {
-	var zero T
-	if err := json.Unmarshal(data, &zero); err != nil {
-		return zero, ungerr.Wrapf(err, "error unmarshaling data to %T", zero)
-	}
-	return zero, nil
 }

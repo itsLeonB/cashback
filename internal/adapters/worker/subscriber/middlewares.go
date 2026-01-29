@@ -2,22 +2,21 @@ package subscriber
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/hibiken/asynq"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
-	"github.com/itsLeonB/ungerr"
+	"github.com/itsLeonB/ezutil/v2"
 )
 
 func withLogging[T queue.TaskMessage](taskType string, handler func(context.Context, T) error) asynq.Handler {
 	return asynq.HandlerFunc(func(ctx context.Context, t *asynq.Task) error {
 		logger.Infof("received new task %s", taskType)
 
-		var msg T
-		if err := json.Unmarshal(t.Payload(), &msg); err != nil {
+		msg, err := ezutil.Unmarshal[T](t.Payload())
+		if err != nil {
 			logger.Errorf("error processing %s task: %v", taskType, err)
-			return ungerr.Wrapf(err, "error unmarshaling payload to: %T", msg)
+			return err
 		}
 
 		if err := handler(ctx, msg); err != nil {

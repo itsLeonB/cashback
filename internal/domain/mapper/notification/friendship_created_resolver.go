@@ -5,6 +5,7 @@ import (
 
 	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/cashback/internal/domain/message"
+	"github.com/itsLeonB/ezutil/v2"
 )
 
 type friendshipCreatedResolver struct{}
@@ -14,7 +15,7 @@ func (friendshipCreatedResolver) Type() string {
 }
 
 func (friendshipCreatedResolver) ResolveTitle(n entity.Notification) (string, error) {
-	metadata, err := unmarshal[message.FriendRequestAcceptedMetadata](n.Metadata)
+	metadata, err := ezutil.Unmarshal[message.FriendRequestAcceptedMetadata](n.Metadata)
 	if err != nil {
 		return "", err
 	}

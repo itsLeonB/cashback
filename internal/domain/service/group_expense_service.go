@@ -527,9 +527,9 @@ func (ges *groupExpenseServiceImpl) parseExpenseBillTextToExpenseRequest(ctx con
 		return dto.NewGroupExpenseRequest{}, expenses.ErrExpenseNotDetected
 	}
 
-	var request dto.NewGroupExpenseRequest
-	if err = json.Unmarshal([]byte(promptResponse), &request); err != nil {
-		return dto.NewGroupExpenseRequest{}, ungerr.Wrap(err, "error unmarshaling to JSON")
+	request, err := ezutil.Unmarshal[dto.NewGroupExpenseRequest]([]byte(promptResponse))
+	if err != nil {
+		return dto.NewGroupExpenseRequest{}, err
 	}
 
 	return request, nil

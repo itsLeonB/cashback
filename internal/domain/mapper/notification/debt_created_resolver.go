@@ -5,6 +5,7 @@ import (
 
 	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/cashback/internal/domain/message"
+	"github.com/itsLeonB/ezutil/v2"
 )
 
 type debtCreatedResolver struct{}
@@ -14,7 +15,7 @@ func (debtCreatedResolver) Type() string {
 }
 
 func (debtCreatedResolver) ResolveTitle(n entity.Notification) (string, error) {
-	metadata, err := unmarshal[message.DebtCreatedMetadata](n.Metadata)
+	metadata, err := ezutil.Unmarshal[message.DebtCreatedMetadata](n.Metadata)
 	if err != nil {
 		return "", err
 	}

@@ -47,14 +47,14 @@ func (wc *webpushClient) Send(subscription Subscription) error {
 	}
 
 	resp, err := webpush.SendNotification(subscription.Payload, webpushSub, wc.opts)
-	if err != nil {
-		return err
-	}
 	defer func() {
 		if e := resp.Body.Close(); e != nil {
 			logger.Errorf("error closing response body: %v", e)
 		}
 	}()
+	if err != nil {
+		return err
+	}
 
 	// Check response status
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {

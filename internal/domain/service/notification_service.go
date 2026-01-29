@@ -64,7 +64,7 @@ func (ns *notificationService) HandleExpenseConfirmed(ctx context.Context, msg m
 		return err
 	}
 
-	createdNotifs, err := ns.repo.InsertMany(ctx, notifications)
+	createdNotifs, err := ns.repo.CreateMany(ctx, notifications)
 	if err != nil {
 		return err
 	}

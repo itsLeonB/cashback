@@ -14,6 +14,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/core/service/storage"
 	"github.com/itsLeonB/cashback/internal/core/service/store"
+	"github.com/itsLeonB/cashback/internal/core/service/webpush"
 )
 
 type CoreServices struct {
@@ -24,6 +25,7 @@ type CoreServices struct {
 	OCR     ocr.OCRService
 	Storage storage.StorageRepository
 	Queue   queue.TaskQueue
+	WebPush webpush.Client
 }
 
 func (cs *CoreServices) Shutdown() error {
@@ -66,6 +68,7 @@ func ProvideCoreServices() (*CoreServices, error) {
 		ocr,
 		storageRepo,
 		taskQueue,
+		webpush.NewWebPush(config.Global.Push),
 	}, nil
 }
 

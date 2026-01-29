@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go/storage v1.58.0
 	cloud.google.com/go/vision v1.2.0
 	cloud.google.com/go/vision/v2 v2.9.6
+	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/deckarep/golang-set/v2 v2.8.0
 	github.com/getbrevo/brevo-go v1.1.3
 	github.com/gin-contrib/cors v1.7.6

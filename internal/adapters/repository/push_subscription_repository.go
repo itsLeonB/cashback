@@ -16,7 +16,10 @@ type pushSubscriptionRepositoryGorm struct {
 }
 
 func NewPushSubscriptionRepository(db *gorm.DB) *pushSubscriptionRepositoryGorm {
-	return &pushSubscriptionRepositoryGorm{db: db}
+	return &pushSubscriptionRepositoryGorm{
+		crud.NewRepository[entity.PushSubscription](db),
+		db,
+	}
 }
 
 func (r *pushSubscriptionRepositoryGorm) Upsert(ctx context.Context, subscription entity.PushSubscription) error {

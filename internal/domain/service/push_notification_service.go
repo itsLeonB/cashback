@@ -88,7 +88,8 @@ func (s *pushNotificationService) Deliver(ctx context.Context, msg message.Notif
 		title, err := notification.ResolveTitle(notif)
 		if err != nil {
 			logger.Error(err)
-			return nil
+			logger.Warn("using default notification title")
+			title = "Notification"
 		}
 
 		// Get all push subscriptions for the profile

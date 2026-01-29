@@ -33,7 +33,8 @@ type Repositories struct {
 	ExpenseBill  crud.Repository[expenses.ExpenseBill]
 
 	// Infra
-	Notification repository.NotificationRepository
+	Notification     repository.NotificationRepository
+	PushSubscription repository.PushSubscriptionRepository
 }
 
 func ProvideRepositories(dataSource *DataSources) *Repositories {
@@ -54,5 +55,6 @@ func ProvideRepositories(dataSource *DataSources) *Repositories {
 		OtherFee:              adapters.NewOtherFeeRepository(dataSource.Gorm),
 		ExpenseBill:           crud.NewRepository[expenses.ExpenseBill](dataSource.Gorm),
 		Notification:          adapters.NewNotificationRepository(dataSource.Gorm),
+		PushSubscription:      adapters.NewPushSubscriptionRepository(dataSource.Gorm),
 	}
 }

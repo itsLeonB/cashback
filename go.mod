@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go/storage v1.58.0
 	cloud.google.com/go/vision v1.2.0
 	cloud.google.com/go/vision/v2 v2.9.6
+	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/deckarep/golang-set/v2 v2.8.0
 	github.com/getbrevo/brevo-go v1.1.3
 	github.com/gin-contrib/cors v1.7.6
@@ -13,7 +14,7 @@ require (
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/google/uuid v1.6.0
 	github.com/hibiken/asynq v0.25.1
-	github.com/itsLeonB/ezutil/v2 v2.2.1
+	github.com/itsLeonB/ezutil/v2 v2.3.0
 	github.com/itsLeonB/ginkgo v0.4.0
 	github.com/itsLeonB/go-crud v1.3.0
 	github.com/itsLeonB/sekure v0.1.1

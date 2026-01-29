@@ -23,7 +23,7 @@ func (fc *equalSplitFeeCalculator) GetMethod() expenses.FeeCalculationMethod {
 }
 
 func (fc *equalSplitFeeCalculator) Validate(fee expenses.OtherFee, groupExpense expenses.GroupExpense) error {
-	if fee.ID == uuid.Nil {
+	if fee.IsZero() {
 		return ungerr.Unknown("fee ID cannot be nil")
 	}
 

@@ -15,4 +15,5 @@ type NotificationResponse struct {
 	Metadata   datatypes.JSON `json:"metadata"`
 	ReadAt     time.Time      `json:"readAt,omitzero"`
 	CreatedAt  time.Time      `json:"createdAt"`
+	Title      string         `json:"title"`
 }

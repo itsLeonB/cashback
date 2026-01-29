@@ -42,7 +42,7 @@ func (nr *notificationRepositoryGorm) New(ctx context.Context, notification enti
 	return notification, nil
 }
 
-func (nr *notificationRepositoryGorm) InsertMany(ctx context.Context, notifications []entity.Notification) ([]entity.Notification, error) {
+func (nr *notificationRepositoryGorm) CreateMany(ctx context.Context, notifications []entity.Notification) ([]entity.Notification, error) {
 	if len(notifications) == 0 {
 		return []entity.Notification{}, nil
 	}

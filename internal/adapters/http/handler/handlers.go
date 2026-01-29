@@ -17,6 +17,7 @@ type Handlers struct {
 	ExpenseBill           *ExpenseBillHandler
 	ProfileTransferMethod *ProfileTransferMethodHandler
 	Notification          *NotificationHandler
+	PushSubscription      *PushSubscriptionHandler
 }
 
 func ProvideHandlers(services *provider.Services) *Handlers {
@@ -33,5 +34,6 @@ func ProvideHandlers(services *provider.Services) *Handlers {
 		NewExpenseBillHandler(services.ExpenseBill),
 		&ProfileTransferMethodHandler{services.ProfileTransferMethod},
 		NewNotificationHandler(services.Notification),
+		NewPushSubscriptionHandler(services.PushNotification),
 	}
 }

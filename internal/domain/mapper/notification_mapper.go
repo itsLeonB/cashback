@@ -1,22 +1,31 @@
 package mapper
 
 import (
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity"
+	"github.com/itsLeonB/cashback/internal/domain/mapper/notification"
 )
 
-func NotificationToResponse(notification entity.Notification) dto.NotificationResponse {
+func NotificationToResponse(n entity.Notification) dto.NotificationResponse {
 	resp := dto.NotificationResponse{
-		ID:         notification.ID,
-		Type:       notification.Type,
-		EntityType: notification.EntityType,
-		EntityID:   notification.EntityID,
-		Metadata:   notification.Metadata,
-		CreatedAt:  notification.CreatedAt,
+		ID:         n.ID,
+		Type:       n.Type,
+		EntityType: n.EntityType,
+		EntityID:   n.EntityID,
+		Metadata:   n.Metadata,
+		CreatedAt:  n.CreatedAt,
 	}
 
-	if notification.ReadAt.Valid {
-		resp.ReadAt = notification.ReadAt.Time
+	if n.ReadAt.Valid {
+		resp.ReadAt = n.ReadAt.Time
+	}
+
+	if title, err := notification.ResolveTitle(n); err != nil {
+		logger.Error("error resolving notification title: %v", err)
+		resp.Title = "Notification"
+	} else {
+		resp.Title = title
 	}
 
 	return resp

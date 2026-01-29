@@ -48,6 +48,6 @@ func All() (*Providers, error) {
 		DataSources:  dataSources,
 		Repositories: repos,
 		CoreServices: coreSvcs,
-		Services:     ProvideServices(repos, coreSvcs, config.Global.Auth, config.Global.App),
+		Services:     ProvideServices(repos, coreSvcs, config.Global.Auth, config.Global.App, config.Global.Push),
 	}, nil
 }

@@ -113,6 +113,12 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 					notificationRoutes.PATCH(fmt.Sprintf("/:%s", appconstant.ContextNotificationID), handlers.Notification.HandleMarkAsRead())
 					notificationRoutes.PATCH("", handlers.Notification.HandleMarkAllAsRead())
 				}
+
+				pushRoutes := protectedRoutes.Group("/push")
+				{
+					pushRoutes.POST("/subscribe", handlers.PushSubscription.HandleSubscribe())
+					pushRoutes.POST("/unsubscribe", handlers.PushSubscription.HandleUnsubscribe())
+				}
 			}
 		}
 	}

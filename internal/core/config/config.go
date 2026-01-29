@@ -19,6 +19,7 @@ type Config struct {
 	LLM
 	Mail
 	OAuthProviders
+	Push
 	Valkey
 	GoogleCreds *google.Credentials
 }
@@ -63,6 +64,11 @@ func Load() error {
 		errs = errors.Join(errs, err)
 	}
 
+	var push Push
+	if err = envconfig.Process(push.Prefix(), &push); err != nil {
+		errs = errors.Join(errs, err)
+	}
+
 	var google Google
 	if err = envconfig.Process(google.Prefix(), &google); err != nil {
 		errs = errors.Join(errs, err)
@@ -83,6 +89,7 @@ func Load() error {
 		llm,
 		mail,
 		oAuthProviders,
+		push,
 		valkey,
 		googleCreds,
 	}

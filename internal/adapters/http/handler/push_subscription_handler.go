@@ -10,10 +10,10 @@ import (
 )
 
 type PushSubscriptionHandler struct {
-	pushSubscriptionService service.PushSubscriptionService
+	pushNotificationSvc service.PushNotificationService
 }
 
-func NewPushSubscriptionHandler(pushSubscriptionService service.PushSubscriptionService) *PushSubscriptionHandler {
+func NewPushSubscriptionHandler(pushSubscriptionService service.PushNotificationService) *PushSubscriptionHandler {
 	return &PushSubscriptionHandler{pushSubscriptionService}
 }
 
@@ -31,7 +31,7 @@ func (h *PushSubscriptionHandler) HandleSubscribe() gin.HandlerFunc {
 
 		req.ProfileID = profileID
 
-		return nil, h.pushSubscriptionService.Subscribe(ctx, req)
+		return nil, h.pushNotificationSvc.Subscribe(ctx, req)
 	})
 }
 
@@ -49,6 +49,6 @@ func (h *PushSubscriptionHandler) HandleUnsubscribe() gin.HandlerFunc {
 
 		req.ProfileID = profileID
 
-		return nil, h.pushSubscriptionService.Unsubscribe(ctx, req)
+		return nil, h.pushNotificationSvc.Unsubscribe(ctx, req)
 	})
 }

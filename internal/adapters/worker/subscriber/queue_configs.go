@@ -52,7 +52,7 @@ func configureQueues(providers *provider.Providers) ([]queueConfig, map[string]i
 		},
 		{
 			message.NotificationCreated{}.Type(),
-			withLogging(message.NotificationCreated{}.Type(), providers.PushDelivery.DeliverToProfile),
+			withLogging(message.NotificationCreated{}.Type(), providers.PushNotification.Deliver),
 			3,
 		},
 	}

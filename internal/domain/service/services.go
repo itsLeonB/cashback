@@ -152,11 +152,8 @@ type NotificationService interface {
 	MarkAllAsRead(ctx context.Context, profileID uuid.UUID) error
 }
 
-type PushSubscriptionService interface {
+type PushNotificationService interface {
 	Subscribe(ctx context.Context, req dto.PushSubscriptionRequest) error
 	Unsubscribe(ctx context.Context, req dto.PushUnsubscribeRequest) error
-}
-
-type PushDeliveryService interface {
-	DeliverToProfile(ctx context.Context, msg message.NotificationCreated) error
+	Deliver(ctx context.Context, msg message.NotificationCreated) error
 }

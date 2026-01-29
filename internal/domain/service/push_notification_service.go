@@ -2,42 +2,99 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 
 	"github.com/SherClockHolmes/webpush-go"
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/cashback/internal/domain/mapper/notification"
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
+	"gorm.io/datatypes"
 )
 
-type pushDeliveryService struct {
-	pushSubscriptionRepo crud.Repository[entity.PushSubscription]
-	notificationRepo     repository.NotificationRepository
-	transactor           crud.Transactor
-	pushConfig           config.Push
+type pushNotificationService struct {
+	repo             crud.Repository[entity.PushSubscription]
+	notificationRepo repository.NotificationRepository
+	pushConfig       config.Push
 }
 
-func NewPushDeliveryService(
-	pushSubscriptionRepo crud.Repository[entity.PushSubscription],
+func NewPushNotificationService(
+	repo crud.Repository[entity.PushSubscription],
 	notificationRepo repository.NotificationRepository,
-	transactor crud.Transactor,
 	pushConfig config.Push,
-) PushDeliveryService {
-	return &pushDeliveryService{
-		pushSubscriptionRepo,
+) *pushNotificationService {
+	return &pushNotificationService{
+		repo,
 		notificationRepo,
-		transactor,
 		pushConfig,
 	}
 }
 
-func (s *pushDeliveryService) DeliverToProfile(ctx context.Context, msg message.NotificationCreated) error {
+func (s *pushNotificationService) Subscribe(ctx context.Context, req dto.PushSubscriptionRequest) error {
+	// Check if subscription already exists
+	spec := crud.Specification[entity.PushSubscription]{}
+	spec.Model.ProfileID = req.ProfileID
+	spec.Model.Endpoint = req.Endpoint
+	existing, err := s.repo.FindFirst(ctx, spec)
+	if err != nil {
+		return err
+	}
+	// If exists, update is handled by unique constraint on endpoint
+	if existing.ID != uuid.Nil {
+		return nil // Gracefully handle re-subscription
+	}
+
+	keys := entity.PushSubscriptionKeys{
+		P256dh: req.Keys.P256dh,
+		Auth:   req.Keys.Auth,
+	}
+
+	keysJSON, err := json.Marshal(keys)
+	if err != nil {
+		return ungerr.Wrap(err, "failed to marshal keys")
+	}
+
+	subscription := entity.PushSubscription{
+		ID:        uuid.New(),
+		ProfileID: req.ProfileID,
+		Endpoint:  req.Endpoint,
+		Keys:      datatypes.JSON(keysJSON),
+	}
+
+	if req.UserAgent != "" {
+		subscription.UserAgent = sql.NullString{
+			String: req.UserAgent,
+			Valid:  true,
+		}
+	}
+
+	_, err = s.repo.Insert(ctx, subscription)
+	return err
+}
+
+func (s *pushNotificationService) Unsubscribe(ctx context.Context, req dto.PushUnsubscribeRequest) error {
+	spec := crud.Specification[entity.PushSubscription]{}
+	spec.Model.ProfileID = req.ProfileID
+	spec.Model.Endpoint = req.Endpoint
+	existing, err := s.repo.FindFirst(ctx, spec)
+	if err != nil {
+		return err
+	}
+	if existing.ID == uuid.Nil {
+		return nil
+	}
+
+	return s.repo.Delete(ctx, existing)
+}
+
+func (s *pushNotificationService) Deliver(ctx context.Context, msg message.NotificationCreated) error {
 	// Skip if push notifications are disabled
 	if !s.pushConfig.Enabled {
 		return nil
@@ -67,7 +124,7 @@ func (s *pushDeliveryService) DeliverToProfile(ctx context.Context, msg message.
 	// Get all push subscriptions for the profile
 	subscriptionSpec := crud.Specification[entity.PushSubscription]{}
 	subscriptionSpec.Model.ProfileID = notif.ProfileID
-	subscriptions, err := s.pushSubscriptionRepo.FindAll(ctx, subscriptionSpec)
+	subscriptions, err := s.repo.FindAll(ctx, subscriptionSpec)
 	if err != nil {
 		return err
 	}
@@ -101,7 +158,7 @@ func (s *pushDeliveryService) DeliverToProfile(ctx context.Context, msg message.
 	return nil
 }
 
-func (s *pushDeliveryService) sendPushNotification(subscription entity.PushSubscription, payload []byte) error {
+func (s *pushNotificationService) sendPushNotification(subscription entity.PushSubscription, payload []byte) error {
 	// Unmarshal keys from JSONB
 	var keys entity.PushSubscriptionKeys
 	if err := json.Unmarshal(subscription.Keys, &keys); err != nil {

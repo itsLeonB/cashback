@@ -22,17 +22,20 @@ import (
 type pushNotificationService struct {
 	repo             repository.PushSubscriptionRepository
 	notificationRepo repository.NotificationRepository
+	transactor       crud.Transactor
 	webPushClient    webpush.Client
 }
 
 func NewPushNotificationService(
 	repo repository.PushSubscriptionRepository,
 	notificationRepo repository.NotificationRepository,
+	transactor crud.Transactor,
 	webPushClient webpush.Client,
 ) *pushNotificationService {
 	return &pushNotificationService{
 		repo,
 		notificationRepo,
+		transactor,
 		webPushClient,
 	}
 }
@@ -65,7 +68,7 @@ func (s *pushNotificationService) Unsubscribe(ctx context.Context, req dto.PushU
 	if err != nil {
 		return err
 	}
-	if existing.ID == uuid.Nil {
+	if existing.IsZero() {
 		return nil
 	}
 
@@ -73,69 +76,88 @@ func (s *pushNotificationService) Unsubscribe(ctx context.Context, req dto.PushU
 }
 
 func (s *pushNotificationService) Deliver(ctx context.Context, msg message.NotificationCreated) error {
+	return s.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		notif, err := s.getPushableNotification(ctx, msg.ID)
+		if err != nil {
+			return err
+		}
+		if notif.IsZero() {
+			return nil
+		}
+
+		title, err := notification.ResolveTitle(notif)
+		if err != nil {
+			logger.Error(err)
+			return nil
+		}
+
+		// Get all push subscriptions for the profile
+		spec := crud.Specification[entity.PushSubscription]{}
+		spec.Model.ProfileID = notif.ProfileID
+		subscriptions, err := s.repo.FindAll(ctx, spec)
+		if err != nil {
+			return err
+		}
+
+		// No subscriptions - silent no-op
+		if len(subscriptions) == 0 {
+			logger.Warnf("profileID %s has no subscriptions", notif.ProfileID)
+			return nil
+		}
+
+		// Construct push payload
+		payloadBytes, err := json.Marshal(
+			map[string]interface{}{
+				"title": title,
+				"data": map[string]interface{}{
+					"notification_id": msg.ID.String(),
+				},
+			},
+		)
+		if err != nil {
+			return ungerr.Wrap(err, "failed to marshal push payload")
+		}
+
+		// Send to all subscriptions
+		for _, subscription := range subscriptions {
+			s.send(subscription, payloadBytes)
+		}
+
+		return nil
+	})
+}
+
+func (s *pushNotificationService) send(subscription entity.PushSubscription, payload []byte) {
+	keys, err := ezutil.Unmarshal[webpush.Keys](subscription.Keys)
+	if err != nil {
+		logger.Errorf("error unmarshaling key for subscription %s: %v", subscription.ID, err)
+		return
+	}
+
+	if err := s.webPushClient.Send(webpush.Subscription{
+		Endpoint: subscription.Endpoint,
+		Keys:     keys,
+		Payload:  payload,
+	}); err != nil {
+		logger.Errorf("failed to send push to subscription %s: %v", subscription.ID, err)
+	}
+}
+
+func (s *pushNotificationService) getPushableNotification(ctx context.Context, id uuid.UUID) (entity.Notification, error) {
 	spec := crud.Specification[entity.Notification]{}
-	spec.Model.ID = msg.ID
+	spec.Model.ID = id
+	spec.ForUpdate = true
 	notif, err := s.notificationRepo.FindFirst(ctx, spec)
 	if err != nil {
-		return err
+		return entity.Notification{}, err
 	}
-	if notif.ID == uuid.Nil {
-		return nil
+	if notif.IsZero() {
+		logger.Errorf("notification ID: %s is not found", id)
+		return entity.Notification{}, nil
 	}
-
-	// Skip if notification is read (soft-deleted equivalent)
-	if notif.ReadAt.Valid {
-		return nil
+	// Skip if notification is read/pushed
+	if notif.ReadAt.Valid || notif.PushedAt.Valid {
+		return entity.Notification{}, nil
 	}
-
-	title, err := notification.ResolveTitle(notif)
-	if err != nil {
-		logger.Error(err)
-		return nil
-	}
-
-	// Get all push subscriptions for the profile
-	subscriptionSpec := crud.Specification[entity.PushSubscription]{}
-	subscriptionSpec.Model.ProfileID = notif.ProfileID
-	subscriptions, err := s.repo.FindAll(ctx, subscriptionSpec)
-	if err != nil {
-		return err
-	}
-
-	// No subscriptions - silent no-op
-	if len(subscriptions) == 0 {
-		return nil
-	}
-
-	// Construct push payload
-	payload := map[string]interface{}{
-		"title": title,
-		"data": map[string]interface{}{
-			"notification_id": msg.ID.String(),
-		},
-	}
-
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		return ungerr.Wrap(err, "failed to marshal push payload")
-	}
-
-	// Send to all subscriptions
-	for _, subscription := range subscriptions {
-		keys, err := ezutil.Unmarshal[webpush.Keys](subscription.Keys)
-		if err != nil {
-			logger.Errorf("error unmarshaling key for subscription %s: %v", subscription.ID, err)
-			continue
-		}
-
-		if err := s.webPushClient.Send(webpush.Subscription{
-			Endpoint: subscription.Endpoint,
-			Keys:     keys,
-			Payload:  payloadBytes,
-		}); err != nil {
-			logger.Errorf("failed to send push to subscription %s: %v", subscription.ID, err)
-		}
-	}
-
-	return nil
+	return notif, nil
 }

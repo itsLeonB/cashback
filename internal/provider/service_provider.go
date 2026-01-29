@@ -74,7 +74,7 @@ func ProvideServices(
 		OtherFee:     service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense),
 
 		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense, coreSvc.Queue),
-		PushNotification: service.NewPushNotificationService(repos.PushSubscription, repos.Notification, coreSvc.WebPush),
+		PushNotification: service.NewPushNotificationService(repos.PushSubscription, repos.Notification, repos.Transactor, coreSvc.WebPush),
 	}
 }
 

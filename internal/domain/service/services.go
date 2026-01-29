@@ -156,3 +156,7 @@ type PushSubscriptionService interface {
 	Subscribe(ctx context.Context, req dto.PushSubscriptionRequest) error
 	Unsubscribe(ctx context.Context, req dto.PushUnsubscribeRequest) error
 }
+
+type PushDeliveryService interface {
+	DeliverToProfile(ctx context.Context, msg message.NotificationCreated) error
+}

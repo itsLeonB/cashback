@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
@@ -17,6 +19,7 @@ type notificationService struct {
 	friendReqSvc FriendshipRequestService
 	friendSvc    FriendshipService
 	expenseSvc   GroupExpenseService
+	taskQueue    queue.TaskQueue
 }
 
 func NewNotificationService(
@@ -25,6 +28,7 @@ func NewNotificationService(
 	friendReqSvc FriendshipRequestService,
 	friendSvc FriendshipService,
 	expenseSvc GroupExpenseService,
+	taskQueue queue.TaskQueue,
 ) *notificationService {
 	return &notificationService{
 		repo,
@@ -32,37 +36,26 @@ func NewNotificationService(
 		friendReqSvc,
 		friendSvc,
 		expenseSvc,
+		taskQueue,
 	}
 }
 
 func (ns *notificationService) HandleDebtCreated(ctx context.Context, msg message.DebtCreated) error {
-	notification, err := ns.debtSvc.ConstructNotification(ctx, msg)
-	if err != nil {
-		return err
-	}
-
-	_, err = ns.repo.New(ctx, notification)
-	return err
+	return ns.publishNotification(ctx, func(ctx context.Context) (entity.Notification, error) {
+		return ns.debtSvc.ConstructNotification(ctx, msg)
+	})
 }
 
 func (ns *notificationService) HandleFriendRequestSent(ctx context.Context, msg message.FriendRequestSent) error {
-	notification, err := ns.friendReqSvc.ConstructNotification(ctx, msg)
-	if err != nil {
-		return err
-	}
-
-	_, err = ns.repo.New(ctx, notification)
-	return err
+	return ns.publishNotification(ctx, func(ctx context.Context) (entity.Notification, error) {
+		return ns.friendReqSvc.ConstructNotification(ctx, msg)
+	})
 }
 
 func (ns *notificationService) HandleFriendRequestAccepted(ctx context.Context, msg message.FriendRequestAccepted) error {
-	notification, err := ns.friendSvc.ConstructNotification(ctx, msg)
-	if err != nil {
-		return err
-	}
-
-	_, err = ns.repo.New(ctx, notification)
-	return err
+	return ns.publishNotification(ctx, func(ctx context.Context) (entity.Notification, error) {
+		return ns.friendSvc.ConstructNotification(ctx, msg)
+	})
 }
 
 func (ns *notificationService) HandleExpenseConfirmed(ctx context.Context, msg message.ExpenseConfirmed) error {
@@ -71,8 +64,18 @@ func (ns *notificationService) HandleExpenseConfirmed(ctx context.Context, msg m
 		return err
 	}
 
-	_, err = ns.repo.InsertMany(ctx, notifications)
-	return err
+	createdNotifs, err := ns.repo.InsertMany(ctx, notifications)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for _, createdNotif := range createdNotifs {
+			ns.taskQueue.AsyncEnqueue(message.NotificationCreated{ID: createdNotif.ID})
+		}
+	}()
+
+	return nil
 }
 
 func (ns *notificationService) GetUnread(ctx context.Context, profileID uuid.UUID) ([]dto.NotificationResponse, error) {
@@ -90,4 +93,19 @@ func (ns *notificationService) MarkAsRead(ctx context.Context, profileID, notifi
 
 func (ns *notificationService) MarkAllAsRead(ctx context.Context, profileID uuid.UUID) error {
 	return ns.repo.MarkAllAsRead(ctx, profileID)
+}
+
+func (ns *notificationService) publishNotification(ctx context.Context, constructorFn func(ctx context.Context) (entity.Notification, error)) error {
+	notification, err := constructorFn(ctx)
+	if err != nil {
+		return err
+	}
+
+	createdNotif, err := ns.repo.New(ctx, notification)
+	if err != nil {
+		return err
+	}
+
+	go ns.taskQueue.AsyncEnqueue(message.NotificationCreated{ID: createdNotif.ID})
+	return nil
 }

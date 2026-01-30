@@ -20,6 +20,8 @@ type Repositories struct {
 	PasswordResetToken crud.Repository[users.PasswordResetToken]
 	OAuthAccount       crud.Repository[users.OAuthAccount]
 	FriendshipRequest  crud.Repository[users.FriendshipRequest]
+	Session            crud.Repository[users.Session]
+	RefreshToken       crud.Repository[users.RefreshToken]
 
 	// Debts
 	DebtTransaction       repository.DebtTransactionRepository
@@ -39,22 +41,28 @@ type Repositories struct {
 
 func ProvideRepositories(dataSource *DataSources) *Repositories {
 	return &Repositories{
-		Transactor:            crud.NewTransactor(dataSource.Gorm),
-		User:                  crud.NewRepository[users.User](dataSource.Gorm),
-		Profile:               adapters.NewProfileRepository(dataSource.Gorm),
-		Friendship:            adapters.NewFriendshipRepository(dataSource.Gorm),
-		RelatedProfile:        crud.NewRepository[users.RelatedProfile](dataSource.Gorm),
-		PasswordResetToken:    crud.NewRepository[users.PasswordResetToken](dataSource.Gorm),
-		OAuthAccount:          crud.NewRepository[users.OAuthAccount](dataSource.Gorm),
-		FriendshipRequest:     crud.NewRepository[users.FriendshipRequest](dataSource.Gorm),
+		Transactor: crud.NewTransactor(dataSource.Gorm),
+
+		User:               crud.NewRepository[users.User](dataSource.Gorm),
+		Profile:            adapters.NewProfileRepository(dataSource.Gorm),
+		Friendship:         adapters.NewFriendshipRepository(dataSource.Gorm),
+		RelatedProfile:     crud.NewRepository[users.RelatedProfile](dataSource.Gorm),
+		PasswordResetToken: crud.NewRepository[users.PasswordResetToken](dataSource.Gorm),
+		OAuthAccount:       crud.NewRepository[users.OAuthAccount](dataSource.Gorm),
+		FriendshipRequest:  crud.NewRepository[users.FriendshipRequest](dataSource.Gorm),
+		Session:            crud.NewRepository[users.Session](dataSource.Gorm),
+		RefreshToken:       crud.NewRepository[users.RefreshToken](dataSource.Gorm),
+
 		DebtTransaction:       adapters.NewDebtTransactionRepository(dataSource.Gorm),
 		TransferMethod:        adapters.NewTransferMethodRepository(dataSource.Gorm),
 		ProfileTransferMethod: crud.NewRepository[debts.ProfileTransferMethod](dataSource.Gorm),
-		GroupExpense:          adapters.NewGroupExpenseRepository(dataSource.Gorm),
-		ExpenseItem:           adapters.NewExpenseItemRepository(dataSource.Gorm),
-		OtherFee:              adapters.NewOtherFeeRepository(dataSource.Gorm),
-		ExpenseBill:           crud.NewRepository[expenses.ExpenseBill](dataSource.Gorm),
-		Notification:          adapters.NewNotificationRepository(dataSource.Gorm),
-		PushSubscription:      adapters.NewPushSubscriptionRepository(dataSource.Gorm),
+
+		GroupExpense: adapters.NewGroupExpenseRepository(dataSource.Gorm),
+		ExpenseItem:  adapters.NewExpenseItemRepository(dataSource.Gorm),
+		OtherFee:     adapters.NewOtherFeeRepository(dataSource.Gorm),
+		ExpenseBill:  crud.NewRepository[expenses.ExpenseBill](dataSource.Gorm),
+
+		Notification:     adapters.NewNotificationRepository(dataSource.Gorm),
+		PushSubscription: adapters.NewPushSubscriptionRepository(dataSource.Gorm),
 	}
 }

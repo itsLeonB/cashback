@@ -13,6 +13,10 @@ const (
 	ContextProvider        ctxKey = "provider"
 	ContextFriendRequestID ctxKey = "friendRequestID"
 	ContextNotificationID  ctxKey = "notificationID"
+
+	ContextSessionID ctxKey = "sessionID"
+	ContextExp       ctxKey = "exp"
+	ContextIat       ctxKey = "iat"
 )
 
 func (c ctxKey) String() string {

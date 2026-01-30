@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/ginkgo/pkg/server"
@@ -24,12 +26,18 @@ func (h *PushSubscriptionHandler) HandleSubscribe() gin.HandlerFunc {
 			return nil, err
 		}
 
+		sessionID, err := server.GetFromContext[uuid.UUID](ctx, appconstant.ContextSessionID.String())
+		if err != nil {
+			return nil, err
+		}
+
 		req, err := server.BindJSON[dto.PushSubscriptionRequest](ctx)
 		if err != nil {
 			return nil, err
 		}
 
 		req.ProfileID = profileID
+		req.SessionID = sessionID
 
 		return nil, h.pushNotificationSvc.Subscribe(ctx, req)
 	})

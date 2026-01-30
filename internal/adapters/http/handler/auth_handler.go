@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
@@ -12,14 +13,20 @@ import (
 )
 
 type AuthHandler struct {
-	authService service.AuthService
+	authService    service.AuthService
+	oAuthService   service.OAuthService
+	sessionService service.SessionService
 }
 
 func NewAuthHandler(
 	authService service.AuthService,
+	oAuthService service.OAuthService,
+	sessionService service.SessionService,
 ) *AuthHandler {
 	return &AuthHandler{
 		authService,
+		oAuthService,
+		sessionService,
 	}
 }
 
@@ -63,7 +70,7 @@ func (ah *AuthHandler) HandleOAuth2Login() gin.HandlerFunc {
 			return
 		}
 
-		url, err := ah.authService.GetOAuth2URL(ctx, provider)
+		url, err := ah.oAuthService.GetOAuthURL(ctx, provider)
 		if err != nil {
 			_ = ctx.Error(err)
 			return
@@ -82,7 +89,11 @@ func (ah *AuthHandler) HandleOAuth2Callback() gin.HandlerFunc {
 		code := ctx.Query("code")
 		state := ctx.Query("state")
 
-		response, err := ah.authService.OAuth2Login(ctx, provider, code, state)
+		response, err := ah.oAuthService.HandleOAuthCallback(ctx, dto.OAuthCallbackData{
+			Provider: provider,
+			Code:     code,
+			State:    state,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -138,10 +149,32 @@ func (ah *AuthHandler) HandleResetPassword() gin.HandlerFunc {
 	})
 }
 
+func (ah *AuthHandler) HandleRefreshToken() gin.HandlerFunc {
+	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+		request, err := server.BindJSON[dto.RefreshTokenRequest](ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return ah.sessionService.RefreshToken(ctx, request)
+	})
+}
+
 func (ah *AuthHandler) getProvider(ctx *gin.Context) (string, error) {
 	provider := ctx.Param(appconstant.ContextProvider.String())
 	if provider == "" {
 		return "", ungerr.BadRequestError("missing oauth provider")
 	}
 	return provider, nil
+}
+
+func (ah *AuthHandler) HandleLogout() gin.HandlerFunc {
+	return server.Handler(http.StatusNoContent, func(ctx *gin.Context) (any, error) {
+		sessionID, err := server.GetFromContext[uuid.UUID](ctx, appconstant.ContextSessionID.String())
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, ah.authService.Logout(ctx, sessionID)
+	})
 }

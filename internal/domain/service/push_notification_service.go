@@ -53,6 +53,7 @@ func (s *pushNotificationService) Subscribe(ctx context.Context, req dto.PushSub
 
 	return s.repo.Upsert(ctx, entity.PushSubscription{
 		ProfileID: req.ProfileID,
+		SessionID: uuid.NullUUID{UUID: req.SessionID, Valid: true},
 		Endpoint:  req.Endpoint,
 		Keys:      datatypes.JSON(keysJSON),
 		UserAgent: sql.NullString{
@@ -75,6 +76,17 @@ func (s *pushNotificationService) Unsubscribe(ctx context.Context, req dto.PushU
 	}
 
 	return s.repo.Delete(ctx, existing)
+}
+
+func (s *pushNotificationService) UnsubscribeBySession(ctx context.Context, sessionID uuid.UUID) error {
+	spec := crud.Specification[entity.PushSubscription]{}
+	spec.Model.SessionID = uuid.NullUUID{UUID: sessionID, Valid: true}
+	subscriptions, err := s.repo.FindAll(ctx, spec)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.DeleteMany(ctx, subscriptions)
 }
 
 func (s *pushNotificationService) Deliver(ctx context.Context, msg message.NotificationCreated) error {

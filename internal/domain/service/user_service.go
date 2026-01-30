@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
-	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 )
@@ -76,14 +75,6 @@ func (us *userServiceImpl) CreateNew(ctx context.Context, request dto.NewUserReq
 	return response, err
 }
 
-func (us *userServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (dto.UserResponse, error) {
-	user, err := us.getByID(ctx, id)
-	if err != nil {
-		return dto.UserResponse{}, err
-	}
-	return mapper.UserToResponse(user), nil
-}
-
 func (us *userServiceImpl) FindByEmail(ctx context.Context, email string) (users.User, error) {
 	userSpec := crud.Specification[users.User]{}
 	userSpec.Model.Email = email
@@ -92,7 +83,7 @@ func (us *userServiceImpl) FindByEmail(ctx context.Context, email string) (users
 }
 
 func (us *userServiceImpl) Verify(ctx context.Context, id uuid.UUID, email string, name string, avatar string) (users.User, error) {
-	user, err := us.getByID(ctx, id)
+	user, err := us.GetByID(ctx, id)
 	if err != nil {
 		return users.User{}, err
 	}
@@ -181,7 +172,7 @@ func (us *userServiceImpl) generateRandomToken(length int) (string, error) {
 	return base64.URLEncoding.EncodeToString(tokenBytes)[:length], nil
 }
 
-func (us *userServiceImpl) getByID(ctx context.Context, id uuid.UUID) (users.User, error) {
+func (us *userServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (users.User, error) {
 	spec := crud.Specification[users.User]{}
 	spec.Model.ID = id
 	spec.PreloadRelations = []string{"Profile"}

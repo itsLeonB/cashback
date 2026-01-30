@@ -159,5 +159,6 @@ type NotificationService interface {
 type PushNotificationService interface {
 	Subscribe(ctx context.Context, req dto.PushSubscriptionRequest) error
 	Unsubscribe(ctx context.Context, req dto.PushUnsubscribeRequest) error
+	UnsubscribeBySession(ctx context.Context, sessionID uuid.UUID) error
 	Deliver(ctx context.Context, msg message.NotificationCreated) error
 }

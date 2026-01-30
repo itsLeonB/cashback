@@ -56,8 +56,10 @@ func ProvideServices(
 	transferMethod := service.NewTransferMethodService(repos.TransferMethod, coreSvc.Storage, appConfig.BucketNameTransferMethods, appembed.TransferMethodAssets)
 	debt := service.NewDebtService(repos.DebtTransaction, transferMethod, friendship, profile, groupExpense, coreSvc.Queue)
 
+	pushNotification := service.NewPushNotificationService(repos.PushSubscription, repos.Notification, repos.Transactor, coreSvc.WebPush)
+
 	return &Services{
-		Auth: provideAuth(authConfig, repos, profile, appConfig, coreSvc),
+		Auth: provideAuth(authConfig, repos, profile, appConfig, coreSvc, pushNotification),
 
 		Profile:           profile,
 		Friendship:        friendship,
@@ -74,7 +76,7 @@ func ProvideServices(
 		OtherFee:     service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense),
 
 		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense, coreSvc.Queue),
-		PushNotification: service.NewPushNotificationService(repos.PushSubscription, repos.Notification, repos.Transactor, coreSvc.WebPush),
+		PushNotification: pushNotification,
 	}
 }
 
@@ -84,6 +86,7 @@ func provideAuth(
 	profile service.ProfileService,
 	appConfig config.App,
 	coreSvc *CoreServices,
+	push service.PushNotificationService,
 ) service.AuthService {
 	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)
 	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken)
@@ -99,5 +102,6 @@ func provideAuth(
 		authConfig.HashCost,
 		repos.Session,
 		repos.RefreshToken,
+		push,
 	)
 }

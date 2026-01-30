@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/service/mail"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
@@ -34,6 +35,7 @@ type authServiceImpl struct {
 	oAuthSvc         OAuthService
 	sessionRepo      crud.Repository[users.Session]
 	refreshTokenRepo crud.Repository[users.RefreshToken]
+	pushSvc          PushNotificationService
 }
 
 func NewAuthService(
@@ -47,6 +49,7 @@ func NewAuthService(
 	hashCost int,
 	sessionRepo crud.Repository[users.Session],
 	refreshTokenRepo crud.Repository[users.RefreshToken],
+	pushSvc PushNotificationService,
 ) AuthService {
 	return &authServiceImpl{
 		sekure.NewHashService(hashCost),
@@ -59,6 +62,7 @@ func NewAuthService(
 		oAuthSvc,
 		sessionRepo,
 		refreshTokenRepo,
+		pushSvc,
 	}
 }
 
@@ -589,5 +593,11 @@ func (as *authServiceImpl) findSessionByID(ctx context.Context, id uuid.UUID) (u
 
 // Logout revokes the current session and all its refresh tokens
 func (as *authServiceImpl) Logout(ctx context.Context, sessionID uuid.UUID) error {
+	// Clean up push subscriptions for this session (failure must not block logout)
+	if err := as.pushSvc.UnsubscribeBySession(ctx, sessionID); err != nil {
+		logger.Error(err)
+	}
+
+	// Revoke session and refresh tokens
 	return as.revokeSession(ctx, sessionID)
 }

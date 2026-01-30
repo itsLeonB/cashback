@@ -15,13 +15,7 @@ type RefreshTokenRequest struct {
 	RefreshToken string `json:"refreshToken" binding:"required"`
 }
 
-type LoginResponse struct {
-	Type         string `json:"type"`
-	Token        string `json:"token"`
-	RefreshToken string `json:"refreshToken,omitempty"`
-}
-
-type RefreshTokenResponse struct {
+type TokenResponse struct {
 	Type         string `json:"type"`
 	Token        string `json:"token"`
 	RefreshToken string `json:"refreshToken"`
@@ -47,23 +41,8 @@ type OAuthCallbackData struct {
 	State    string `validate:"required,min=1"`
 }
 
-func NewBearerTokenResp(token string) LoginResponse {
-	return LoginResponse{
-		Type:  "Bearer",
-		Token: token,
-	}
-}
-
-func NewBearerTokenWithRefreshResp(token, refreshToken string) LoginResponse {
-	return LoginResponse{
-		Type:         "Bearer",
-		Token:        token,
-		RefreshToken: refreshToken,
-	}
-}
-
-func NewRefreshTokenResp(token, refreshToken string) RefreshTokenResponse {
-	return RefreshTokenResponse{
+func NewTokenResp(token, refreshToken string) TokenResponse {
+	return TokenResponse{
 		Type:         "Bearer",
 		Token:        token,
 		RefreshToken: refreshToken,

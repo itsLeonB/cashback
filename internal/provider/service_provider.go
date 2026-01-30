@@ -12,7 +12,9 @@ import (
 
 type Services struct {
 	// Auth
-	Auth service.AuthService
+	Auth    service.AuthService
+	OAuth   service.OAuthService
+	Session service.SessionService
 
 	// Users
 	Profile           service.ProfileService
@@ -47,7 +49,11 @@ func ProvideServices(
 	appConfig config.App,
 	pushConfig config.Push,
 ) *Services {
+	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)
 	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile)
+	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken)
+	session := service.NewSessionService(jwt, user, repos.Transactor, repos.Session, repos.RefreshToken)
+
 	friendship := service.NewFriendshipService(repos.Transactor, repos.Friendship, profile)
 	friendReq := service.NewFriendshipRequestService(repos.Transactor, friendship, profile, repos.FriendshipRequest, coreSvc.Queue)
 
@@ -59,7 +65,9 @@ func ProvideServices(
 	pushNotification := service.NewPushNotificationService(repos.PushSubscription, repos.Notification, repos.Transactor, coreSvc.WebPush)
 
 	return &Services{
-		Auth: provideAuth(authConfig, repos, profile, appConfig, coreSvc, pushNotification),
+		Auth:    service.NewAuthService(jwt, repos.Transactor, user, coreSvc.Mail, appConfig.RegisterVerificationUrl, appConfig.ResetPasswordUrl, authConfig.HashCost, pushNotification, session),
+		OAuth:   service.NewOAuthService(repos.Transactor, repos.OAuthAccount, coreSvc.State, user, http.DefaultClient, session),
+		Session: session,
 
 		Profile:           profile,
 		Friendship:        friendship,
@@ -78,30 +86,4 @@ func ProvideServices(
 		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense, coreSvc.Queue),
 		PushNotification: pushNotification,
 	}
-}
-
-func provideAuth(
-	authConfig config.Auth,
-	repos *Repositories,
-	profile service.ProfileService,
-	appConfig config.App,
-	coreSvc *CoreServices,
-	push service.PushNotificationService,
-) service.AuthService {
-	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)
-	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken)
-
-	return service.NewAuthService(
-		jwt,
-		repos.Transactor,
-		user,
-		coreSvc.Mail,
-		appConfig.RegisterVerificationUrl,
-		appConfig.ResetPasswordUrl,
-		service.NewOAuthService(repos.Transactor, repos.OAuthAccount, coreSvc.State, user, http.DefaultClient, jwt),
-		authConfig.HashCost,
-		repos.Session,
-		repos.RefreshToken,
-		push,
-	)
 }

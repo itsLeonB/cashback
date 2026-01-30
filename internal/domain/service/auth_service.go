@@ -2,10 +2,6 @@ package service
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha256"
-	"database/sql"
-	"encoding/hex"
 	"fmt"
 	"regexp"
 	"strings"
@@ -17,7 +13,6 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/service/mail"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
-	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/sekure"
@@ -32,10 +27,8 @@ type authServiceImpl struct {
 	mailSvc          mail.MailService
 	verificationURL  string
 	resetPasswordURL string
-	oAuthSvc         OAuthService
-	sessionRepo      crud.Repository[users.Session]
-	refreshTokenRepo crud.Repository[users.RefreshToken]
 	pushSvc          PushNotificationService
+	sessionSvc       SessionService
 }
 
 func NewAuthService(
@@ -45,11 +38,9 @@ func NewAuthService(
 	mailSvc mail.MailService,
 	verificationURL string,
 	resetPasswordURL string,
-	oAuthSvc OAuthService,
 	hashCost int,
-	sessionRepo crud.Repository[users.Session],
-	refreshTokenRepo crud.Repository[users.RefreshToken],
 	pushSvc PushNotificationService,
+	sessionSvc SessionService,
 ) AuthService {
 	return &authServiceImpl{
 		sekure.NewHashService(hashCost),
@@ -59,10 +50,8 @@ func NewAuthService(
 		mailSvc,
 		verificationURL,
 		resetPasswordURL,
-		oAuthSvc,
-		sessionRepo,
-		refreshTokenRepo,
 		pushSvc,
+		sessionSvc,
 	}
 }
 
@@ -159,40 +148,27 @@ func getNameFromEmail(email string) string {
 	return ""
 }
 
-func (as *authServiceImpl) InternalLogin(ctx context.Context, req dto.InternalLoginRequest) (dto.LoginResponse, error) {
+func (as *authServiceImpl) InternalLogin(ctx context.Context, req dto.InternalLoginRequest) (dto.TokenResponse, error) {
 	user, err := as.userSvc.FindByEmail(ctx, req.Email)
 	if err != nil {
-		return dto.LoginResponse{}, err
+		return dto.TokenResponse{}, err
 	}
 	if user.IsZero() {
-		return dto.LoginResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
+		return dto.TokenResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
 	}
 	if !user.IsVerified() {
-		return dto.LoginResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
+		return dto.TokenResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
 	}
 
 	ok, err := as.hashService.CheckHash(user.Password, req.Password)
 	if err != nil {
-		return dto.LoginResponse{}, err
+		return dto.TokenResponse{}, err
 	}
 	if !ok {
-		return dto.LoginResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
+		return dto.TokenResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
 	}
 
-	// Create session with refresh token
-	session, refreshToken, err := as.createSession(ctx, user.ID, "", 30*24*time.Hour) // 30 day refresh token
-	if err != nil {
-		return dto.LoginResponse{}, err
-	}
-
-	// Create access token
-	authData := mapper.UserToAuthData(user, session)
-	accessToken, err := as.jwtService.CreateToken(authData)
-	if err != nil {
-		return dto.LoginResponse{}, err
-	}
-
-	return dto.NewBearerTokenWithRefreshResp(accessToken, refreshToken), nil
+	return as.sessionSvc.CreateTokenAndSession(ctx, user)
 }
 
 func (as *authServiceImpl) VerifyToken(ctx context.Context, token string) (bool, map[string]any, error) {
@@ -239,20 +215,8 @@ func (as *authServiceImpl) VerifyToken(ctx context.Context, token string) (bool,
 	}, nil
 }
 
-func (as *authServiceImpl) GetOAuth2URL(ctx context.Context, provider string) (string, error) {
-	return as.oAuthSvc.GetOAuthURL(ctx, provider)
-}
-
-func (as *authServiceImpl) OAuth2Login(ctx context.Context, provider, code, state string) (dto.LoginResponse, error) {
-	return as.oAuthSvc.HandleOAuthCallback(ctx, dto.OAuthCallbackData{
-		Provider: provider,
-		Code:     code,
-		State:    state,
-	})
-}
-
-func (as *authServiceImpl) VerifyRegistration(ctx context.Context, token string) (dto.LoginResponse, error) {
-	var response dto.LoginResponse
+func (as *authServiceImpl) VerifyRegistration(ctx context.Context, token string) (dto.TokenResponse, error) {
+	var response dto.TokenResponse
 	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		claims, err := as.jwtService.VerifyToken(token)
 		if err != nil {
@@ -284,7 +248,7 @@ func (as *authServiceImpl) VerifyRegistration(ctx context.Context, token string)
 			return err
 		}
 
-		response, err = as.oAuthSvc.CreateLoginResponse(user, users.Session{})
+		response, err = as.sessionSvc.CreateTokenAndSession(ctx, user)
 		return err
 	})
 	return response, err
@@ -333,8 +297,8 @@ func (as *authServiceImpl) sendResetPasswordMail(ctx context.Context, user users
 	return as.mailSvc.Send(ctx, mailMsg)
 }
 
-func (as *authServiceImpl) ResetPassword(ctx context.Context, token, newPassword string) (dto.LoginResponse, error) {
-	var response dto.LoginResponse
+func (as *authServiceImpl) ResetPassword(ctx context.Context, token, newPassword string) (dto.TokenResponse, error) {
+	var response dto.TokenResponse
 	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		claims, err := as.jwtService.VerifyToken(token)
 		if err != nil {
@@ -367,228 +331,10 @@ func (as *authServiceImpl) ResetPassword(ctx context.Context, token, newPassword
 			return err
 		}
 
-		response, err = as.oAuthSvc.CreateLoginResponse(user, users.Session{})
+		response, err = as.sessionSvc.CreateTokenAndSession(ctx, user)
 		return err
 	})
 	return response, err
-}
-
-// generateRefreshToken creates a cryptographically secure random token
-func (as *authServiceImpl) generateRefreshToken() (string, string, error) {
-	bytes := make([]byte, 32)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", "", ungerr.Wrap(err, "error generating random bytes")
-	}
-
-	token := hex.EncodeToString(bytes)
-
-	return token, hashToken(token), nil
-}
-
-func hashToken(token string) string {
-	hash := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(hash[:])
-}
-
-// createRefreshToken issues a new refresh token for a session
-func (as *authServiceImpl) createRefreshToken(ctx context.Context, sessionID uuid.UUID, expiresAt time.Time) (string, error) {
-	token, tokenHash, err := as.generateRefreshToken()
-	if err != nil {
-		return "", err
-	}
-
-	refreshToken := users.RefreshToken{
-		SessionID: sessionID,
-		TokenHash: tokenHash,
-		ExpiresAt: expiresAt,
-	}
-
-	_, err = as.refreshTokenRepo.Insert(ctx, refreshToken)
-	if err != nil {
-		return "", err
-	}
-
-	return token, nil
-}
-
-// rotateRefreshToken safely rotates a refresh token with reuse detection
-func (as *authServiceImpl) rotateRefreshToken(ctx context.Context, oldToken string) (string, error) {
-	var newToken string
-
-	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		oldRefreshToken, err := as.getRefreshToken(ctx, oldToken)
-		if err != nil {
-			return err
-		}
-
-		// Check if token is expired
-		if time.Now().After(oldRefreshToken.ExpiresAt) {
-			return ungerr.UnauthorizedError("refresh token expired")
-		}
-
-		session, err := as.getSessionByID(ctx, oldRefreshToken.SessionID)
-		if err != nil {
-			return err
-		}
-
-		// Delete the old refresh token (hard delete for rotation)
-		if err = as.refreshTokenRepo.Delete(ctx, oldRefreshToken); err != nil {
-			return err
-		}
-
-		// Create new refresh token with same expiry duration
-		duration := oldRefreshToken.ExpiresAt.Sub(oldRefreshToken.CreatedAt)
-		newExpiresAt := time.Now().Add(duration)
-
-		newToken, err = as.createRefreshToken(ctx, session.ID, newExpiresAt)
-		if err != nil {
-			return err
-		}
-
-		// Update session last used time
-		session.LastUsedAt = time.Now()
-		session.UpdatedAt = time.Now()
-		_, err = as.sessionRepo.Update(ctx, session)
-		return err
-	})
-
-	return newToken, err
-}
-
-func (as *authServiceImpl) getRefreshToken(ctx context.Context, token string) (users.RefreshToken, error) {
-	spec := crud.Specification[users.RefreshToken]{}
-	spec.Model.TokenHash = hashToken(token)
-	refreshToken, err := as.refreshTokenRepo.FindFirst(ctx, spec)
-	if err != nil {
-		return users.RefreshToken{}, err
-	}
-	if refreshToken.IsZero() {
-		return users.RefreshToken{}, ungerr.UnauthorizedError("invalid refresh token")
-	}
-	return refreshToken, nil
-}
-
-// revokeSession deletes the session and all associated refresh tokens
-func (as *authServiceImpl) revokeSession(ctx context.Context, sessionID uuid.UUID) error {
-	return as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		// Delete all refresh tokens for this session
-		spec := crud.Specification[users.RefreshToken]{}
-		spec.Model.SessionID = sessionID
-		refreshTokens, err := as.refreshTokenRepo.FindAll(ctx, spec)
-		if err != nil {
-			return err
-		}
-
-		if err = as.refreshTokenRepo.DeleteMany(ctx, refreshTokens); err != nil {
-			return err
-		}
-
-		// Delete the session
-		session, err := as.findSessionByID(ctx, sessionID)
-		if err != nil {
-			return err
-		}
-		if session.IsZero() {
-			return nil
-		}
-		return as.sessionRepo.Delete(ctx, session)
-	})
-}
-
-func (as *authServiceImpl) getSessionByID(ctx context.Context, id uuid.UUID) (users.Session, error) {
-	session, err := as.findSessionByID(ctx, id)
-	if err != nil {
-		return users.Session{}, err
-	}
-	if session.IsZero() {
-		return users.Session{}, ungerr.UnauthorizedError("session not found")
-	}
-	return session, nil
-}
-
-// createSession creates a new session with initial refresh token
-func (as *authServiceImpl) createSession(ctx context.Context, userID uuid.UUID, deviceID string, refreshTokenTTL time.Duration) (users.Session, string, error) {
-	var session users.Session
-	var refreshToken string
-
-	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		// Create session
-		session := users.Session{
-			UserID:     userID,
-			LastUsedAt: time.Now(),
-		}
-
-		if deviceID != "" {
-			session.DeviceID = sql.NullString{
-				String: deviceID,
-				Valid:  true,
-			}
-		}
-
-		insertedSession, err := as.sessionRepo.Insert(ctx, session)
-		if err != nil {
-			return err
-		}
-
-		// Create initial refresh token
-		expiresAt := time.Now().Add(refreshTokenTTL)
-		refreshToken, err = as.createRefreshToken(ctx, insertedSession.ID, expiresAt)
-		if err != nil {
-			return err
-		}
-
-		session = insertedSession
-		return nil
-	})
-
-	return session, refreshToken, err
-}
-
-// RefreshToken validates and rotates a refresh token, issuing new access and refresh tokens
-func (as *authServiceImpl) RefreshToken(ctx context.Context, request dto.RefreshTokenRequest) (dto.RefreshTokenResponse, error) {
-	var response dto.RefreshTokenResponse
-
-	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		refreshToken, err := as.getRefreshToken(ctx, request.RefreshToken)
-		if err != nil {
-			return err
-		}
-
-		session, err := as.getSessionByID(ctx, refreshToken.SessionID)
-		if err != nil {
-			return err
-		}
-
-		// Get user for JWT claims
-		user, err := as.userSvc.GetByID(ctx, session.UserID)
-		if err != nil {
-			return err
-		}
-
-		// Rotate the refresh token (this validates expiry and deletes old token)
-		newRefreshToken, err := as.rotateRefreshToken(ctx, request.RefreshToken)
-		if err != nil {
-			return err
-		}
-
-		claims := mapper.UserToAuthData(user, session)
-
-		accessToken, err := as.jwtService.CreateToken(claims)
-		if err != nil {
-			return err
-		}
-
-		response = dto.NewRefreshTokenResp(accessToken, newRefreshToken)
-		return nil
-	})
-
-	return response, err
-}
-
-func (as *authServiceImpl) findSessionByID(ctx context.Context, id uuid.UUID) (users.Session, error) {
-	spec := crud.Specification[users.Session]{}
-	spec.Model.ID = id
-	return as.sessionRepo.FindFirst(ctx, spec)
 }
 
 // Logout revokes the current session and all its refresh tokens
@@ -599,5 +345,5 @@ func (as *authServiceImpl) Logout(ctx context.Context, sessionID uuid.UUID) erro
 	}
 
 	// Revoke session and refresh tokens
-	return as.revokeSession(ctx, sessionID)
+	return as.sessionSvc.RevokeSession(ctx, sessionID)
 }

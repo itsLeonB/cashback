@@ -11,20 +11,18 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/service/store"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
-	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/cashback/internal/domain/service/oauth"
 	"github.com/itsLeonB/go-crud"
-	"github.com/itsLeonB/sekure"
 	"github.com/itsLeonB/ungerr"
 )
 
 type oauthServiceImpl struct {
-	jwtService       sekure.JWTService
 	transactor       crud.Transactor
 	oauthProviders   map[string]oauth.ProviderService
 	oauthAccountRepo crud.Repository[users.OAuthAccount]
 	stateStore       store.StateStore
 	userSvc          UserService
+	sessionSvc       SessionService
 }
 
 func NewOAuthService(
@@ -33,15 +31,15 @@ func NewOAuthService(
 	stateStore store.StateStore,
 	userSvc UserService,
 	httpClient *http.Client,
-	jwtSvc sekure.JWTService,
+	sessionSvc SessionService,
 ) OAuthService {
 	return &oauthServiceImpl{
-		jwtSvc,
 		transactor,
 		oauth.NewOAuthProviderServices(config.Global.OAuthProviders, httpClient),
 		oauthAccountRepo,
 		stateStore,
 		userSvc,
+		sessionSvc,
 	}
 }
 
@@ -68,8 +66,8 @@ func (as *oauthServiceImpl) GetOAuthURL(ctx context.Context, provider string) (s
 	return url, nil
 }
 
-func (as *oauthServiceImpl) HandleOAuthCallback(ctx context.Context, data dto.OAuthCallbackData) (dto.LoginResponse, error) {
-	var response dto.LoginResponse
+func (as *oauthServiceImpl) HandleOAuthCallback(ctx context.Context, data dto.OAuthCallbackData) (dto.TokenResponse, error) {
+	var response dto.TokenResponse
 	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		oauthProvider, ok := as.oauthProviders[data.Provider]
 		if !ok {
@@ -96,7 +94,7 @@ func (as *oauthServiceImpl) HandleOAuthCallback(ctx context.Context, data dto.OA
 			}
 		}
 
-		response, err = as.CreateLoginResponse(user, users.Session{})
+		response, err = as.sessionSvc.CreateTokenAndSession(ctx, user)
 		return err
 	})
 
@@ -150,17 +148,6 @@ func (as *oauthServiceImpl) createNewUserOAuth(ctx context.Context, userInfo oau
 	}
 
 	return user, nil
-}
-
-func (as *oauthServiceImpl) CreateLoginResponse(user users.User, session users.Session) (dto.LoginResponse, error) {
-	authData := mapper.UserToAuthData(user, session)
-
-	token, err := as.jwtService.CreateToken(authData)
-	if err != nil {
-		return dto.LoginResponse{}, err
-	}
-
-	return dto.NewBearerTokenResp(token), nil
 }
 
 func (as *oauthServiceImpl) findOAuthAccount(ctx context.Context, provider, providerID string) (users.OAuthAccount, error) {

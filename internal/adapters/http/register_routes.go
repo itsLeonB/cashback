@@ -34,6 +34,8 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 
 			protectedRoutes := v1.Group("/", middlewares.auth)
 			{
+				protectedRoutes.POST("/auth/logout", handlers.Auth.HandleLogout())
+				
 				transferMethodsRoute := "/transfer-methods"
 				profileRoutes := protectedRoutes.Group("/profile")
 				{

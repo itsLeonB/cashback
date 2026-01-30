@@ -175,7 +175,20 @@ func (as *authServiceImpl) InternalLogin(ctx context.Context, req dto.InternalLo
 		return dto.LoginResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
 	}
 
-	return as.oAuthSvc.CreateLoginResponse(user, users.Session{})
+	// Create session with refresh token
+	session, refreshToken, err := as.createSession(ctx, user.ID, "", 30*24*time.Hour) // 30 day refresh token
+	if err != nil {
+		return dto.LoginResponse{}, err
+	}
+
+	// Create access token
+	authData := mapper.UserToAuthData(user, session)
+	accessToken, err := as.jwtService.CreateToken(authData)
+	if err != nil {
+		return dto.LoginResponse{}, err
+	}
+
+	return dto.NewBearerTokenWithRefreshResp(accessToken, refreshToken), nil
 }
 
 func (as *authServiceImpl) VerifyToken(ctx context.Context, token string) (bool, map[string]any, error) {
@@ -197,6 +210,20 @@ func (as *authServiceImpl) VerifyToken(ctx context.Context, token string) (bool,
 		return false, nil, err
 	}
 
+	// Extract session_id from token
+	sessionIDStr, exists := claims.Data[appconstant.ContextSessionID.String()]
+	if !exists {
+		return false, nil, ungerr.Unknown("missing session ID from token")
+	}
+	sessionIDString, ok := sessionIDStr.(string)
+	if !ok {
+		return false, nil, ungerr.Unknown("error asserting sessionID, is not a string")
+	}
+	sessionID, err := ezutil.Parse[uuid.UUID](sessionIDString)
+	if err != nil {
+		return false, nil, err
+	}
+
 	user, err := as.userSvc.GetByID(ctx, userID)
 	if err != nil {
 		return false, nil, err
@@ -204,6 +231,7 @@ func (as *authServiceImpl) VerifyToken(ctx context.Context, token string) (bool,
 
 	return true, map[string]any{
 		appconstant.ContextProfileID.String(): user.Profile.ID,
+		appconstant.ContextSessionID.String(): sessionID,
 	}, nil
 }
 
@@ -358,8 +386,8 @@ func hashToken(token string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-// CreateRefreshToken issues a new refresh token for a session
-func (as *authServiceImpl) CreateRefreshToken(ctx context.Context, sessionID uuid.UUID, expiresAt time.Time) (string, error) {
+// createRefreshToken issues a new refresh token for a session
+func (as *authServiceImpl) createRefreshToken(ctx context.Context, sessionID uuid.UUID, expiresAt time.Time) (string, error) {
 	token, tokenHash, err := as.generateRefreshToken()
 	if err != nil {
 		return "", err
@@ -379,8 +407,8 @@ func (as *authServiceImpl) CreateRefreshToken(ctx context.Context, sessionID uui
 	return token, nil
 }
 
-// RotateRefreshToken safely rotates a refresh token with reuse detection
-func (as *authServiceImpl) RotateRefreshToken(ctx context.Context, oldToken string) (string, error) {
+// rotateRefreshToken safely rotates a refresh token with reuse detection
+func (as *authServiceImpl) rotateRefreshToken(ctx context.Context, oldToken string) (string, error) {
 	var newToken string
 
 	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -408,7 +436,7 @@ func (as *authServiceImpl) RotateRefreshToken(ctx context.Context, oldToken stri
 		duration := oldRefreshToken.ExpiresAt.Sub(oldRefreshToken.CreatedAt)
 		newExpiresAt := time.Now().Add(duration)
 
-		newToken, err = as.CreateRefreshToken(ctx, session.ID, newExpiresAt)
+		newToken, err = as.createRefreshToken(ctx, session.ID, newExpiresAt)
 		if err != nil {
 			return err
 		}
@@ -436,8 +464,8 @@ func (as *authServiceImpl) getRefreshToken(ctx context.Context, token string) (u
 	return refreshToken, nil
 }
 
-// RevokeSession deletes the session and all associated refresh tokens
-func (as *authServiceImpl) RevokeSession(ctx context.Context, sessionID uuid.UUID) error {
+// revokeSession deletes the session and all associated refresh tokens
+func (as *authServiceImpl) revokeSession(ctx context.Context, sessionID uuid.UUID) error {
 	return as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		// Delete all refresh tokens for this session
 		spec := crud.Specification[users.RefreshToken]{}
@@ -474,9 +502,9 @@ func (as *authServiceImpl) getSessionByID(ctx context.Context, id uuid.UUID) (us
 	return session, nil
 }
 
-// CreateSession creates a new session with initial refresh token
-func (as *authServiceImpl) CreateSession(ctx context.Context, userID uuid.UUID, deviceID string, refreshTokenTTL time.Duration) (uuid.UUID, string, error) {
-	var sessionID uuid.UUID
+// createSession creates a new session with initial refresh token
+func (as *authServiceImpl) createSession(ctx context.Context, userID uuid.UUID, deviceID string, refreshTokenTTL time.Duration) (users.Session, string, error) {
+	var session users.Session
 	var refreshToken string
 
 	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -498,15 +526,18 @@ func (as *authServiceImpl) CreateSession(ctx context.Context, userID uuid.UUID, 
 			return err
 		}
 
-		sessionID = insertedSession.ID
-
 		// Create initial refresh token
 		expiresAt := time.Now().Add(refreshTokenTTL)
-		refreshToken, err = as.CreateRefreshToken(ctx, sessionID, expiresAt)
-		return err
+		refreshToken, err = as.createRefreshToken(ctx, insertedSession.ID, expiresAt)
+		if err != nil {
+			return err
+		}
+
+		session = insertedSession
+		return nil
 	})
 
-	return sessionID, refreshToken, err
+	return session, refreshToken, err
 }
 
 // RefreshToken validates and rotates a refresh token, issuing new access and refresh tokens
@@ -531,7 +562,7 @@ func (as *authServiceImpl) RefreshToken(ctx context.Context, request dto.Refresh
 		}
 
 		// Rotate the refresh token (this validates expiry and deletes old token)
-		newRefreshToken, err := as.RotateRefreshToken(ctx, request.RefreshToken)
+		newRefreshToken, err := as.rotateRefreshToken(ctx, request.RefreshToken)
 		if err != nil {
 			return err
 		}
@@ -554,4 +585,9 @@ func (as *authServiceImpl) findSessionByID(ctx context.Context, id uuid.UUID) (u
 	spec := crud.Specification[users.Session]{}
 	spec.Model.ID = id
 	return as.sessionRepo.FindFirst(ctx, spec)
+}
+
+// Logout revokes the current session and all its refresh tokens
+func (as *authServiceImpl) Logout(ctx context.Context, sessionID uuid.UUID) error {
+	return as.revokeSession(ctx, sessionID)
 }

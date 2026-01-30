@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
@@ -155,4 +156,15 @@ func (ah *AuthHandler) getProvider(ctx *gin.Context) (string, error) {
 		return "", ungerr.BadRequestError("missing oauth provider")
 	}
 	return provider, nil
+}
+
+func (ah *AuthHandler) HandleLogout() gin.HandlerFunc {
+	return server.Handler(http.StatusNoContent, func(ctx *gin.Context) (any, error) {
+		sessionID, err := server.GetFromContext[uuid.UUID](ctx, appconstant.ContextSessionID.String())
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, ah.authService.Logout(ctx, sessionID)
+	})
 }

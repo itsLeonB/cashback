@@ -12,19 +12,19 @@ type InternalLoginRequest struct {
 }
 
 type RefreshTokenRequest struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
+	RefreshToken string `json:"refreshToken" binding:"required"`
 }
 
 type LoginResponse struct {
 	Type         string `json:"type"`
 	Token        string `json:"token"`
-	RefreshToken string `json:"refresh_token,omitempty"`
+	RefreshToken string `json:"refreshToken,omitempty"`
 }
 
 type RefreshTokenResponse struct {
 	Type         string `json:"type"`
 	Token        string `json:"token"`
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refreshToken"`
 }
 
 type RegisterResponse struct {

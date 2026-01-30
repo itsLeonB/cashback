@@ -2,6 +2,10 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"regexp"
 	"strings"
@@ -28,6 +32,8 @@ type authServiceImpl struct {
 	verificationURL  string
 	resetPasswordURL string
 	oAuthSvc         OAuthService
+	sessionRepo      crud.Repository[users.Session]
+	refreshTokenRepo crud.Repository[users.RefreshToken]
 }
 
 func NewAuthService(
@@ -39,6 +45,8 @@ func NewAuthService(
 	resetPasswordURL string,
 	oAuthSvc OAuthService,
 	hashCost int,
+	sessionRepo crud.Repository[users.Session],
+	refreshTokenRepo crud.Repository[users.RefreshToken],
 ) AuthService {
 	return &authServiceImpl{
 		sekure.NewHashService(hashCost),
@@ -49,6 +57,8 @@ func NewAuthService(
 		verificationURL,
 		resetPasswordURL,
 		oAuthSvc,
+		sessionRepo,
+		refreshTokenRepo,
 	}
 }
 
@@ -340,4 +350,167 @@ func (as *authServiceImpl) ResetPassword(ctx context.Context, token, newPassword
 		return err
 	})
 	return response, err
+}
+
+// generateRefreshToken creates a cryptographically secure random token
+func (as *authServiceImpl) generateRefreshToken() (string, string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", "", ungerr.Wrap(err, "error generating random bytes")
+	}
+
+	token := hex.EncodeToString(bytes)
+
+	return token, hashToken(token), nil
+}
+
+func hashToken(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:])
+}
+
+// CreateRefreshToken issues a new refresh token for a session
+func (as *authServiceImpl) CreateRefreshToken(ctx context.Context, sessionID uuid.UUID, expiresAt time.Time) (string, error) {
+	token, tokenHash, err := as.generateRefreshToken()
+	if err != nil {
+		return "", err
+	}
+
+	refreshToken := users.RefreshToken{
+		SessionID: sessionID,
+		TokenHash: tokenHash,
+		ExpiresAt: expiresAt,
+	}
+
+	_, err = as.refreshTokenRepo.Insert(ctx, refreshToken)
+	if err != nil {
+		return "", err
+	}
+
+	return token, nil
+}
+
+// RotateRefreshToken safely rotates a refresh token with reuse detection
+func (as *authServiceImpl) RotateRefreshToken(ctx context.Context, oldToken string) (string, error) {
+	var newToken string
+
+	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		// Find the refresh token
+		spec := crud.Specification[users.RefreshToken]{}
+		spec.Model.TokenHash = hashToken(oldToken)
+		refreshToken, err := as.refreshTokenRepo.FindFirst(ctx, spec)
+		if err != nil {
+			return err
+		}
+		if refreshToken.IsZero() {
+			return ungerr.UnauthorizedError("invalid refresh token")
+		}
+
+		oldRefreshToken := refreshToken
+
+		// Check if token is expired
+		if time.Now().After(oldRefreshToken.ExpiresAt) {
+			return ungerr.UnauthorizedError("refresh token expired")
+		}
+
+		// Check if session still exists (reuse detection)
+		session, err := as.findSessionByID(ctx, oldRefreshToken.SessionID)
+		if err != nil {
+			return err
+		}
+		if session.IsZero() {
+			// Session was deleted - token reuse detected
+			return ungerr.UnauthorizedError("session revoked")
+		}
+
+		// Delete the old refresh token (hard delete for rotation)
+		if err = as.refreshTokenRepo.Delete(ctx, oldRefreshToken); err != nil {
+			return err
+		}
+
+		// Create new refresh token with same expiry duration
+		duration := oldRefreshToken.ExpiresAt.Sub(oldRefreshToken.CreatedAt)
+		newExpiresAt := time.Now().Add(duration)
+
+		newToken, err = as.CreateRefreshToken(ctx, session.ID, newExpiresAt)
+		if err != nil {
+			return err
+		}
+
+		// Update session last used time
+		session.LastUsedAt = time.Now()
+		session.UpdatedAt = time.Now()
+		_, err = as.sessionRepo.Update(ctx, session)
+		return err
+	})
+
+	return newToken, err
+}
+
+// RevokeSession deletes the session and all associated refresh tokens
+func (as *authServiceImpl) RevokeSession(ctx context.Context, sessionID uuid.UUID) error {
+	return as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		// Delete all refresh tokens for this session
+		spec := crud.Specification[users.RefreshToken]{}
+		spec.Model.SessionID = sessionID
+		refreshTokens, err := as.refreshTokenRepo.FindAll(ctx, spec)
+		if err != nil {
+			return err
+		}
+
+		if err = as.refreshTokenRepo.DeleteMany(ctx, refreshTokens); err != nil {
+			return err
+		}
+
+		// Delete the session
+		session, err := as.findSessionByID(ctx, sessionID)
+		if err != nil {
+			return err
+		}
+		if session.IsZero() {
+			return nil
+		}
+		return as.sessionRepo.Delete(ctx, session)
+	})
+}
+
+// CreateSession creates a new session with initial refresh token
+func (as *authServiceImpl) CreateSession(ctx context.Context, userID uuid.UUID, deviceID string, refreshTokenTTL time.Duration) (uuid.UUID, string, error) {
+	var sessionID uuid.UUID
+	var refreshToken string
+
+	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		// Create session
+		session := users.Session{
+			UserID:     userID,
+			LastUsedAt: time.Now(),
+		}
+
+		if deviceID != "" {
+			session.DeviceID = sql.NullString{
+				String: deviceID,
+				Valid:  true,
+			}
+		}
+
+		insertedSession, err := as.sessionRepo.Insert(ctx, session)
+		if err != nil {
+			return err
+		}
+
+		sessionID = insertedSession.ID
+
+		// Create initial refresh token
+		expiresAt := time.Now().Add(refreshTokenTTL)
+		refreshToken, err = as.CreateRefreshToken(ctx, sessionID, expiresAt)
+		return err
+	})
+
+	return sessionID, refreshToken, err
+}
+
+func (as *authServiceImpl) findSessionByID(ctx context.Context, id uuid.UUID) (users.Session, error) {
+	spec := crud.Specification[users.Session]{}
+	spec.Model.ID = id
+	return as.sessionRepo.FindFirst(ctx, spec)
 }

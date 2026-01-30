@@ -97,5 +97,7 @@ func provideAuth(
 		appConfig.ResetPasswordUrl,
 		service.NewOAuthService(repos.Transactor, repos.OAuthAccount, coreSvc.State, user, http.DefaultClient, jwt),
 		authConfig.HashCost,
+		repos.Session,
+		repos.RefreshToken,
 	)
 }

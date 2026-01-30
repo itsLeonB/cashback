@@ -1,15 +1,20 @@
 package mapper
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 )
 
-func UserToAuthData(user users.User) map[string]any {
+func UserToAuthData(user users.User, session users.Session) map[string]any {
 	return map[string]any{
-		appconstant.ContextUserID.String(): user.ID,
+		appconstant.ContextUserID.String():    user.ID,
+		appconstant.ContextSessionID.String(): session.ID,
+		appconstant.ContextExp.String():       time.Now().Add(15 * time.Minute).Unix(),
+		appconstant.ContextIat.String():       time.Now(),
 	}
 }
 

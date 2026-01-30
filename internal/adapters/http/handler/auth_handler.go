@@ -138,6 +138,17 @@ func (ah *AuthHandler) HandleResetPassword() gin.HandlerFunc {
 	})
 }
 
+func (ah *AuthHandler) HandleRefreshToken() gin.HandlerFunc {
+	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+		request, err := server.BindJSON[dto.RefreshTokenRequest](ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return ah.authService.RefreshToken(ctx, request)
+	})
+}
+
 func (ah *AuthHandler) getProvider(ctx *gin.Context) (string, error) {
 	provider := ctx.Param(appconstant.ContextProvider.String())
 	if provider == "" {

@@ -175,18 +175,7 @@ func (as *authServiceImpl) InternalLogin(ctx context.Context, req dto.InternalLo
 		return dto.LoginResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
 	}
 
-	return as.createLoginResponse(user)
-}
-
-func (as *authServiceImpl) createLoginResponse(user users.User) (dto.LoginResponse, error) {
-	authData := mapper.UserToAuthData(user)
-
-	token, err := as.jwtService.CreateToken(authData)
-	if err != nil {
-		return dto.LoginResponse{}, err
-	}
-
-	return dto.NewBearerTokenResp(token), nil
+	return as.oAuthSvc.CreateLoginResponse(user, users.Session{})
 }
 
 func (as *authServiceImpl) VerifyToken(ctx context.Context, token string) (bool, map[string]any, error) {
@@ -263,7 +252,7 @@ func (as *authServiceImpl) VerifyRegistration(ctx context.Context, token string)
 			return err
 		}
 
-		response, err = as.createLoginResponse(user)
+		response, err = as.oAuthSvc.CreateLoginResponse(user, users.Session{})
 		return err
 	})
 	return response, err
@@ -346,7 +335,7 @@ func (as *authServiceImpl) ResetPassword(ctx context.Context, token, newPassword
 			return err
 		}
 
-		response, err = as.createLoginResponse(user)
+		response, err = as.oAuthSvc.CreateLoginResponse(user, users.Session{})
 		return err
 	})
 	return response, err
@@ -395,32 +384,19 @@ func (as *authServiceImpl) RotateRefreshToken(ctx context.Context, oldToken stri
 	var newToken string
 
 	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		// Find the refresh token
-		spec := crud.Specification[users.RefreshToken]{}
-		spec.Model.TokenHash = hashToken(oldToken)
-		refreshToken, err := as.refreshTokenRepo.FindFirst(ctx, spec)
+		oldRefreshToken, err := as.getRefreshToken(ctx, oldToken)
 		if err != nil {
 			return err
 		}
-		if refreshToken.IsZero() {
-			return ungerr.UnauthorizedError("invalid refresh token")
-		}
-
-		oldRefreshToken := refreshToken
 
 		// Check if token is expired
 		if time.Now().After(oldRefreshToken.ExpiresAt) {
 			return ungerr.UnauthorizedError("refresh token expired")
 		}
 
-		// Check if session still exists (reuse detection)
-		session, err := as.findSessionByID(ctx, oldRefreshToken.SessionID)
+		session, err := as.getSessionByID(ctx, oldRefreshToken.SessionID)
 		if err != nil {
 			return err
-		}
-		if session.IsZero() {
-			// Session was deleted - token reuse detected
-			return ungerr.UnauthorizedError("session revoked")
 		}
 
 		// Delete the old refresh token (hard delete for rotation)
@@ -445,6 +421,19 @@ func (as *authServiceImpl) RotateRefreshToken(ctx context.Context, oldToken stri
 	})
 
 	return newToken, err
+}
+
+func (as *authServiceImpl) getRefreshToken(ctx context.Context, token string) (users.RefreshToken, error) {
+	spec := crud.Specification[users.RefreshToken]{}
+	spec.Model.TokenHash = hashToken(token)
+	refreshToken, err := as.refreshTokenRepo.FindFirst(ctx, spec)
+	if err != nil {
+		return users.RefreshToken{}, err
+	}
+	if refreshToken.IsZero() {
+		return users.RefreshToken{}, ungerr.UnauthorizedError("invalid refresh token")
+	}
+	return refreshToken, nil
 }
 
 // RevokeSession deletes the session and all associated refresh tokens
@@ -472,6 +461,17 @@ func (as *authServiceImpl) RevokeSession(ctx context.Context, sessionID uuid.UUI
 		}
 		return as.sessionRepo.Delete(ctx, session)
 	})
+}
+
+func (as *authServiceImpl) getSessionByID(ctx context.Context, id uuid.UUID) (users.Session, error) {
+	session, err := as.findSessionByID(ctx, id)
+	if err != nil {
+		return users.Session{}, err
+	}
+	if session.IsZero() {
+		return users.Session{}, ungerr.UnauthorizedError("session not found")
+	}
+	return session, nil
 }
 
 // CreateSession creates a new session with initial refresh token
@@ -507,6 +507,47 @@ func (as *authServiceImpl) CreateSession(ctx context.Context, userID uuid.UUID, 
 	})
 
 	return sessionID, refreshToken, err
+}
+
+// RefreshToken validates and rotates a refresh token, issuing new access and refresh tokens
+func (as *authServiceImpl) RefreshToken(ctx context.Context, request dto.RefreshTokenRequest) (dto.RefreshTokenResponse, error) {
+	var response dto.RefreshTokenResponse
+
+	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		refreshToken, err := as.getRefreshToken(ctx, request.RefreshToken)
+		if err != nil {
+			return err
+		}
+
+		session, err := as.getSessionByID(ctx, refreshToken.SessionID)
+		if err != nil {
+			return err
+		}
+
+		// Get user for JWT claims
+		user, err := as.userSvc.GetByID(ctx, session.UserID)
+		if err != nil {
+			return err
+		}
+
+		// Rotate the refresh token (this validates expiry and deletes old token)
+		newRefreshToken, err := as.RotateRefreshToken(ctx, request.RefreshToken)
+		if err != nil {
+			return err
+		}
+
+		claims := mapper.UserToAuthData(user, session)
+
+		accessToken, err := as.jwtService.CreateToken(claims)
+		if err != nil {
+			return err
+		}
+
+		response = dto.NewRefreshTokenResp(accessToken, newRefreshToken)
+		return nil
+	})
+
+	return response, err
 }
 
 func (as *authServiceImpl) findSessionByID(ctx context.Context, id uuid.UUID) (users.Session, error) {

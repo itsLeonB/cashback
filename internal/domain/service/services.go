@@ -14,11 +14,12 @@ import (
 
 type UserService interface {
 	CreateNew(ctx context.Context, request dto.NewUserRequest) (users.User, error)
-	GetByID(ctx context.Context, id uuid.UUID) (dto.UserResponse, error)
 	FindByEmail(ctx context.Context, email string) (users.User, error)
 	Verify(ctx context.Context, id uuid.UUID, email string, name string, avatar string) (users.User, error)
 	GeneratePasswordResetToken(ctx context.Context, userID uuid.UUID) (string, error)
 	ResetPassword(ctx context.Context, userID uuid.UUID, email, resetToken, password string) (users.User, error)
+
+	GetByID(ctx context.Context, id uuid.UUID) (users.User, error)
 }
 
 type AuthService interface {
@@ -30,11 +31,13 @@ type AuthService interface {
 	VerifyRegistration(ctx context.Context, token string) (dto.LoginResponse, error)
 	SendPasswordReset(ctx context.Context, email string) error
 	ResetPassword(ctx context.Context, token, newPassword string) (dto.LoginResponse, error)
+	RefreshToken(ctx context.Context, request dto.RefreshTokenRequest) (dto.RefreshTokenResponse, error)
 }
 
 type OAuthService interface {
 	GetOAuthURL(ctx context.Context, provider string) (string, error)
 	HandleOAuthCallback(ctx context.Context, data dto.OAuthCallbackData) (dto.LoginResponse, error)
+	CreateLoginResponse(user users.User, session users.Session) (dto.LoginResponse, error)
 }
 
 type ProfileService interface {

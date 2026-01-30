@@ -96,7 +96,7 @@ func (as *oauthServiceImpl) HandleOAuthCallback(ctx context.Context, data dto.OA
 			}
 		}
 
-		response, err = as.createLoginResponse(user)
+		response, err = as.CreateLoginResponse(user, users.Session{})
 		return err
 	})
 
@@ -152,8 +152,8 @@ func (as *oauthServiceImpl) createNewUserOAuth(ctx context.Context, userInfo oau
 	return user, nil
 }
 
-func (as *oauthServiceImpl) createLoginResponse(user users.User) (dto.LoginResponse, error) {
-	authData := mapper.UserToAuthData(user)
+func (as *oauthServiceImpl) CreateLoginResponse(user users.User, session users.Session) (dto.LoginResponse, error) {
+	authData := mapper.UserToAuthData(user, session)
 
 	token, err := as.jwtService.CreateToken(authData)
 	if err != nil {

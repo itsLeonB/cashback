@@ -11,9 +11,20 @@ type InternalLoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
 type LoginResponse struct {
-	Type  string `json:"type"`
-	Token string `json:"token"`
+	Type         string `json:"type"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+}
+
+type RefreshTokenResponse struct {
+	Type         string `json:"type"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 type RegisterResponse struct {
@@ -40,5 +51,21 @@ func NewBearerTokenResp(token string) LoginResponse {
 	return LoginResponse{
 		Type:  "Bearer",
 		Token: token,
+	}
+}
+
+func NewBearerTokenWithRefreshResp(token, refreshToken string) LoginResponse {
+	return LoginResponse{
+		Type:         "Bearer",
+		Token:        token,
+		RefreshToken: refreshToken,
+	}
+}
+
+func NewRefreshTokenResp(token, refreshToken string) RefreshTokenResponse {
+	return RefreshTokenResponse{
+		Type:         "Bearer",
+		Token:        token,
+		RefreshToken: refreshToken,
 	}
 }

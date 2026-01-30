@@ -24,6 +24,7 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 			{
 				authRoutes.POST("/register", handlers.Auth.HandleRegister())
 				authRoutes.POST("/login", handlers.Auth.HandleInternalLogin())
+				authRoutes.POST("/refresh", handlers.Auth.HandleRefreshToken())
 				authRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextProvider.String()), handlers.Auth.HandleOAuth2Login())
 				authRoutes.GET(fmt.Sprintf("/:%s/callback", appconstant.ContextProvider.String()), handlers.Auth.HandleOAuth2Callback())
 				authRoutes.GET("/verify-registration", handlers.Auth.HandleVerifyRegistration())

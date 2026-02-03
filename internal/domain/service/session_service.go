@@ -132,7 +132,7 @@ func (ss *sessionService) createSession(ctx context.Context, userID uuid.UUID, d
 
 	err := ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		// Create session
-		session := users.Session{
+		session = users.Session{
 			UserID:     userID,
 			LastUsedAt: time.Now(),
 		}

@@ -24,7 +24,7 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 			{
 				authRoutes.POST("/register", handlers.Auth.HandleRegister())
 				authRoutes.POST("/login", handlers.Auth.HandleInternalLogin())
-				authRoutes.POST("/refresh", handlers.Auth.HandleRefreshToken())
+				authRoutes.PUT("/refresh", handlers.Auth.HandleRefreshToken())
 				authRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextProvider.String()), handlers.Auth.HandleOAuth2Login())
 				authRoutes.GET(fmt.Sprintf("/:%s/callback", appconstant.ContextProvider.String()), handlers.Auth.HandleOAuth2Callback())
 				authRoutes.GET("/verify-registration", handlers.Auth.HandleVerifyRegistration())
@@ -34,8 +34,8 @@ func registerRoutes(router *gin.Engine, configs config.Config, services *provide
 
 			protectedRoutes := v1.Group("/", middlewares.auth)
 			{
-				protectedRoutes.POST("/auth/logout", handlers.Auth.HandleLogout())
-				
+				protectedRoutes.DELETE("/auth/logout", handlers.Auth.HandleLogout())
+
 				transferMethodsRoute := "/transfer-methods"
 				profileRoutes := protectedRoutes.Group("/profile")
 				{

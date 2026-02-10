@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/google/uuid"
@@ -67,12 +66,17 @@ func (ebs *expenseBillServiceImpl) Save(ctx context.Context, req *dto.NewExpense
 			return err
 		}
 
-		if _, err = ebs.doUpload(ctx, req, fileID); err != nil {
+		if _, err = ebs.imageSvc.Upload(ctx, &storage.ImageUploadRequest{
+			ImageData:      req.ImageData,
+			ContentType:    req.ContentType,
+			FileSize:       req.FileSize,
+			FileIdentifier: fileID,
+		}); err != nil {
 			return err
 		}
 
 		if err = ebs.taskQueue.Enqueue(ctx, message.ExpenseBillUploaded{ID: savedBill.ID}); err != nil {
-			go ebs.rollbackUpload(ctx, fileID)
+			go ebs.rollbackUpload(context.Background(), fileID)
 			return err
 		}
 
@@ -199,24 +203,6 @@ func (ebs *expenseBillServiceImpl) rollbackUpload(ctx context.Context, fileID st
 	if err := ebs.imageSvc.Delete(ctx, fileID); err != nil {
 		logger.Errorf("error rolling back bill upload: %v", err)
 	}
-}
-
-func (ebs *expenseBillServiceImpl) doUpload(
-	ctx context.Context,
-	req *dto.NewExpenseBillRequest,
-	fileID storage.FileIdentifier,
-) (string, error) {
-	data, err := io.ReadAll(req.ImageReader)
-	if err != nil {
-		return "", ungerr.Wrap(err, "error reading image data")
-	}
-
-	return ebs.imageSvc.Upload(ctx, &storage.ImageUploadRequest{
-		ImageData:      data,
-		ContentType:    req.ContentType,
-		FileSize:       req.FileSize,
-		FileIdentifier: fileID,
-	})
 }
 
 func ObjectKeyToFileID(objectKey string) storage.FileIdentifier {

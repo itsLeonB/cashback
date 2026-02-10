@@ -86,6 +86,10 @@ func (s *pushNotificationService) UnsubscribeBySession(ctx context.Context, sess
 		return err
 	}
 
+	if len(subscriptions) == 0 {
+		return nil
+	}
+
 	return s.repo.DeleteMany(ctx, subscriptions)
 }
 

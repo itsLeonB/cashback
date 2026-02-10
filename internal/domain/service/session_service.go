@@ -51,7 +51,7 @@ func (ss *sessionService) RefreshToken(ctx context.Context, request dto.RefreshT
 			return err
 		}
 
-		session, err := ss.getSessionByID(ctx, refreshToken.SessionID)
+		session, err := ss.GetByID(ctx, refreshToken.SessionID)
 		if err != nil {
 			return err
 		}
@@ -196,7 +196,7 @@ func (ss *sessionService) generateRefreshToken() (string, string, error) {
 	return token, ss.hashToken(token), nil
 }
 
-func (ss *sessionService) getSessionByID(ctx context.Context, id uuid.UUID) (users.Session, error) {
+func (ss *sessionService) GetByID(ctx context.Context, id uuid.UUID) (users.Session, error) {
 	session, err := ss.findSessionByID(ctx, id)
 	if err != nil {
 		return users.Session{}, err
@@ -228,7 +228,7 @@ func (ss *sessionService) rotateRefreshToken(ctx context.Context, oldToken strin
 			return ungerr.UnauthorizedError("refresh token expired")
 		}
 
-		session, err := ss.getSessionByID(ctx, oldRefreshToken.SessionID)
+		session, err := ss.GetByID(ctx, oldRefreshToken.SessionID)
 		if err != nil {
 			return err
 		}

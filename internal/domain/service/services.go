@@ -42,6 +42,7 @@ type SessionService interface {
 
 	CreateTokenAndSession(ctx context.Context, user users.User) (dto.TokenResponse, error)
 	RevokeSession(ctx context.Context, sessionID uuid.UUID) error
+	GetByID(ctx context.Context, id uuid.UUID) (users.Session, error)
 }
 
 type ProfileService interface {

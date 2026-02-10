@@ -204,6 +204,10 @@ func (as *authServiceImpl) VerifyToken(ctx context.Context, token string) (bool,
 		return false, nil, err
 	}
 
+	if _, err = as.sessionSvc.GetByID(ctx, sessionID); err != nil {
+		return false, nil, ungerr.UnauthorizedError("session is not found")
+	}
+
 	user, err := as.userSvc.GetByID(ctx, userID)
 	if err != nil {
 		return false, nil, err

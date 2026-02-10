@@ -1,14 +1,12 @@
 package dto
 
 import (
-	"io"
-
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 )
 
 type NewExpenseBillRequest struct {
-	ImageReader    io.ReadCloser
+	ImageData      []byte
 	ProfileID      uuid.UUID
 	GroupExpenseID uuid.UUID
 	ContentType    string

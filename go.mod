@@ -27,8 +27,9 @@ require (
 	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.11.1
 	github.com/valkey-io/valkey-go v1.0.70
+	golang.org/x/image v0.36.0
 	golang.org/x/oauth2 v0.34.0
-	golang.org/x/text v0.32.0
+	golang.org/x/text v0.34.0
 	golang.org/x/time v0.14.0
 	google.golang.org/api v0.259.0
 	gorm.io/datatypes v1.2.7

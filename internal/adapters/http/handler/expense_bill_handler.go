@@ -1,12 +1,16 @@
 package handler
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/service/storage"
+	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/ginkgo/pkg/server"
@@ -38,6 +42,10 @@ func (geh *ExpenseBillHandler) HandleSave() gin.HandlerFunc {
 			return nil, ungerr.Wrap(err, appconstant.ErrProcessFile)
 		}
 
+		if fileHeader.Size > storage.MaxFileSize {
+			return nil, ungerr.UnprocessableEntityError("file too large")
+		}
+
 		file, err := fileHeader.Open()
 		if err != nil {
 			return nil, ungerr.Wrap(err, appconstant.ErrProcessFile)
@@ -48,8 +56,17 @@ func (geh *ExpenseBillHandler) HandleSave() gin.HandlerFunc {
 			}
 		}()
 
+		data, err := io.ReadAll(file)
+		if err != nil {
+			return nil, ungerr.Wrap(err, appconstant.ErrProcessFile)
+		}
+
+		if err := util.ValidateImage(bytes.NewReader(data), int64(len(data))); err != nil {
+			return nil, err
+		}
+
 		request := &dto.NewExpenseBillRequest{
-			ImageReader:    file,
+			ImageData:      data,
 			ProfileID:      profileID,
 			GroupExpenseID: expenseID,
 			ContentType:    fileHeader.Header.Get("Content-Type"),

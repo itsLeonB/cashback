@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 ALTER TABLE push_subscriptions 
-ADD COLUMN session_id UUID REFERENCES sessions(id) ON DELETE CASCADE;
+ADD COLUMN IF NOT EXISTS session_id UUID REFERENCES sessions(id) ON DELETE CASCADE;
 
 CREATE INDEX IF NOT EXISTS push_subscriptions_session_id_idx ON push_subscriptions (session_id);
 -- +goose StatementEnd
@@ -9,5 +9,5 @@ CREATE INDEX IF NOT EXISTS push_subscriptions_session_id_idx ON push_subscriptio
 -- +goose Down
 -- +goose StatementBegin
 DROP INDEX IF EXISTS push_subscriptions_session_id_idx;
-ALTER TABLE push_subscriptions DROP COLUMN session_id;
+ALTER TABLE push_subscriptions DROP COLUMN IF EXISTS session_id;
 -- +goose StatementEnd

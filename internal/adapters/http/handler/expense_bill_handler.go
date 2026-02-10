@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/service/storage"
 	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
@@ -39,6 +40,10 @@ func (geh *ExpenseBillHandler) HandleSave() gin.HandlerFunc {
 		fileHeader, err := ctx.FormFile("bill")
 		if err != nil {
 			return nil, ungerr.Wrap(err, appconstant.ErrProcessFile)
+		}
+
+		if fileHeader.Size > storage.MaxFileSize {
+			return nil, ungerr.UnprocessableEntityError("file too large")
 		}
 
 		file, err := fileHeader.Open()

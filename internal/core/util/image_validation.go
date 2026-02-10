@@ -9,6 +9,9 @@ import (
 	"math"
 	"net/http"
 
+	_ "image/jpeg"
+	_ "image/png"
+
 	"github.com/itsLeonB/ungerr"
 	_ "golang.org/x/image/webp"
 )
@@ -55,7 +58,7 @@ func ValidateImage(r io.Reader, fileSize int64) error {
 	}
 	contentType := http.DetectContentType(data[:512])
 	switch contentType {
-	case "image/jpeg", "image/png", "image/webp", "image/jpg":
+	case "image/jpeg", "image/png", "image/webp":
 		// Allowed
 	default:
 		return ErrInvalidImageType

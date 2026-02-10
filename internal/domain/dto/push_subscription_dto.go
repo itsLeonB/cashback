@@ -4,6 +4,7 @@ import "github.com/google/uuid"
 
 type PushSubscriptionRequest struct {
 	ProfileID uuid.UUID            `json:"-"`
+	SessionID uuid.UUID            `json:"-"`
 	Endpoint  string               `json:"endpoint" binding:"required"`
 	Keys      PushSubscriptionKeys `json:"keys" binding:"required"`
 	UserAgent string               `json:"userAgent,omitempty"`

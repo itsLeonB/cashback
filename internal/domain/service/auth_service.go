@@ -9,10 +9,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/service/mail"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
-	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/sekure"
@@ -27,7 +27,8 @@ type authServiceImpl struct {
 	mailSvc          mail.MailService
 	verificationURL  string
 	resetPasswordURL string
-	oAuthSvc         OAuthService
+	pushSvc          PushNotificationService
+	sessionSvc       SessionService
 }
 
 func NewAuthService(
@@ -37,8 +38,9 @@ func NewAuthService(
 	mailSvc mail.MailService,
 	verificationURL string,
 	resetPasswordURL string,
-	oAuthSvc OAuthService,
 	hashCost int,
+	pushSvc PushNotificationService,
+	sessionSvc SessionService,
 ) AuthService {
 	return &authServiceImpl{
 		sekure.NewHashService(hashCost),
@@ -48,7 +50,8 @@ func NewAuthService(
 		mailSvc,
 		verificationURL,
 		resetPasswordURL,
-		oAuthSvc,
+		pushSvc,
+		sessionSvc,
 	}
 }
 
@@ -145,38 +148,27 @@ func getNameFromEmail(email string) string {
 	return ""
 }
 
-func (as *authServiceImpl) InternalLogin(ctx context.Context, req dto.InternalLoginRequest) (dto.LoginResponse, error) {
+func (as *authServiceImpl) InternalLogin(ctx context.Context, req dto.InternalLoginRequest) (dto.TokenResponse, error) {
 	user, err := as.userSvc.FindByEmail(ctx, req.Email)
 	if err != nil {
-		return dto.LoginResponse{}, err
+		return dto.TokenResponse{}, err
 	}
 	if user.IsZero() {
-		return dto.LoginResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
+		return dto.TokenResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
 	}
 	if !user.IsVerified() {
-		return dto.LoginResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
+		return dto.TokenResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
 	}
 
 	ok, err := as.hashService.CheckHash(user.Password, req.Password)
 	if err != nil {
-		return dto.LoginResponse{}, err
+		return dto.TokenResponse{}, err
 	}
 	if !ok {
-		return dto.LoginResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
+		return dto.TokenResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
 	}
 
-	return as.createLoginResponse(user)
-}
-
-func (as *authServiceImpl) createLoginResponse(user users.User) (dto.LoginResponse, error) {
-	authData := mapper.UserToAuthData(user)
-
-	token, err := as.jwtService.CreateToken(authData)
-	if err != nil {
-		return dto.LoginResponse{}, err
-	}
-
-	return dto.NewBearerTokenResp(token), nil
+	return as.sessionSvc.CreateTokenAndSession(ctx, user)
 }
 
 func (as *authServiceImpl) VerifyToken(ctx context.Context, token string) (bool, map[string]any, error) {
@@ -198,6 +190,24 @@ func (as *authServiceImpl) VerifyToken(ctx context.Context, token string) (bool,
 		return false, nil, err
 	}
 
+	// Extract session_id from token
+	sessionIDStr, exists := claims.Data[appconstant.ContextSessionID.String()]
+	if !exists {
+		return false, nil, ungerr.Unknown("missing session ID from token")
+	}
+	sessionIDString, ok := sessionIDStr.(string)
+	if !ok {
+		return false, nil, ungerr.Unknown("error asserting sessionID, is not a string")
+	}
+	sessionID, err := ezutil.Parse[uuid.UUID](sessionIDString)
+	if err != nil {
+		return false, nil, err
+	}
+
+	if _, err = as.sessionSvc.GetByID(ctx, sessionID); err != nil {
+		return false, nil, ungerr.UnauthorizedError("session is not found")
+	}
+
 	user, err := as.userSvc.GetByID(ctx, userID)
 	if err != nil {
 		return false, nil, err
@@ -205,23 +215,12 @@ func (as *authServiceImpl) VerifyToken(ctx context.Context, token string) (bool,
 
 	return true, map[string]any{
 		appconstant.ContextProfileID.String(): user.Profile.ID,
+		appconstant.ContextSessionID.String(): sessionID,
 	}, nil
 }
 
-func (as *authServiceImpl) GetOAuth2URL(ctx context.Context, provider string) (string, error) {
-	return as.oAuthSvc.GetOAuthURL(ctx, provider)
-}
-
-func (as *authServiceImpl) OAuth2Login(ctx context.Context, provider, code, state string) (dto.LoginResponse, error) {
-	return as.oAuthSvc.HandleOAuthCallback(ctx, dto.OAuthCallbackData{
-		Provider: provider,
-		Code:     code,
-		State:    state,
-	})
-}
-
-func (as *authServiceImpl) VerifyRegistration(ctx context.Context, token string) (dto.LoginResponse, error) {
-	var response dto.LoginResponse
+func (as *authServiceImpl) VerifyRegistration(ctx context.Context, token string) (dto.TokenResponse, error) {
+	var response dto.TokenResponse
 	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		claims, err := as.jwtService.VerifyToken(token)
 		if err != nil {
@@ -253,7 +252,7 @@ func (as *authServiceImpl) VerifyRegistration(ctx context.Context, token string)
 			return err
 		}
 
-		response, err = as.createLoginResponse(user)
+		response, err = as.sessionSvc.CreateTokenAndSession(ctx, user)
 		return err
 	})
 	return response, err
@@ -302,8 +301,8 @@ func (as *authServiceImpl) sendResetPasswordMail(ctx context.Context, user users
 	return as.mailSvc.Send(ctx, mailMsg)
 }
 
-func (as *authServiceImpl) ResetPassword(ctx context.Context, token, newPassword string) (dto.LoginResponse, error) {
-	var response dto.LoginResponse
+func (as *authServiceImpl) ResetPassword(ctx context.Context, token, newPassword string) (dto.TokenResponse, error) {
+	var response dto.TokenResponse
 	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		claims, err := as.jwtService.VerifyToken(token)
 		if err != nil {
@@ -336,8 +335,19 @@ func (as *authServiceImpl) ResetPassword(ctx context.Context, token, newPassword
 			return err
 		}
 
-		response, err = as.createLoginResponse(user)
+		response, err = as.sessionSvc.CreateTokenAndSession(ctx, user)
 		return err
 	})
 	return response, err
+}
+
+// Logout revokes the current session and all its refresh tokens
+func (as *authServiceImpl) Logout(ctx context.Context, sessionID uuid.UUID) error {
+	// Clean up push subscriptions for this session (failure must not block logout)
+	if err := as.pushSvc.UnsubscribeBySession(ctx, sessionID); err != nil {
+		logger.Error(err)
+	}
+
+	// Revoke session and refresh tokens
+	return as.sessionSvc.RevokeSession(ctx, sessionID)
 }

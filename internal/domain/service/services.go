@@ -14,27 +14,35 @@ import (
 
 type UserService interface {
 	CreateNew(ctx context.Context, request dto.NewUserRequest) (users.User, error)
-	GetByID(ctx context.Context, id uuid.UUID) (dto.UserResponse, error)
 	FindByEmail(ctx context.Context, email string) (users.User, error)
 	Verify(ctx context.Context, id uuid.UUID, email string, name string, avatar string) (users.User, error)
 	GeneratePasswordResetToken(ctx context.Context, userID uuid.UUID) (string, error)
 	ResetPassword(ctx context.Context, userID uuid.UUID, email, resetToken, password string) (users.User, error)
+
+	GetByID(ctx context.Context, id uuid.UUID) (users.User, error)
 }
 
 type AuthService interface {
 	Register(ctx context.Context, request dto.RegisterRequest) (dto.RegisterResponse, error)
-	InternalLogin(ctx context.Context, request dto.InternalLoginRequest) (dto.LoginResponse, error)
+	InternalLogin(ctx context.Context, request dto.InternalLoginRequest) (dto.TokenResponse, error)
 	VerifyToken(ctx context.Context, token string) (bool, map[string]any, error)
-	GetOAuth2URL(ctx context.Context, provider string) (string, error)
-	OAuth2Login(ctx context.Context, provider, code, state string) (dto.LoginResponse, error)
-	VerifyRegistration(ctx context.Context, token string) (dto.LoginResponse, error)
+	VerifyRegistration(ctx context.Context, token string) (dto.TokenResponse, error)
 	SendPasswordReset(ctx context.Context, email string) error
-	ResetPassword(ctx context.Context, token, newPassword string) (dto.LoginResponse, error)
+	ResetPassword(ctx context.Context, token, newPassword string) (dto.TokenResponse, error)
+	Logout(ctx context.Context, sessionID uuid.UUID) error
 }
 
 type OAuthService interface {
 	GetOAuthURL(ctx context.Context, provider string) (string, error)
-	HandleOAuthCallback(ctx context.Context, data dto.OAuthCallbackData) (dto.LoginResponse, error)
+	HandleOAuthCallback(ctx context.Context, data dto.OAuthCallbackData) (dto.TokenResponse, error)
+}
+
+type SessionService interface {
+	RefreshToken(ctx context.Context, request dto.RefreshTokenRequest) (dto.TokenResponse, error)
+
+	CreateTokenAndSession(ctx context.Context, user users.User) (dto.TokenResponse, error)
+	RevokeSession(ctx context.Context, sessionID uuid.UUID) error
+	GetByID(ctx context.Context, id uuid.UUID) (users.Session, error)
 }
 
 type ProfileService interface {
@@ -155,5 +163,6 @@ type NotificationService interface {
 type PushNotificationService interface {
 	Subscribe(ctx context.Context, req dto.PushSubscriptionRequest) error
 	Unsubscribe(ctx context.Context, req dto.PushUnsubscribeRequest) error
+	UnsubscribeBySession(ctx context.Context, sessionID uuid.UUID) error
 	Deliver(ctx context.Context, msg message.NotificationCreated) error
 }

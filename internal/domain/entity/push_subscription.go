@@ -11,6 +11,7 @@ import (
 type PushSubscription struct {
 	crud.BaseEntity
 	ProfileID uuid.UUID
+	SessionID uuid.NullUUID
 	Endpoint  string
 	Keys      datatypes.JSON
 	UserAgent sql.NullString

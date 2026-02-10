@@ -11,9 +11,14 @@ type InternalLoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-type LoginResponse struct {
-	Type  string `json:"type"`
-	Token string `json:"token"`
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refreshToken" binding:"required"`
+}
+
+type TokenResponse struct {
+	Type         string `json:"type"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"refreshToken"`
 }
 
 type RegisterResponse struct {
@@ -36,9 +41,10 @@ type OAuthCallbackData struct {
 	State    string `validate:"required,min=1"`
 }
 
-func NewBearerTokenResp(token string) LoginResponse {
-	return LoginResponse{
-		Type:  "Bearer",
-		Token: token,
+func NewTokenResp(token, refreshToken string) TokenResponse {
+	return TokenResponse{
+		Type:         "Bearer",
+		Token:        token,
+		RefreshToken: refreshToken,
 	}
 }

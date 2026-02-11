@@ -10,5 +10,5 @@ type Auth struct {
 }
 
 func (Auth) Prefix() string {
-	return "AUTH"
+	return "ADMIN_AUTH"
 }

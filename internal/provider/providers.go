@@ -40,7 +40,7 @@ func All() (*Providers, error) {
 		return nil, err
 	}
 
-	repos := ProvideRepositories(dataSources)
+	repos := ProvideRepositories(dataSources.Gorm)
 	adminRepos := admin.ProvideRepositories(dataSources.Gorm)
 
 	coreSvcs, err := ProvideCoreServices()

@@ -87,7 +87,7 @@ func ProvideServices(
 		ExpenseItem:  service.NewExpenseItemService(repos.Transactor, repos.ExpenseItem, groupExpense),
 		OtherFee:     service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense),
 
-		Plan: monetization.NewPlanService(repos.Transactor, repos.Plan),
+		Plan: monetization.NewPlanService(repos.Transactor, repos.Plan, repos.PlanVersion),
 
 		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense, coreSvc.Queue),
 		PushNotification: pushNotification,

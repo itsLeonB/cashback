@@ -21,17 +21,20 @@ type PlanService interface {
 }
 
 type planService struct {
-	transactor crud.Transactor
-	repo       crud.Repository[entity.Plan]
+	transactor      crud.Transactor
+	planRepo        crud.Repository[entity.Plan]
+	planVersionRepo crud.Repository[entity.PlanVersion]
 }
 
 func NewPlanService(
 	transactor crud.Transactor,
 	repo crud.Repository[entity.Plan],
+	planVersionRepo crud.Repository[entity.PlanVersion],
 ) *planService {
 	return &planService{
 		transactor,
 		repo,
+		planVersionRepo,
 	}
 }
 
@@ -40,7 +43,7 @@ func (ps *planService) Create(ctx context.Context, req dto.NewPlanRequest) (dto.
 		Name: req.Name,
 	}
 
-	insertedPlan, err := ps.repo.Insert(ctx, newPlan)
+	insertedPlan, err := ps.planRepo.Insert(ctx, newPlan)
 	if err != nil {
 		return dto.PlanResponse{}, err
 	}
@@ -50,7 +53,7 @@ func (ps *planService) Create(ctx context.Context, req dto.NewPlanRequest) (dto.
 
 func (ps *planService) GetList(ctx context.Context) ([]dto.PlanResponse, error) {
 	spec := crud.Specification[entity.Plan]{}
-	plans, err := ps.repo.FindAll(ctx, spec)
+	plans, err := ps.planRepo.FindAll(ctx, spec)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +64,7 @@ func (ps *planService) GetList(ctx context.Context) ([]dto.PlanResponse, error) 
 func (ps *planService) GetOne(ctx context.Context, id uuid.UUID) (dto.PlanResponse, error) {
 	spec := crud.Specification[entity.Plan]{}
 	spec.Model.ID = id
-	plan, err := ps.repo.FindFirst(ctx, spec)
+	plan, err := ps.planRepo.FindFirst(ctx, spec)
 	if err != nil {
 		return dto.PlanResponse{}, err
 	}
@@ -78,7 +81,7 @@ func (ps *planService) Update(ctx context.Context, req dto.UpdatePlanRequest) (d
 		spec := crud.Specification[entity.Plan]{}
 		spec.Model.ID = req.ID
 		spec.ForUpdate = true
-		plan, err := ps.repo.FindFirst(ctx, spec)
+		plan, err := ps.planRepo.FindFirst(ctx, spec)
 		if err != nil {
 			return err
 		}
@@ -89,7 +92,7 @@ func (ps *planService) Update(ctx context.Context, req dto.UpdatePlanRequest) (d
 		plan.Name = req.Name
 		plan.IsActive = req.IsActive
 
-		updatedPlan, err := ps.repo.Update(ctx, plan)
+		updatedPlan, err := ps.planRepo.Update(ctx, plan)
 		if err != nil {
 			return err
 		}
@@ -106,7 +109,7 @@ func (ps *planService) Delete(ctx context.Context, id uuid.UUID) (dto.PlanRespon
 		spec := crud.Specification[entity.Plan]{}
 		spec.Model.ID = id
 		spec.ForUpdate = true
-		plan, err := ps.repo.FindFirst(ctx, spec)
+		plan, err := ps.planRepo.FindFirst(ctx, spec)
 		if err != nil {
 			return err
 		}
@@ -114,7 +117,17 @@ func (ps *planService) Delete(ctx context.Context, id uuid.UUID) (dto.PlanRespon
 			return nil
 		}
 
-		if err = ps.repo.Delete(ctx, plan); err != nil {
+		versionSpec := crud.Specification[entity.PlanVersion]{}
+		versionSpec.Model.PlanID = plan.ID
+		planVersions, err := ps.planVersionRepo.FindAll(ctx, versionSpec)
+		if err != nil {
+			return err
+		}
+		if len(planVersions) > 0 {
+			return ungerr.ConflictError("cannot delete plan, there exists plan versions for this plan")
+		}
+
+		if err = ps.planRepo.Delete(ctx, plan); err != nil {
 			return err
 		}
 

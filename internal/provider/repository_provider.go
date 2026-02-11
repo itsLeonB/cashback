@@ -8,6 +8,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
 	"github.com/itsLeonB/go-crud"
+	"gorm.io/gorm"
 )
 
 type Repositories struct {
@@ -36,39 +37,41 @@ type Repositories struct {
 	ExpenseBill  crud.Repository[expenses.ExpenseBill]
 
 	// Monetization
-	Plan crud.Repository[monetization.Plan]
+	Plan        crud.Repository[monetization.Plan]
+	PlanVersion crud.Repository[monetization.PlanVersion]
 
 	// Infra
 	Notification     repository.NotificationRepository
 	PushSubscription repository.PushSubscriptionRepository
 }
 
-func ProvideRepositories(dataSource *DataSources) *Repositories {
+func ProvideRepositories(db *gorm.DB) *Repositories {
 	return &Repositories{
-		Transactor: crud.NewTransactor(dataSource.Gorm),
+		Transactor: crud.NewTransactor(db),
 
-		User:               crud.NewRepository[users.User](dataSource.Gorm),
-		Profile:            adapters.NewProfileRepository(dataSource.Gorm),
-		Friendship:         adapters.NewFriendshipRepository(dataSource.Gorm),
-		RelatedProfile:     crud.NewRepository[users.RelatedProfile](dataSource.Gorm),
-		PasswordResetToken: crud.NewRepository[users.PasswordResetToken](dataSource.Gorm),
-		OAuthAccount:       crud.NewRepository[users.OAuthAccount](dataSource.Gorm),
-		FriendshipRequest:  crud.NewRepository[users.FriendshipRequest](dataSource.Gorm),
-		Session:            crud.NewRepository[users.Session](dataSource.Gorm),
-		RefreshToken:       crud.NewRepository[users.RefreshToken](dataSource.Gorm),
+		User:               crud.NewRepository[users.User](db),
+		Profile:            adapters.NewProfileRepository(db),
+		Friendship:         adapters.NewFriendshipRepository(db),
+		RelatedProfile:     crud.NewRepository[users.RelatedProfile](db),
+		PasswordResetToken: crud.NewRepository[users.PasswordResetToken](db),
+		OAuthAccount:       crud.NewRepository[users.OAuthAccount](db),
+		FriendshipRequest:  crud.NewRepository[users.FriendshipRequest](db),
+		Session:            crud.NewRepository[users.Session](db),
+		RefreshToken:       crud.NewRepository[users.RefreshToken](db),
 
-		DebtTransaction:       adapters.NewDebtTransactionRepository(dataSource.Gorm),
-		TransferMethod:        adapters.NewTransferMethodRepository(dataSource.Gorm),
-		ProfileTransferMethod: crud.NewRepository[debts.ProfileTransferMethod](dataSource.Gorm),
+		DebtTransaction:       adapters.NewDebtTransactionRepository(db),
+		TransferMethod:        adapters.NewTransferMethodRepository(db),
+		ProfileTransferMethod: crud.NewRepository[debts.ProfileTransferMethod](db),
 
-		GroupExpense: adapters.NewGroupExpenseRepository(dataSource.Gorm),
-		ExpenseItem:  adapters.NewExpenseItemRepository(dataSource.Gorm),
-		OtherFee:     adapters.NewOtherFeeRepository(dataSource.Gorm),
-		ExpenseBill:  crud.NewRepository[expenses.ExpenseBill](dataSource.Gorm),
+		GroupExpense: adapters.NewGroupExpenseRepository(db),
+		ExpenseItem:  adapters.NewExpenseItemRepository(db),
+		OtherFee:     adapters.NewOtherFeeRepository(db),
+		ExpenseBill:  crud.NewRepository[expenses.ExpenseBill](db),
 
-		Plan: crud.NewRepository[monetization.Plan](dataSource.Gorm),
+		Plan:        crud.NewRepository[monetization.Plan](db),
+		PlanVersion: crud.NewRepository[monetization.PlanVersion](db),
 
-		Notification:     adapters.NewNotificationRepository(dataSource.Gorm),
-		PushSubscription: adapters.NewPushSubscriptionRepository(dataSource.Gorm),
+		Notification:     adapters.NewNotificationRepository(db),
+		PushSubscription: adapters.NewPushSubscriptionRepository(db),
 	}
 }

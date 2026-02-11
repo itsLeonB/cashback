@@ -14,8 +14,9 @@ const (
 	ContextFriendRequestID ctxKey = "friendRequestID"
 	ContextNotificationID  ctxKey = "notificationID"
 
-	ContextPlanID        ctxKey = "planID"
-	ContextPlanVersionID ctxKey = "planVersionID"
+	ContextPlanID         ctxKey = "planID"
+	ContextPlanVersionID  ctxKey = "planVersionID"
+	ContextSubscriptionID ctxKey = "subscriptionID"
 
 	ContextSessionID ctxKey = "sessionID"
 	ContextExp       ctxKey = "exp"

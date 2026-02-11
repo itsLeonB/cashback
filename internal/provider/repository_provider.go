@@ -37,8 +37,9 @@ type Repositories struct {
 	ExpenseBill  crud.Repository[expenses.ExpenseBill]
 
 	// Monetization
-	Plan        crud.Repository[monetization.Plan]
-	PlanVersion crud.Repository[monetization.PlanVersion]
+	Plan         crud.Repository[monetization.Plan]
+	PlanVersion  crud.Repository[monetization.PlanVersion]
+	Subscription crud.Repository[monetization.Subscription]
 
 	// Infra
 	Notification     repository.NotificationRepository
@@ -68,8 +69,9 @@ func ProvideRepositories(db *gorm.DB) *Repositories {
 		OtherFee:     adapters.NewOtherFeeRepository(db),
 		ExpenseBill:  crud.NewRepository[expenses.ExpenseBill](db),
 
-		Plan:        crud.NewRepository[monetization.Plan](db),
-		PlanVersion: crud.NewRepository[monetization.PlanVersion](db),
+		Plan:         crud.NewRepository[monetization.Plan](db),
+		PlanVersion:  crud.NewRepository[monetization.PlanVersion](db),
+		Subscription: crud.NewRepository[monetization.Subscription](db),
 
 		Notification:     adapters.NewNotificationRepository(db),
 		PushSubscription: adapters.NewPushSubscriptionRepository(db),

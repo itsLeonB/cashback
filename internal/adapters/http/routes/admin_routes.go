@@ -41,6 +41,21 @@ func RegisterAdminRoutes(router *gin.Engine, handlers *admin.Handlers, middlewar
 					planVersionRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextPlanVersionID.String()), handlers.PlanVersion.HandleUpdate())
 					planVersionRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextPlanVersionID.String()), handlers.PlanVersion.HandleDelete())
 				}
+
+				subscriptionRoutes := protectedRoutes.Group("/subscriptions")
+				{
+					subscriptionRoutes.POST("", handlers.Subscription.HandleCreate())
+					subscriptionRoutes.GET("", handlers.Subscription.HandleGetList())
+					subscriptionRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextSubscriptionID.String()), handlers.Subscription.HandleGetOne())
+					subscriptionRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextSubscriptionID.String()), handlers.Subscription.HandleUpdate())
+					subscriptionRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextSubscriptionID.String()), handlers.Subscription.HandleDelete())
+				}
+
+				profileRoutes := protectedRoutes.Group("/profiles")
+				{
+					profileRoutes.GET("", handlers.Profile.HandleGetList())
+					profileRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextProfileID.String()), handlers.Profile.HandleGetOne())
+				}
 			}
 		}
 	}

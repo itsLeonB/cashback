@@ -35,8 +35,9 @@ type Services struct {
 	OtherFee     service.OtherFeeService
 
 	// Monetization
-	Plan        monetization.PlanService
-	PlanVersion monetization.PlanVersionService
+	Plan         monetization.PlanService
+	PlanVersion  monetization.PlanVersionService
+	Subscription monetization.SubscriptionService
 
 	// Infra
 	Notification     service.NotificationService
@@ -55,7 +56,7 @@ func ProvideServices(
 	pushConfig config.Push,
 ) *Services {
 	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)
-	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile)
+	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile, repos.Subscription)
 	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken)
 	session := service.NewSessionService(jwt, user, repos.Transactor, repos.Session, repos.RefreshToken)
 
@@ -88,8 +89,9 @@ func ProvideServices(
 		ExpenseItem:  service.NewExpenseItemService(repos.Transactor, repos.ExpenseItem, groupExpense),
 		OtherFee:     service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense),
 
-		Plan:        monetization.NewPlanService(repos.Transactor, repos.Plan, repos.PlanVersion),
-		PlanVersion: monetization.NewPlanVersionService(repos.Transactor, repos.PlanVersion, repos.Plan),
+		Plan:         monetization.NewPlanService(repos.Transactor, repos.Plan, repos.PlanVersion),
+		PlanVersion:  monetization.NewPlanVersionService(repos.Transactor, repos.PlanVersion, repos.Plan),
+		Subscription: monetization.NewSubscriptionService(repos.Transactor, repos.Subscription),
 
 		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense, coreSvc.Queue),
 		PushNotification: pushNotification,

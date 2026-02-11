@@ -37,6 +37,7 @@ type OtherFeeRepository interface {
 type ProfileRepository interface {
 	crud.Repository[users.UserProfile]
 	FindByIDs(ctx context.Context, ids []uuid.UUID) ([]users.UserProfile, error)
+	FindRealProfiles(ctx context.Context) ([]users.UserProfile, error)
 	SearchByName(ctx context.Context, query string, limit int) ([]users.UserProfile, error)
 }
 

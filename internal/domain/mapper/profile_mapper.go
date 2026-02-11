@@ -1,14 +1,12 @@
 package mapper
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 )
 
-func ProfileToResponse(profile users.UserProfile, email string, anonProfileIDs []uuid.UUID, realProfileID uuid.UUID) dto.ProfileResponse {
+func ProfileToResponse(profile users.UserProfile, email string, anonProfileIDs []uuid.UUID, realProfileID uuid.UUID, currentSubscription dto.SubscriptionResponse) dto.ProfileResponse {
 	associatedAnonProfileIDs := anonProfileIDs
 	if len(associatedAnonProfileIDs) < 1 {
 		for _, anonProfile := range profile.RelatedAnonProfiles {
@@ -20,15 +18,6 @@ func ProfileToResponse(profile users.UserProfile, email string, anonProfileIDs [
 		realProfileID = profile.RelatedRealProfile.RealProfileID
 	}
 
-	now := time.Now()
-	var currentSubs dto.SubscriptionResponse
-	for _, subs := range profile.Subscriptions {
-		if subs.IsActive(now) {
-			currentSubs = SubscriptionToResponse(subs)
-			break
-		}
-	}
-
 	return dto.ProfileResponse{
 		BaseDTO:                  BaseToDTO(profile.BaseEntity),
 		UserID:                   profile.UserID.UUID,
@@ -38,7 +27,7 @@ func ProfileToResponse(profile users.UserProfile, email string, anonProfileIDs [
 		IsAnonymous:              !profile.UserID.Valid,
 		AssociatedAnonProfileIDs: associatedAnonProfileIDs,
 		RealProfileID:            realProfileID,
-		CurrentSubscription:      currentSubs,
+		CurrentSubscription:      currentSubscription,
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/domain/service"
+	"github.com/itsLeonB/cashback/internal/domain/service/admin"
 	"github.com/itsLeonB/ginkgo/pkg/middleware"
 	"golang.org/x/time/rate"
 )
@@ -18,15 +19,21 @@ type Middlewares struct {
 	CORS      gin.HandlerFunc
 	Logger    gin.HandlerFunc
 	RateLimit gin.HandlerFunc
+	AdminAuth gin.HandlerFunc
 }
 
-func Provide(configs config.App, authSvc service.AuthService) *Middlewares {
+func Provide(configs config.App, authSvc service.AuthService, adminAuthSvc admin.AuthService) *Middlewares {
 	tokenCheckFunc := func(ctx *gin.Context, token string) (bool, map[string]any, error) {
 		return authSvc.VerifyToken(ctx, token)
 	}
 
+	adminTokenCheckFunc := func(ctx *gin.Context, token string) (bool, map[string]any, error) {
+		return adminAuthSvc.VerifyToken(ctx, token)
+	}
+
 	middlewareProvider := middleware.NewMiddlewareProvider(logger.Global)
 	authMiddleware := middlewareProvider.NewAuthMiddleware("Bearer", tokenCheckFunc)
+	adminAuthMiddleware := middlewareProvider.NewAuthMiddleware("Bearer", adminTokenCheckFunc)
 	errorMiddleware := middlewareProvider.NewErrorMiddleware()
 	loggingMiddleware := middlewareProvider.NewLoggingMiddleware()
 	rateLimitMiddleware := middlewareProvider.NewRateLimitMiddleware(10*rate.Every(time.Second), 10)
@@ -45,5 +52,6 @@ func Provide(configs config.App, authSvc service.AuthService) *Middlewares {
 		corsMiddleware,
 		loggingMiddleware,
 		rateLimitMiddleware,
+		adminAuthMiddleware,
 	}
 }

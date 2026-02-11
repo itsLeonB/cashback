@@ -13,8 +13,8 @@ import (
 
 func registerRoutes(router *gin.Engine, configs config.Config, services *provider.Services, adminServices *admin.Services) {
 	handlers := handler.ProvideHandlers(services)
-	adminHandlers := adminHandler.ProvideHandlers(adminServices)
-	middlewares := middlewares.Provide(configs.App, services.Auth)
+	adminHandlers := adminHandler.ProvideHandlers(adminServices, services)
+	middlewares := middlewares.Provide(configs.App, services.Auth, adminServices.Auth)
 
 	router.Use(middlewares.Logger, middlewares.CORS, middlewares.RateLimit, middlewares.Err)
 

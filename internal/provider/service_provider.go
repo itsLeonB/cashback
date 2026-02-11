@@ -7,6 +7,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/cashback/internal/domain/service/fee"
+	"github.com/itsLeonB/cashback/internal/domain/service/monetization"
 	"github.com/itsLeonB/sekure"
 )
 
@@ -32,6 +33,9 @@ type Services struct {
 	ExpenseBill  service.ExpenseBillService
 	ExpenseItem  service.ExpenseItemService
 	OtherFee     service.OtherFeeService
+
+	// Monetization
+	Plan monetization.PlanService
 
 	// Infra
 	Notification     service.NotificationService
@@ -82,6 +86,8 @@ func ProvideServices(
 		ExpenseBill:  service.NewExpenseBillService(coreSvc.Queue, repos.ExpenseBill, repos.Transactor, coreSvc.Image, coreSvc.OCR, groupExpense),
 		ExpenseItem:  service.NewExpenseItemService(repos.Transactor, repos.ExpenseItem, groupExpense),
 		OtherFee:     service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense),
+
+		Plan: monetization.NewPlanService(repos.Transactor, repos.Plan),
 
 		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense, coreSvc.Queue),
 		PushNotification: pushNotification,

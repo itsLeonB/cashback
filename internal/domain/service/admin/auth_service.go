@@ -1,0 +1,87 @@
+package admin
+
+import (
+	"context"
+
+	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/entity/admin"
+	"github.com/itsLeonB/go-crud"
+	"github.com/itsLeonB/sekure"
+	"github.com/itsLeonB/ungerr"
+)
+
+type AuthService interface {
+	Register(ctx context.Context, req dto.RegisterRequest) error
+	Login(ctx context.Context, req dto.InternalLoginRequest) (dto.TokenResponse, error)
+}
+
+type authService struct {
+	userRepo    crud.Repository[admin.User]
+	hashService sekure.HashService
+	jwtService  sekure.JWTService
+}
+
+func NewAuthService(
+	userRepo crud.Repository[admin.User],
+	hashService sekure.HashService,
+	jwtService sekure.JWTService,
+) *authService {
+	return &authService{
+		userRepo,
+		hashService,
+		jwtService,
+	}
+}
+
+func (as *authService) Register(ctx context.Context, req dto.RegisterRequest) error {
+	users, err := as.userRepo.FindAll(ctx, crud.Specification[admin.User]{})
+	if err != nil {
+		return err
+	}
+	if len(users) > 0 {
+		return ungerr.ForbiddenError("cannot register as there exists admin users")
+	}
+
+	hash, err := as.hashService.Hash(req.Password)
+	if err != nil {
+		return err
+	}
+
+	newUser := admin.User{
+		Email:    req.Email,
+		Password: hash,
+	}
+
+	_, err = as.userRepo.Insert(ctx, newUser)
+	return err
+}
+
+func (as *authService) Login(ctx context.Context, req dto.InternalLoginRequest) (dto.TokenResponse, error) {
+	spec := crud.Specification[admin.User]{}
+	spec.Model.Email = req.Email
+	user, err := as.userRepo.FindFirst(ctx, spec)
+	if err != nil {
+		return dto.TokenResponse{}, err
+	}
+	if user.IsZero() {
+		return dto.TokenResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
+	}
+
+	ok, err := as.hashService.CheckHash(user.Password, req.Password)
+	if err != nil {
+		return dto.TokenResponse{}, err
+	}
+	if !ok {
+		return dto.TokenResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
+	}
+
+	token, err := as.jwtService.CreateToken(map[string]any{
+		appconstant.ContextUserID.String(): user.ID,
+	})
+	if err != nil {
+		return dto.TokenResponse{}, err
+	}
+
+	return dto.NewTokenResp(token, ""), nil
+}

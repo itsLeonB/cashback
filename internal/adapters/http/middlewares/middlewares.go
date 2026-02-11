@@ -1,4 +1,4 @@
-package http
+package middlewares
 
 import (
 	"time"
@@ -12,15 +12,15 @@ import (
 	"golang.org/x/time/rate"
 )
 
-type middlewares struct {
-	auth      gin.HandlerFunc
-	err       gin.HandlerFunc
-	cors      gin.HandlerFunc
-	logger    gin.HandlerFunc
-	rateLimit gin.HandlerFunc
+type Middlewares struct {
+	Auth      gin.HandlerFunc
+	Err       gin.HandlerFunc
+	CORS      gin.HandlerFunc
+	Logger    gin.HandlerFunc
+	RateLimit gin.HandlerFunc
 }
 
-func provideMiddlewares(configs config.App, authSvc service.AuthService) *middlewares {
+func Provide(configs config.App, authSvc service.AuthService) *Middlewares {
 	tokenCheckFunc := func(ctx *gin.Context, token string) (bool, map[string]any, error) {
 		return authSvc.VerifyToken(ctx, token)
 	}
@@ -39,7 +39,7 @@ func provideMiddlewares(configs config.App, authSvc service.AuthService) *middle
 		AllowCredentials: true,
 	})
 
-	return &middlewares{
+	return &Middlewares{
 		authMiddleware,
 		errorMiddleware,
 		corsMiddleware,

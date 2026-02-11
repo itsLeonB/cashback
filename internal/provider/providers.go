@@ -4,7 +4,9 @@ import (
 	"errors"
 
 	"github.com/itsLeonB/cashback/internal/core/config"
+	adminConfig "github.com/itsLeonB/cashback/internal/core/config/admin"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/provider/admin"
 )
 
 type Providers struct {
@@ -12,6 +14,10 @@ type Providers struct {
 	*Repositories
 	*CoreServices
 	*Services
+
+	// Admin
+	AdminRepos    *admin.Repositories
+	AdminServices *admin.Services
 }
 
 func (p *Providers) Shutdown() error {
@@ -35,6 +41,7 @@ func All() (*Providers, error) {
 	}
 
 	repos := ProvideRepositories(dataSources)
+	adminRepos := admin.ProvideRepositories(dataSources.Gorm)
 
 	coreSvcs, err := ProvideCoreServices()
 	if err != nil {
@@ -45,9 +52,11 @@ func All() (*Providers, error) {
 	}
 
 	return &Providers{
-		DataSources:  dataSources,
-		Repositories: repos,
-		CoreServices: coreSvcs,
-		Services:     ProvideServices(repos, coreSvcs, config.Global.Auth, config.Global.App, config.Global.Push),
+		DataSources:   dataSources,
+		Repositories:  repos,
+		CoreServices:  coreSvcs,
+		Services:      ProvideServices(repos, coreSvcs, config.Global.Auth, config.Global.App, config.Global.Push),
+		AdminRepos:    adminRepos,
+		AdminServices: admin.ProvideServices(adminRepos, *adminConfig.Global),
 	}, nil
 }

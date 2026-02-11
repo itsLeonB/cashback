@@ -6,13 +6,15 @@ import (
 )
 
 type Handlers struct {
-	Auth AuthHandler
-	Plan PlanHandler
+	Auth        AuthHandler
+	Plan        PlanHandler
+	PlanVersion PlanVersionHandler
 }
 
 func ProvideHandlers(services *admin.Services, domainServices *provider.Services) *Handlers {
 	return &Handlers{
 		AuthHandler{services.Auth},
 		PlanHandler{domainServices.Plan},
+		PlanVersionHandler{domainServices.PlanVersion},
 	}
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/go-crud"
 	"github.com/shopspring/decimal"
-	"golang.org/x/text/currency"
 )
 
 type Plan struct {
@@ -27,7 +26,7 @@ type PlanVersion struct {
 	crud.BaseEntity
 	PlanID             uuid.UUID
 	PriceAmount        decimal.Decimal
-	PriceCurrency      currency.Unit
+	PriceCurrency      string
 	BillingInterval    BillingInterval
 	BillUploadsDaily   uint
 	BillUploadsMonthly uint

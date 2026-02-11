@@ -32,6 +32,15 @@ func RegisterAdminRoutes(router *gin.Engine, handlers *admin.Handlers, middlewar
 					planRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextPlanID.String()), handlers.Plan.HandleUpdate())
 					planRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextPlanID.String()), handlers.Plan.HandleDelete())
 				}
+
+				planVersionRoutes := protectedRoutes.Group("/plan-versions")
+				{
+					planVersionRoutes.POST("", handlers.PlanVersion.HandleCreate())
+					planVersionRoutes.GET("", handlers.PlanVersion.HandleGetList())
+					planVersionRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextPlanVersionID.String()), handlers.PlanVersion.HandleGetOne())
+					planVersionRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextPlanVersionID.String()), handlers.PlanVersion.HandleUpdate())
+					planVersionRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextPlanVersionID.String()), handlers.PlanVersion.HandleDelete())
+				}
 			}
 		}
 	}

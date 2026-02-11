@@ -35,7 +35,8 @@ type Services struct {
 	OtherFee     service.OtherFeeService
 
 	// Monetization
-	Plan monetization.PlanService
+	Plan        monetization.PlanService
+	PlanVersion monetization.PlanVersionService
 
 	// Infra
 	Notification     service.NotificationService
@@ -87,7 +88,8 @@ func ProvideServices(
 		ExpenseItem:  service.NewExpenseItemService(repos.Transactor, repos.ExpenseItem, groupExpense),
 		OtherFee:     service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense),
 
-		Plan: monetization.NewPlanService(repos.Transactor, repos.Plan, repos.PlanVersion),
+		Plan:        monetization.NewPlanService(repos.Transactor, repos.Plan, repos.PlanVersion),
+		PlanVersion: monetization.NewPlanVersionService(repos.Transactor, repos.PlanVersion, repos.Plan),
 
 		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense, coreSvc.Queue),
 		PushNotification: pushNotification,

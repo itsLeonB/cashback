@@ -62,14 +62,9 @@ func (ps *planService) GetList(ctx context.Context) ([]dto.PlanResponse, error) 
 }
 
 func (ps *planService) GetOne(ctx context.Context, id uuid.UUID) (dto.PlanResponse, error) {
-	spec := crud.Specification[entity.Plan]{}
-	spec.Model.ID = id
-	plan, err := ps.planRepo.FindFirst(ctx, spec)
+	plan, err := ps.getByID(ctx, id, false)
 	if err != nil {
 		return dto.PlanResponse{}, err
-	}
-	if plan.IsZero() {
-		return dto.PlanResponse{}, ungerr.NotFoundError("plan is not found")
 	}
 
 	return mapper.PlanToResponse(plan), nil
@@ -78,15 +73,9 @@ func (ps *planService) GetOne(ctx context.Context, id uuid.UUID) (dto.PlanRespon
 func (ps *planService) Update(ctx context.Context, req dto.UpdatePlanRequest) (dto.PlanResponse, error) {
 	var resp dto.PlanResponse
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		spec := crud.Specification[entity.Plan]{}
-		spec.Model.ID = req.ID
-		spec.ForUpdate = true
-		plan, err := ps.planRepo.FindFirst(ctx, spec)
+		plan, err := ps.getByID(ctx, req.ID, true)
 		if err != nil {
 			return err
-		}
-		if plan.IsZero() {
-			return ungerr.NotFoundError("plan is not found")
 		}
 
 		plan.Name = req.Name
@@ -106,15 +95,9 @@ func (ps *planService) Update(ctx context.Context, req dto.UpdatePlanRequest) (d
 func (ps *planService) Delete(ctx context.Context, id uuid.UUID) (dto.PlanResponse, error) {
 	var resp dto.PlanResponse
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		spec := crud.Specification[entity.Plan]{}
-		spec.Model.ID = id
-		spec.ForUpdate = true
-		plan, err := ps.planRepo.FindFirst(ctx, spec)
+		plan, err := ps.getByID(ctx, id, true)
 		if err != nil {
 			return err
-		}
-		if plan.IsZero() {
-			return nil
 		}
 
 		versionSpec := crud.Specification[entity.PlanVersion]{}
@@ -135,4 +118,18 @@ func (ps *planService) Delete(ctx context.Context, id uuid.UUID) (dto.PlanRespon
 		return nil
 	})
 	return resp, err
+}
+
+func (ps *planService) getByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Plan, error) {
+	spec := crud.Specification[entity.Plan]{}
+	spec.Model.ID = id
+	spec.ForUpdate = forUpdate
+	plan, err := ps.planRepo.FindFirst(ctx, spec)
+	if err != nil {
+		return entity.Plan{}, err
+	}
+	if plan.IsZero() {
+		return entity.Plan{}, ungerr.NotFoundError("plan is not found")
+	}
+	return plan, nil
 }

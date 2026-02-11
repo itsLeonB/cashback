@@ -22,6 +22,8 @@ func RegisterAdminRoutes(router *gin.Engine, handlers *admin.Handlers, middlewar
 
 			protectedRoutes := v1.Group("/", middlewares.AdminAuth)
 			{
+				protectedRoutes.GET("/auth/me", handlers.Auth.HandleMe())
+
 				planRoutes := protectedRoutes.Group("/plans")
 				{
 					planRoutes.POST("", handlers.Plan.HandleCreate())

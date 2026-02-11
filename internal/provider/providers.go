@@ -57,6 +57,6 @@ func All() (*Providers, error) {
 		CoreServices:  coreSvcs,
 		Services:      ProvideServices(repos, coreSvcs, config.Global.Auth, config.Global.App, config.Global.Push),
 		AdminRepos:    adminRepos,
-		AdminServices: admin.ProvideServices(adminRepos, *adminConfig.Global),
+		AdminServices: admin.ProvideServices(adminRepos, adminConfig.Global),
 	}, nil
 }

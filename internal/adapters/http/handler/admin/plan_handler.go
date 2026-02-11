@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -28,7 +29,14 @@ func (ph *PlanHandler) HandleCreate() gin.HandlerFunc {
 
 func (ph *PlanHandler) HandleGetList() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		return ph.svc.GetList(ctx)
+		plans, err := ph.svc.GetList(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		ctx.Header("X-Total-Count", fmt.Sprint(len(plans)))
+
+		return plans, nil
 	})
 }
 

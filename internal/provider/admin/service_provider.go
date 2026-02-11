@@ -10,7 +10,7 @@ type Services struct {
 	Auth admin.AuthService
 }
 
-func ProvideServices(repos *Repositories, cfg adminConfig.Config) *Services {
+func ProvideServices(repos *Repositories, cfg *adminConfig.Config) *Services {
 
 	return &Services{
 		admin.NewAuthService(

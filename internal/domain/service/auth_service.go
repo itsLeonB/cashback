@@ -3,14 +3,13 @@ package service
 import (
 	"context"
 	"fmt"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/service/mail"
+	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/ezutil/v2"
@@ -90,7 +89,7 @@ func (as *authServiceImpl) executeRegistration(ctx context.Context, request dto.
 		newUserReq := dto.NewUserRequest{
 			Email:     request.Email,
 			Password:  hash,
-			Name:      getNameFromEmail(request.Email),
+			Name:      util.GetNameFromEmail(request.Email),
 			VerifyNow: isVerified,
 		}
 
@@ -123,29 +122,12 @@ func (as *authServiceImpl) sendVerificationMail(ctx context.Context, user users.
 
 	mailMsg := mail.MailMessage{
 		RecipientMail: user.Email,
-		RecipientName: getNameFromEmail(user.Email),
+		RecipientName: util.GetNameFromEmail(user.Email),
 		Subject:       "Verify your email",
 		TextContent:   "Please verify your email by clicking the following link:\n\n" + url,
 	}
 
 	return as.mailSvc.Send(ctx, mailMsg)
-}
-
-func getNameFromEmail(email string) string {
-	parts := strings.SplitN(email, "@", 2)
-	if len(parts) < 2 || parts[0] == "" {
-		return ""
-	}
-	localPart := parts[0]
-
-	re := regexp.MustCompile(`[a-zA-Z]+`)
-	matches := re.FindAllString(localPart, -1)
-	if len(matches) > 0 {
-		name := matches[0]
-		return ezutil.Capitalize(name)
-	}
-
-	return ""
 }
 
 func (as *authServiceImpl) InternalLogin(ctx context.Context, req dto.InternalLoginRequest) (dto.TokenResponse, error) {
@@ -247,7 +229,7 @@ func (as *authServiceImpl) VerifyRegistration(ctx context.Context, token string)
 			return ungerr.UnauthorizedError("token has expired")
 		}
 
-		user, err := as.userSvc.Verify(ctx, userID, email, getNameFromEmail(email), "")
+		user, err := as.userSvc.Verify(ctx, userID, email, util.GetNameFromEmail(email), "")
 		if err != nil {
 			return err
 		}

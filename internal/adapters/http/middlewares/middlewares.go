@@ -39,10 +39,28 @@ func Provide(configs config.App, authSvc service.AuthService, adminAuthSvc admin
 	rateLimitMiddleware := middlewareProvider.NewRateLimitMiddleware(10*rate.Every(time.Second), 10)
 
 	corsMiddleware := middlewareProvider.NewCorsMiddleware(&cors.Config{
-		AllowOrigins:     configs.ClientUrls,
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Requested-With", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Origin", "Cache-Control"},
-		ExposeHeaders:    []string{"Content-Length"},
+		AllowOrigins: configs.ClientUrls,
+		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders: []string{
+			"Origin",
+			"Content-Type",
+			"Accept",
+			"Authorization",
+			"X-Requested-With",
+			"Content-Length",
+			"Accept-Encoding",
+			"X-CSRF-Token",
+			"Origin",
+			"Cache-Control",
+			"Referer",
+			"User-Agent",
+			"range",
+			"DNT",
+			"sec-ch-ua",
+			"sec-ch-ua-platform",
+			"sec-ch-ua-mobile",
+		},
+		ExposeHeaders:    []string{"Content-Length", "X-Total-Count"},
 		AllowCredentials: true,
 	})
 

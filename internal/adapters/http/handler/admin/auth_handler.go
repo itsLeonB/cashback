@@ -34,3 +34,14 @@ func (ah *AuthHandler) HandleLogin() gin.HandlerFunc {
 		return ah.authSvc.Login(ctx, request)
 	})
 }
+
+func (ah *AuthHandler) HandleMe() gin.HandlerFunc {
+	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+		userID, err := getUserID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return ah.authSvc.Me(ctx, userID)
+	})
+}

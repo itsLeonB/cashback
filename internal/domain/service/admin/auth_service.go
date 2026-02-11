@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/admin"
 	"github.com/itsLeonB/ezutil/v2"
@@ -17,6 +18,7 @@ type AuthService interface {
 	Register(ctx context.Context, req dto.RegisterRequest) error
 	Login(ctx context.Context, req dto.InternalLoginRequest) (dto.TokenResponse, error)
 	VerifyToken(ctx context.Context, token string) (bool, map[string]any, error)
+	Me(ctx context.Context, id uuid.UUID) (dto.AdminMe, error)
 }
 
 type authService struct {
@@ -108,17 +110,38 @@ func (as *authService) VerifyToken(ctx context.Context, token string) (bool, map
 		return false, nil, err
 	}
 
-	spec := crud.Specification[admin.User]{}
-	spec.Model.ID = userID
-	user, err := as.userRepo.FindFirst(ctx, spec)
+	user, err := as.getUser(ctx, userID)
 	if err != nil {
 		return false, nil, err
-	}
-	if user.IsZero() {
-		return false, nil, ungerr.UnauthorizedError("user not found")
 	}
 
 	return true, map[string]any{
 		appconstant.ContextUserID.String(): user.ID,
 	}, nil
+}
+
+func (as *authService) Me(ctx context.Context, id uuid.UUID) (dto.AdminMe, error) {
+	user, err := as.getUser(ctx, id)
+	if err != nil {
+		return dto.AdminMe{}, err
+	}
+
+	return dto.AdminMe{
+		ID:       user.ID,
+		FullName: util.GetNameFromEmail(user.Email),
+	}, nil
+}
+
+func (as *authService) getUser(ctx context.Context, id uuid.UUID) (admin.User, error) {
+	spec := crud.Specification[admin.User]{}
+	spec.Model.ID = id
+	user, err := as.userRepo.FindFirst(ctx, spec)
+	if err != nil {
+		return admin.User{}, err
+	}
+	if user.IsZero() {
+		return admin.User{}, ungerr.UnauthorizedError("user not found")
+	}
+
+	return user, nil
 }

@@ -150,9 +150,9 @@ func (ps *profileServiceImpl) GetEntityByID(ctx context.Context, id uuid.UUID) (
 	spec := crud.Specification[users.UserProfile]{}
 	spec.Model.ID = id
 	spec.PreloadRelations = []string{
-		"CurrentSubscription",
-		"CurrentSubscription.PlanVersion",
-		"CurrentSubscription.PlanVersion.Plan",
+		"Subscriptions",
+		"Subscriptions.PlanVersion",
+		"Subscriptions.PlanVersion.Plan",
 	}
 	profile, err := ps.profileRepo.FindFirst(ctx, spec)
 	if err != nil {

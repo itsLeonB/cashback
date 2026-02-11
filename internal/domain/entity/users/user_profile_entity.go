@@ -17,7 +17,7 @@ type UserProfile struct {
 	RelatedRealProfile  RelatedProfile                `gorm:"foreignKey:AnonProfileID"`
 	RelatedAnonProfiles []RelatedProfile              `gorm:"foreignKey:RealProfileID"`
 	TransferMethods     []debts.ProfileTransferMethod `gorm:"foreignKey:ProfileID"`
-	CurrentSubscription monetization.Subscription     `gorm:"foreignKey:ProfileID"`
+	Subscriptions       []monetization.Subscription   `gorm:"foreignKey:ProfileID"`
 }
 
 func (up UserProfile) IsReal() bool {

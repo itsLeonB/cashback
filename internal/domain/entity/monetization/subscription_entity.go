@@ -2,6 +2,7 @@ package monetization
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/go-crud"
@@ -17,4 +18,9 @@ type Subscription struct {
 
 	// Relationships
 	PlanVersion PlanVersion
+}
+
+func (s *Subscription) IsActive(t time.Time) bool {
+	return !(s.EndsAt.Valid && s.EndsAt.Time.Before(t)) &&
+		!(s.CanceledAt.Valid && s.CanceledAt.Time.Before(t))
 }

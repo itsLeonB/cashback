@@ -149,6 +149,11 @@ func (ps *profileServiceImpl) GetRealProfileID(ctx context.Context, anonProfileI
 func (ps *profileServiceImpl) GetEntityByID(ctx context.Context, id uuid.UUID) (users.UserProfile, error) {
 	spec := crud.Specification[users.UserProfile]{}
 	spec.Model.ID = id
+	spec.PreloadRelations = []string{
+		"CurrentSubscription",
+		"CurrentSubscription.PlanVersion",
+		"CurrentSubscription.PlanVersion.Plan",
+	}
 	profile, err := ps.profileRepo.FindFirst(ctx, spec)
 	if err != nil {
 		return users.UserProfile{}, err

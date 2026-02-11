@@ -70,12 +70,12 @@ func (ph *PlanHandler) HandleUpdate() gin.HandlerFunc {
 }
 
 func (ph *PlanHandler) HandleDelete() gin.HandlerFunc {
-	return server.Handler(http.StatusNoContent, func(ctx *gin.Context) (any, error) {
+	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
 		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextPlanID.String())
 		if err != nil {
 			return nil, err
 		}
 
-		return nil, ph.svc.Delete(ctx, id)
+		return ph.svc.Delete(ctx, id)
 	})
 }

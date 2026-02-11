@@ -17,7 +17,7 @@ type PlanService interface {
 	GetList(ctx context.Context) ([]dto.PlanResponse, error)
 	GetOne(ctx context.Context, id uuid.UUID) (dto.PlanResponse, error)
 	Update(ctx context.Context, req dto.UpdatePlanRequest) (dto.PlanResponse, error)
-	Delete(ctx context.Context, id uuid.UUID) error
+	Delete(ctx context.Context, id uuid.UUID) (dto.PlanResponse, error)
 }
 
 type planService struct {
@@ -100,8 +100,9 @@ func (ps *planService) Update(ctx context.Context, req dto.UpdatePlanRequest) (d
 	return resp, err
 }
 
-func (ps *planService) Delete(ctx context.Context, id uuid.UUID) error {
-	return ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+func (ps *planService) Delete(ctx context.Context, id uuid.UUID) (dto.PlanResponse, error) {
+	var resp dto.PlanResponse
+	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[entity.Plan]{}
 		spec.Model.ID = id
 		spec.ForUpdate = true
@@ -113,6 +114,12 @@ func (ps *planService) Delete(ctx context.Context, id uuid.UUID) error {
 			return nil
 		}
 
-		return ps.Delete(ctx, id)
+		if err = ps.repo.Delete(ctx, plan); err != nil {
+			return err
+		}
+
+		resp = mapper.PlanToResponse(plan)
+		return nil
 	})
+	return resp, err
 }

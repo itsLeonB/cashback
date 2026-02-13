@@ -1,7 +1,6 @@
 package monetization
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -9,11 +8,11 @@ import (
 )
 
 type NewSubscriptionRequest struct {
-	ProfileID     uuid.UUID    `json:"profileId" binding:"required"`
-	PlanVersionID uuid.UUID    `json:"planVersionId" binding:"required"`
-	EndsAt        sql.NullTime `json:"endsAt"`
-	CanceledAt    sql.NullTime `json:"canceledAt"`
-	AutoRenew     bool         `json:"autoRenew"`
+	ProfileID     uuid.UUID `json:"profileId" binding:"required"`
+	PlanVersionID uuid.UUID `json:"planVersionId" binding:"required"`
+	EndsAt        time.Time `json:"endsAt"`
+	CanceledAt    time.Time `json:"canceledAt"`
+	AutoRenew     bool      `json:"autoRenew"`
 }
 
 type SubscriptionResponse struct {
@@ -28,10 +27,10 @@ type SubscriptionResponse struct {
 }
 
 type UpdateSubscriptionRequest struct {
-	ID            uuid.UUID    `json:"-"`
-	ProfileID     uuid.UUID    `json:"profileId" binding:"required"`
-	PlanVersionID uuid.UUID    `json:"planVersionId" binding:"required"`
-	EndsAt        sql.NullTime `json:"endsAt"`
-	CanceledAt    sql.NullTime `json:"canceledAt"`
-	AutoRenew     bool         `json:"autoRenew"`
+	ID            uuid.UUID `json:"-"`
+	ProfileID     uuid.UUID `json:"profileId" binding:"required"`
+	PlanVersionID uuid.UUID `json:"planVersionId" binding:"required"`
+	EndsAt        time.Time `json:"endsAt"`
+	CanceledAt    time.Time `json:"canceledAt"`
+	AutoRenew     bool      `json:"autoRenew"`
 }

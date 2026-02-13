@@ -2,6 +2,7 @@ package monetization
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
@@ -47,8 +48,14 @@ func (pvs *planVersionService) Create(ctx context.Context, req dto.NewPlanVersio
 		BillUploadsDaily:   req.BillUploadsDaily,
 		BillUploadsMonthly: req.BillUploadsMonthly,
 		EffectiveFrom:      req.EffectiveFrom,
-		EffectiveTo:        req.EffectiveTo,
 		IsDefault:          req.IsDefault,
+	}
+
+	if !req.EffectiveTo.IsZero() {
+		newPlanVersion.EffectiveTo = sql.NullTime{
+			Time:  req.EffectiveTo,
+			Valid: true,
+		}
 	}
 
 	insertedPlanVersion, err := pvs.planVersionRepo.Insert(ctx, newPlanVersion)
@@ -94,8 +101,12 @@ func (pvs *planVersionService) Update(ctx context.Context, req dto.UpdatePlanVer
 		planVersion.BillUploadsDaily = req.BillUploadsDaily
 		planVersion.BillUploadsMonthly = req.BillUploadsMonthly
 		planVersion.EffectiveFrom = req.EffectiveFrom
-		planVersion.EffectiveTo = req.EffectiveTo
 		planVersion.IsDefault = req.IsDefault
+
+		planVersion.EffectiveTo = sql.NullTime{
+			Time:  req.EffectiveTo,
+			Valid: !req.EffectiveTo.IsZero(),
+		}
 
 		updatedPlanVersion, err := pvs.planVersionRepo.Update(ctx, planVersion)
 		if err != nil {

@@ -1,7 +1,6 @@
 package monetization
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,7 +32,7 @@ type NewPlanVersionRequest struct {
 	BillUploadsDaily   uint            `json:"billUploadsDaily"`
 	BillUploadsMonthly uint            `json:"billUploadsMonthly"`
 	EffectiveFrom      time.Time       `json:"effectiveFrom" binding:"required"`
-	EffectiveTo        sql.NullTime    `json:"effectiveTo"`
+	EffectiveTo        time.Time       `json:"effectiveTo"`
 	IsDefault          bool            `json:"isDefault"`
 }
 
@@ -47,7 +46,7 @@ type PlanVersionResponse struct {
 	BillUploadsDaily   uint            `json:"billUploadsDaily"`
 	BillUploadsMonthly uint            `json:"billUploadsMonthly"`
 	EffectiveFrom      time.Time       `json:"effectiveFrom"`
-	EffectiveTo        *time.Time      `json:"effectiveTo,omitempty"`
+	EffectiveTo        time.Time       `json:"effectiveTo,omitzero"`
 	IsDefault          bool            `json:"isDefault"`
 }
 
@@ -60,6 +59,6 @@ type UpdatePlanVersionRequest struct {
 	BillUploadsDaily   uint            `json:"billUploadsDaily"`
 	BillUploadsMonthly uint            `json:"billUploadsMonthly"`
 	EffectiveFrom      time.Time       `json:"effectiveFrom" binding:"required"`
-	EffectiveTo        sql.NullTime    `json:"effectiveTo"`
+	EffectiveTo        time.Time       `json:"effectiveTo"`
 	IsDefault          bool            `json:"isDefault"`
 }

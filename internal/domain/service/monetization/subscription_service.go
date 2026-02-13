@@ -2,6 +2,7 @@ package monetization
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -46,9 +47,20 @@ func (ss *subscriptionService) Create(ctx context.Context, req dto.NewSubscripti
 	newSubscription := entity.Subscription{
 		ProfileID:     req.ProfileID,
 		PlanVersionID: req.PlanVersionID,
-		EndsAt:        req.EndsAt,
-		CanceledAt:    req.CanceledAt,
 		AutoRenew:     req.AutoRenew,
+	}
+
+	if !req.EndsAt.IsZero() {
+		newSubscription.EndsAt = sql.NullTime{
+			Time:  req.EndsAt,
+			Valid: true,
+		}
+	}
+	if !req.CanceledAt.IsZero() {
+		newSubscription.CanceledAt = sql.NullTime{
+			Time:  req.CanceledAt,
+			Valid: true,
+		}
 	}
 
 	insertedSubscription, err := ss.subscriptionRepo.Insert(ctx, newSubscription)
@@ -89,9 +101,17 @@ func (ss *subscriptionService) Update(ctx context.Context, req dto.UpdateSubscri
 
 		subscription.ProfileID = req.ProfileID
 		subscription.PlanVersionID = req.PlanVersionID
-		subscription.EndsAt = req.EndsAt
-		subscription.CanceledAt = req.CanceledAt
 		subscription.AutoRenew = req.AutoRenew
+
+		subscription.EndsAt = sql.NullTime{
+			Time:  req.EndsAt,
+			Valid: !req.EndsAt.IsZero(),
+		}
+
+		subscription.CanceledAt = sql.NullTime{
+			Time:  req.CanceledAt,
+			Valid: !req.CanceledAt.IsZero(),
+		}
 
 		updatedSubscription, err := ss.subscriptionRepo.Update(ctx, subscription)
 		if err != nil {

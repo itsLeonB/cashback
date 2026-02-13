@@ -30,8 +30,8 @@ type NewPlanVersionRequest struct {
 	PriceAmount        decimal.Decimal `json:"priceAmount" binding:"required"`
 	PriceCurrency      string          `json:"priceCurrency" binding:"required,len=3"`
 	BillingInterval    string          `json:"billingInterval" binding:"required,oneof=monthly yearly"`
-	BillUploadsDaily   uint            `json:"billUploadsDaily" binding:"required"`
-	BillUploadsMonthly uint            `json:"billUploadsMonthly" binding:"required"`
+	BillUploadsDaily   uint            `json:"billUploadsDaily"`
+	BillUploadsMonthly uint            `json:"billUploadsMonthly"`
 	EffectiveFrom      time.Time       `json:"effectiveFrom" binding:"required"`
 	EffectiveTo        sql.NullTime    `json:"effectiveTo"`
 	IsDefault          bool            `json:"isDefault"`
@@ -57,8 +57,8 @@ type UpdatePlanVersionRequest struct {
 	PriceAmount        decimal.Decimal `json:"priceAmount" binding:"required"`
 	PriceCurrency      string          `json:"priceCurrency" binding:"required,len=3"`
 	BillingInterval    string          `json:"billingInterval" binding:"required,oneof=monthly yearly"`
-	BillUploadsDaily   uint            `json:"billUploadsDaily" binding:"required"`
-	BillUploadsMonthly uint            `json:"billUploadsMonthly" binding:"required"`
+	BillUploadsDaily   uint            `json:"billUploadsDaily"`
+	BillUploadsMonthly uint            `json:"billUploadsMonthly"`
 	EffectiveFrom      time.Time       `json:"effectiveFrom" binding:"required"`
 	EffectiveTo        sql.NullTime    `json:"effectiveTo"`
 	IsDefault          bool            `json:"isDefault"`

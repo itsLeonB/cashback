@@ -24,18 +24,15 @@ type PlanVersionService interface {
 type planVersionService struct {
 	transactor      crud.Transactor
 	planVersionRepo crud.Repository[entity.PlanVersion]
-	planRepo        crud.Repository[entity.Plan]
 }
 
 func NewPlanVersionService(
 	transactor crud.Transactor,
 	repo crud.Repository[entity.PlanVersion],
-	planRepo crud.Repository[entity.Plan],
 ) *planVersionService {
 	return &planVersionService{
 		transactor,
 		repo,
-		planRepo,
 	}
 }
 

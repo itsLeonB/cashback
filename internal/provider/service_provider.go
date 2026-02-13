@@ -92,7 +92,7 @@ func ProvideServices(
 		OtherFee:     service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense),
 
 		Plan:         monetization.NewPlanService(repos.Transactor, repos.Plan, repos.PlanVersion),
-		PlanVersion:  monetization.NewPlanVersionService(repos.Transactor, repos.PlanVersion, repos.Plan),
+		PlanVersion:  monetization.NewPlanVersionService(repos.Transactor, repos.PlanVersion),
 		Subscription: subs,
 
 		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense, coreSvc.Queue),

@@ -149,6 +149,9 @@ func (ss *subscriptionService) AttachDefaultSubscription(ctx context.Context, pr
 	if err != nil {
 		return err
 	}
+	if planVersion.IsZero() {
+		return ungerr.Unknown("no default plan version is found")
+	}
 
 	newSubsReq := dto.NewSubscriptionRequest{
 		ProfileID:     profileID,

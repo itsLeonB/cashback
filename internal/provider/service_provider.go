@@ -55,8 +55,10 @@ func ProvideServices(
 	appConfig config.App,
 	pushConfig config.Push,
 ) *Services {
+	subs := monetization.NewSubscriptionService(repos.Transactor, repos.Subscription, repos.PlanVersion)
+
 	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)
-	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile, repos.Subscription)
+	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile, subs)
 	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken)
 	session := service.NewSessionService(jwt, user, repos.Transactor, repos.Session, repos.RefreshToken)
 
@@ -91,7 +93,7 @@ func ProvideServices(
 
 		Plan:         monetization.NewPlanService(repos.Transactor, repos.Plan, repos.PlanVersion),
 		PlanVersion:  monetization.NewPlanVersionService(repos.Transactor, repos.PlanVersion, repos.Plan),
-		Subscription: monetization.NewSubscriptionService(repos.Transactor, repos.Subscription),
+		Subscription: subs,
 
 		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense, coreSvc.Queue),
 		PushNotification: pushNotification,

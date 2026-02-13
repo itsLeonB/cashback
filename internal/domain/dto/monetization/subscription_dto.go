@@ -18,13 +18,13 @@ type NewSubscriptionRequest struct {
 
 type SubscriptionResponse struct {
 	dto.BaseDTO
-	ProfileID     uuid.UUID  `json:"profileId"`
-	ProfileName   string     `json:"profileName"`
-	PlanVersionID uuid.UUID  `json:"planVersionId"`
-	PlanName      string     `json:"planName"`
-	EndsAt        *time.Time `json:"endsAt,omitempty"`
-	CanceledAt    *time.Time `json:"canceledAt,omitempty"`
-	AutoRenew     bool       `json:"autoRenew"`
+	ProfileID     uuid.UUID `json:"profileId"`
+	ProfileName   string    `json:"profileName"`
+	PlanVersionID uuid.UUID `json:"planVersionId"`
+	PlanName      string    `json:"planName"`
+	EndsAt        time.Time `json:"endsAt,omitzero"`
+	CanceledAt    time.Time `json:"canceledAt,omitzero"`
+	AutoRenew     bool      `json:"autoRenew"`
 }
 
 type UpdateSubscriptionRequest struct {

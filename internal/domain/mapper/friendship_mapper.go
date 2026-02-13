@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
+	"github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/ezutil/v2"
@@ -71,8 +72,8 @@ func MapToFriendshipWithProfile(userProfileID uuid.UUID, friendship users.Friend
 
 	return dto.FriendshipWithProfile{
 		Friendship:    friendshipResponse,
-		UserProfile:   ProfileToResponse(userProfile, "", nil, uuid.Nil, dto.SubscriptionResponse{}),
-		FriendProfile: ProfileToResponse(friendProfile, "", nil, uuid.Nil, dto.SubscriptionResponse{}),
+		UserProfile:   ProfileToResponse(userProfile, "", nil, uuid.Nil, monetization.SubscriptionResponse{}),
+		FriendProfile: ProfileToResponse(friendProfile, "", nil, uuid.Nil, monetization.SubscriptionResponse{}),
 	}, nil
 }
 

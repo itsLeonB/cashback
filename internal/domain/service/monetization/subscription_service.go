@@ -2,6 +2,7 @@ package monetization
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
@@ -18,20 +19,26 @@ type SubscriptionService interface {
 	GetOne(ctx context.Context, id uuid.UUID) (dto.SubscriptionResponse, error)
 	Update(ctx context.Context, req dto.UpdateSubscriptionRequest) (dto.SubscriptionResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) (dto.SubscriptionResponse, error)
+
+	AttachDefaultSubscription(ctx context.Context, profileID uuid.UUID) error
+	GetCurrentSubscription(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error)
 }
 
 type subscriptionService struct {
 	transactor       crud.Transactor
 	subscriptionRepo crud.Repository[entity.Subscription]
+	planVersionRepo  crud.Repository[entity.PlanVersion]
 }
 
 func NewSubscriptionService(
 	transactor crud.Transactor,
 	repo crud.Repository[entity.Subscription],
+	planVersionRepo crud.Repository[entity.PlanVersion],
 ) *subscriptionService {
 	return &subscriptionService{
 		transactor,
 		repo,
+		planVersionRepo,
 	}
 }
 
@@ -49,12 +56,7 @@ func (ss *subscriptionService) Create(ctx context.Context, req dto.NewSubscripti
 		return dto.SubscriptionResponse{}, err
 	}
 
-	subscription, err := ss.getByID(ctx, insertedSubscription.ID, false)
-	if err != nil {
-		return dto.SubscriptionResponse{}, err
-	}
-
-	return mapper.SubscriptionToResponse(subscription), nil
+	return mapper.SubscriptionToResponse(insertedSubscription), nil
 }
 
 func (ss *subscriptionService) GetList(ctx context.Context) ([]dto.SubscriptionResponse, error) {
@@ -96,12 +98,7 @@ func (ss *subscriptionService) Update(ctx context.Context, req dto.UpdateSubscri
 			return err
 		}
 
-		reloaded, err := ss.getByID(ctx, updatedSubscription.ID, false)
-		if err != nil {
-			return err
-		}
-
-		resp = mapper.SubscriptionToResponse(reloaded)
+		resp = mapper.SubscriptionToResponse(updatedSubscription)
 		return nil
 	})
 	return resp, err
@@ -123,6 +120,42 @@ func (ss *subscriptionService) Delete(ctx context.Context, id uuid.UUID) (dto.Su
 		return nil
 	})
 	return resp, err
+}
+
+func (ss *subscriptionService) AttachDefaultSubscription(ctx context.Context, profileID uuid.UUID) error {
+	planVerSpec := crud.Specification[entity.PlanVersion]{}
+	planVerSpec.Model.IsDefault = true
+	planVersion, err := ss.planVersionRepo.FindFirst(ctx, planVerSpec)
+	if err != nil {
+		return err
+	}
+
+	newSubsReq := dto.NewSubscriptionRequest{
+		ProfileID:     profileID,
+		PlanVersionID: planVersion.ID,
+	}
+	_, err = ss.Create(ctx, newSubsReq)
+	return err
+}
+
+func (ss *subscriptionService) GetCurrentSubscription(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error) {
+	spec := crud.Specification[entity.Subscription]{}
+	spec.Model.ProfileID = profileID
+	spec.PreloadRelations = []string{"PlanVersion", "PlanVersion.Plan"}
+
+	subscriptions, err := ss.subscriptionRepo.FindAll(ctx, spec)
+	if err != nil {
+		return dto.SubscriptionResponse{}, err
+	}
+
+	now := time.Now()
+	for _, sub := range subscriptions {
+		if sub.IsActive(now) {
+			return mapper.SubscriptionToResponse(sub), nil
+		}
+	}
+
+	return dto.SubscriptionResponse{}, nil
 }
 
 func (ss *subscriptionService) getByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error) {

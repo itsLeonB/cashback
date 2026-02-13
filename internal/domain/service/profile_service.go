@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	monetizationDto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
@@ -121,6 +122,7 @@ func (ps *profileServiceImpl) GetAll(ctx context.Context) ([]dto.ProfileResponse
 			userSpec.Model.ID = profile.UserID.UUID
 			user, err := ps.userRepo.FindFirst(ctx, userSpec)
 			if err != nil {
+				logger.Error(err)
 				continue
 			}
 			email = user.Email
@@ -128,11 +130,13 @@ func (ps *profileServiceImpl) GetAll(ctx context.Context) ([]dto.ProfileResponse
 
 		anonProfileIDs, realProfileID, err := ps.getAssociations(ctx, profile)
 		if err != nil {
+			logger.Error(err)
 			continue
 		}
 
 		currentSubscription, err := ps.subscriptionSvc.GetCurrentSubscription(ctx, profile.ID)
 		if err != nil {
+			logger.Error(err)
 			continue
 		}
 
@@ -154,16 +158,19 @@ func (ps *profileServiceImpl) GetAllReal(ctx context.Context) ([]dto.ProfileResp
 		userSpec.Model.ID = profile.UserID.UUID
 		user, err := ps.userRepo.FindFirst(ctx, userSpec)
 		if err != nil {
+			logger.Error(err)
 			continue
 		}
 
 		anonProfileIDs, realProfileID, err := ps.getAssociations(ctx, profile)
 		if err != nil {
+			logger.Error(err)
 			continue
 		}
 
 		currentSubscription, err := ps.subscriptionSvc.GetCurrentSubscription(ctx, profile.ID)
 		if err != nil {
+			logger.Error(err)
 			continue
 		}
 

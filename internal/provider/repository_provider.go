@@ -2,11 +2,13 @@ package provider
 
 import (
 	adapters "github.com/itsLeonB/cashback/internal/adapters/repository"
+	monetizationAdapter "github.com/itsLeonB/cashback/internal/adapters/repository/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
+	monetizationRepo "github.com/itsLeonB/cashback/internal/domain/repository/monetization"
 	"github.com/itsLeonB/go-crud"
 	"gorm.io/gorm"
 )
@@ -38,7 +40,7 @@ type Repositories struct {
 
 	// Monetization
 	Plan         crud.Repository[monetization.Plan]
-	PlanVersion  crud.Repository[monetization.PlanVersion]
+	PlanVersion  monetizationRepo.PlanVersionRepository
 	Subscription crud.Repository[monetization.Subscription]
 
 	// Infra
@@ -70,7 +72,7 @@ func ProvideRepositories(db *gorm.DB) *Repositories {
 		ExpenseBill:  crud.NewRepository[expenses.ExpenseBill](db),
 
 		Plan:         crud.NewRepository[monetization.Plan](db),
-		PlanVersion:  crud.NewRepository[monetization.PlanVersion](db),
+		PlanVersion:  monetizationAdapter.NewPlanVersionRepository(db),
 		Subscription: crud.NewRepository[monetization.Subscription](db),
 
 		Notification:     adapters.NewNotificationRepository(db),

@@ -8,6 +8,7 @@ import (
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	mapper "github.com/itsLeonB/cashback/internal/domain/mapper/monetization"
+	"github.com/itsLeonB/cashback/internal/domain/repository/monetization"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -23,12 +24,12 @@ type PlanVersionService interface {
 
 type planVersionService struct {
 	transactor      crud.Transactor
-	planVersionRepo crud.Repository[entity.PlanVersion]
+	planVersionRepo monetization.PlanVersionRepository
 }
 
 func NewPlanVersionService(
 	transactor crud.Transactor,
-	repo crud.Repository[entity.PlanVersion],
+	repo monetization.PlanVersionRepository,
 ) *planVersionService {
 	return &planVersionService{
 		transactor,
@@ -108,6 +109,12 @@ func (pvs *planVersionService) Update(ctx context.Context, req dto.UpdatePlanVer
 		updatedPlanVersion, err := pvs.planVersionRepo.Update(ctx, planVersion)
 		if err != nil {
 			return err
+		}
+
+		if req.IsDefault {
+			if err = pvs.planVersionRepo.SetAsDefault(ctx, updatedPlanVersion.ID); err != nil {
+				return err
+			}
 		}
 
 		resp = mapper.PlanVersionToResponse(updatedPlanVersion)

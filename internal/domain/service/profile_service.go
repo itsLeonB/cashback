@@ -5,11 +5,14 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
+	monetizationDto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
+	monetizationSvc "github.com/itsLeonB/cashback/internal/domain/service/monetization"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -21,6 +24,7 @@ type profileServiceImpl struct {
 	userRepo           crud.Repository[users.User]
 	friendshipRepo     repository.FriendshipRepository
 	relatedProfileRepo crud.Repository[users.RelatedProfile]
+	subscriptionSvc    monetizationSvc.SubscriptionService
 }
 
 func NewProfileService(
@@ -29,6 +33,7 @@ func NewProfileService(
 	userRepo crud.Repository[users.User],
 	friendshipRepo repository.FriendshipRepository,
 	relatedProfileRepo crud.Repository[users.RelatedProfile],
+	subscriptionSvc monetizationSvc.SubscriptionService,
 ) ProfileService {
 	return &profileServiceImpl{
 		transactor,
@@ -36,6 +41,7 @@ func NewProfileService(
 		userRepo,
 		friendshipRepo,
 		relatedProfileRepo,
+		subscriptionSvc,
 	}
 }
 
@@ -57,7 +63,13 @@ func (ps *profileServiceImpl) Create(ctx context.Context, request dto.NewProfile
 			return err
 		}
 
-		response = mapper.ProfileToResponse(insertedProfile, "", nil, uuid.Nil)
+		if request.UserID != uuid.Nil {
+			if err = ps.subscriptionSvc.AttachDefaultSubscription(ctx, insertedProfile.ID); err != nil {
+				return err
+			}
+		}
+
+		response = mapper.ProfileToResponse(insertedProfile, "", nil, uuid.Nil, monetizationDto.SubscriptionResponse{})
 
 		return nil
 	})
@@ -87,7 +99,85 @@ func (ps *profileServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (dto.Pr
 		return dto.ProfileResponse{}, err
 	}
 
-	return mapper.ProfileToResponse(profile, email, anonProfileIDs, realProfileID), nil
+	currentSubscription, err := ps.subscriptionSvc.GetCurrentSubscription(ctx, id)
+	if err != nil {
+		return dto.ProfileResponse{}, err
+	}
+
+	return mapper.ProfileToResponse(profile, email, anonProfileIDs, realProfileID, currentSubscription), nil
+}
+
+func (ps *profileServiceImpl) GetAll(ctx context.Context) ([]dto.ProfileResponse, error) {
+	spec := crud.Specification[users.UserProfile]{}
+	profiles, err := ps.profileRepo.FindAll(ctx, spec)
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make([]dto.ProfileResponse, 0, len(profiles))
+	for _, profile := range profiles {
+		var email string
+		if profile.IsReal() {
+			userSpec := crud.Specification[users.User]{}
+			userSpec.Model.ID = profile.UserID.UUID
+			user, err := ps.userRepo.FindFirst(ctx, userSpec)
+			if err != nil {
+				logger.Error(err)
+				continue
+			}
+			email = user.Email
+		}
+
+		anonProfileIDs, realProfileID, err := ps.getAssociations(ctx, profile)
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
+
+		currentSubscription, err := ps.subscriptionSvc.GetCurrentSubscription(ctx, profile.ID)
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
+
+		responses = append(responses, mapper.ProfileToResponse(profile, email, anonProfileIDs, realProfileID, currentSubscription))
+	}
+
+	return responses, nil
+}
+
+func (ps *profileServiceImpl) GetAllReal(ctx context.Context) ([]dto.ProfileResponse, error) {
+	profiles, err := ps.profileRepo.FindRealProfiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make([]dto.ProfileResponse, 0, len(profiles))
+	for _, profile := range profiles {
+		userSpec := crud.Specification[users.User]{}
+		userSpec.Model.ID = profile.UserID.UUID
+		user, err := ps.userRepo.FindFirst(ctx, userSpec)
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
+
+		anonProfileIDs, realProfileID, err := ps.getAssociations(ctx, profile)
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
+
+		currentSubscription, err := ps.subscriptionSvc.GetCurrentSubscription(ctx, profile.ID)
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
+
+		responses = append(responses, mapper.ProfileToResponse(profile, user.Email, anonProfileIDs, realProfileID, currentSubscription))
+	}
+
+	return responses, nil
 }
 
 func (ps *profileServiceImpl) GetAssociatedIDs(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error) {
@@ -182,7 +272,7 @@ func (ps *profileServiceImpl) Update(ctx context.Context, id uuid.UUID, name str
 			return err
 		}
 
-		response = mapper.ProfileToResponse(updatedProfile, "", nil, uuid.Nil)
+		response = mapper.ProfileToResponse(updatedProfile, "", nil, uuid.Nil, monetizationDto.SubscriptionResponse{})
 		return nil
 	})
 	return response, err
@@ -208,7 +298,7 @@ func (ps *profileServiceImpl) Search(ctx context.Context, profileID uuid.UUID, i
 	responses := make([]dto.ProfileResponse, 0, len(profiles))
 	for _, profile := range profiles {
 		if profile.ID != profileID {
-			responses = append(responses, mapper.ProfileToResponse(profile, "", nil, uuid.Nil))
+			responses = append(responses, mapper.ProfileToResponse(profile, "", nil, uuid.Nil, monetizationDto.SubscriptionResponse{}))
 		}
 	}
 
@@ -232,7 +322,7 @@ func (ps *profileServiceImpl) GetByEmail(ctx context.Context, email string) (dto
 		return dto.ProfileResponse{}, err
 	}
 
-	return mapper.ProfileToResponse(user.Profile, user.Email, anonProfileIDs, realProfileID), nil
+	return mapper.ProfileToResponse(user.Profile, user.Email, anonProfileIDs, realProfileID, monetizationDto.SubscriptionResponse{}), nil
 }
 
 func (ps *profileServiceImpl) Associate(ctx context.Context, userProfileID, realProfileID, anonProfileID uuid.UUID) error {
@@ -300,7 +390,7 @@ func (ps *profileServiceImpl) GetByIDs(ctx context.Context, ids []uuid.UUID) (ma
 
 	profileMap := make(map[uuid.UUID]dto.ProfileResponse, len(profiles))
 	for _, profile := range profiles {
-		profileMap[profile.ID] = mapper.ProfileToResponse(profile, "", nil, uuid.Nil)
+		profileMap[profile.ID] = mapper.ProfileToResponse(profile, "", nil, uuid.Nil, monetizationDto.SubscriptionResponse{})
 	}
 
 	// ensure all requested IDs exist

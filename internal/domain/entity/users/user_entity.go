@@ -8,10 +8,12 @@ import (
 
 type User struct {
 	crud.BaseEntity
-	Email               string
-	Password            string
-	Profile             UserProfile
-	VerifiedAt          sql.NullTime
+	Email      string
+	Password   string
+	Profile    UserProfile
+	VerifiedAt sql.NullTime
+
+	// Relationships
 	PasswordResetTokens []PasswordResetToken `gorm:"foreignKey:UserID"`
 }
 

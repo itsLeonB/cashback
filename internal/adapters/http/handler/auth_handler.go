@@ -37,12 +37,7 @@ func (ah *AuthHandler) HandleRegister() gin.HandlerFunc {
 			return nil, err
 		}
 
-		response, err := ah.authService.Register(ctx, request)
-		if err != nil {
-			return nil, err
-		}
-
-		return response, nil
+		return ah.authService.Register(ctx, request)
 	})
 }
 
@@ -53,12 +48,7 @@ func (ah *AuthHandler) HandleInternalLogin() gin.HandlerFunc {
 			return nil, err
 		}
 
-		response, err := ah.authService.InternalLogin(ctx, request)
-		if err != nil {
-			return nil, err
-		}
-
-		return response, nil
+		return ah.authService.InternalLogin(ctx, request)
 	})
 }
 
@@ -86,19 +76,14 @@ func (ah *AuthHandler) HandleOAuth2Callback() gin.HandlerFunc {
 		if err != nil {
 			return nil, err
 		}
-		code := ctx.Query("code")
-		state := ctx.Query("state")
 
-		response, err := ah.oAuthService.HandleOAuthCallback(ctx, dto.OAuthCallbackData{
+		request := dto.OAuthCallbackData{
 			Provider: provider,
-			Code:     code,
-			State:    state,
-		})
-		if err != nil {
-			return nil, err
+			Code:     ctx.Query("code"),
+			State:    ctx.Query("state"),
 		}
 
-		return response, nil
+		return ah.oAuthService.HandleOAuthCallback(ctx, request)
 	})
 }
 
@@ -109,12 +94,7 @@ func (ah *AuthHandler) HandleVerifyRegistration() gin.HandlerFunc {
 			return nil, ungerr.BadRequestError("missing token")
 		}
 
-		response, err := ah.authService.VerifyRegistration(ctx, token)
-		if err != nil {
-			return nil, err
-		}
-
-		return response, nil
+		return ah.authService.VerifyRegistration(ctx, token)
 	})
 }
 
@@ -125,11 +105,7 @@ func (ah *AuthHandler) HandleSendPasswordReset() gin.HandlerFunc {
 			return nil, err
 		}
 
-		if err = ah.authService.SendPasswordReset(ctx, request.Email); err != nil {
-			return nil, err
-		}
-
-		return nil, nil
+		return nil, ah.authService.SendPasswordReset(ctx, request.Email)
 	})
 }
 
@@ -140,12 +116,7 @@ func (ah *AuthHandler) HandleResetPassword() gin.HandlerFunc {
 			return nil, err
 		}
 
-		response, err := ah.authService.ResetPassword(ctx, request.Token, request.Password)
-		if err != nil {
-			return nil, err
-		}
-
-		return response, nil
+		return ah.authService.ResetPassword(ctx, request.Token, request.Password)
 	})
 }
 

@@ -6,13 +6,14 @@ import (
 
 type ProfileResponse struct {
 	BaseDTO
-	UserID                   uuid.UUID   `json:"userId"`
-	Name                     string      `json:"name"`
-	Avatar                   string      `json:"avatar"`
-	Email                    string      `json:"email"`
-	IsAnonymous              bool        `json:"isAnonymous"`
-	AssociatedAnonProfileIDs []uuid.UUID `json:"associatedAnonProfileIds"`
-	RealProfileID            uuid.UUID   `json:"realProfileId"`
+	UserID                   uuid.UUID            `json:"userId"`
+	Name                     string               `json:"name"`
+	Avatar                   string               `json:"avatar"`
+	Email                    string               `json:"email"`
+	IsAnonymous              bool                 `json:"isAnonymous"`
+	AssociatedAnonProfileIDs []uuid.UUID          `json:"associatedAnonProfileIds"`
+	RealProfileID            uuid.UUID            `json:"realProfileId"`
+	CurrentSubscription      SubscriptionResponse `json:"currentSubscription"`
 }
 
 type UpdateProfileRequest struct {

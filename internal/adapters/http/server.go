@@ -19,7 +19,7 @@ func Setup(configs config.Config) (*server.Http, error) {
 
 	gin.SetMode(configs.Env)
 	r := gin.New()
-	registerRoutes(r, configs, providers.Services)
+	registerRoutes(r, configs, providers.Services, providers.AdminServices)
 
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%s", configs.App.Port),

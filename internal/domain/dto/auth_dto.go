@@ -1,5 +1,7 @@
 package dto
 
+import "github.com/google/uuid"
+
 type RegisterRequest struct {
 	Email                string `json:"email" binding:"required,email,min=3"`
 	Password             string `json:"password" binding:"required,eqfield=PasswordConfirmation"`
@@ -47,4 +49,9 @@ func NewTokenResp(token, refreshToken string) TokenResponse {
 		Token:        token,
 		RefreshToken: refreshToken,
 	}
+}
+
+type AdminMe struct {
+	ID       uuid.UUID `json:"id"`
+	FullName string    `json:"fullName"`
 }

@@ -91,14 +91,16 @@ func (us *userServiceImpl) Verify(ctx context.Context, id uuid.UUID, email strin
 		return users.User{}, ungerr.Unknown("email does not match")
 	}
 
-	profile := dto.NewProfileRequest{
-		UserID: user.ID,
-		Name:   name,
-		Avatar: avatar,
-	}
+	if user.Profile.IsZero() {
+		profile := dto.NewProfileRequest{
+			UserID: user.ID,
+			Name:   name,
+			Avatar: avatar,
+		}
 
-	if _, err = us.profileSvc.Create(ctx, profile); err != nil {
-		return users.User{}, err
+		if _, err = us.profileSvc.Create(ctx, profile); err != nil {
+			return users.User{}, err
+		}
 	}
 
 	user.VerifiedAt = sql.NullTime{

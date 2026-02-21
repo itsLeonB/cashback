@@ -49,6 +49,19 @@ func (ps *profileServiceImpl) Create(ctx context.Context, request dto.NewProfile
 	var response dto.ProfileResponse
 
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		if request.UserID != uuid.Nil {
+			spec := crud.Specification[users.UserProfile]{}
+			spec.Model.UserID = uuid.NullUUID{UUID: request.UserID, Valid: true}
+			existing, err := ps.profileRepo.FindFirst(ctx, spec)
+			if err != nil {
+				return err
+			}
+			if !existing.IsZero() {
+				response = mapper.ProfileToResponse(existing, "", nil, uuid.Nil, monetizationDto.SubscriptionResponse{})
+				return nil
+			}
+		}
+
 		newProfile := users.UserProfile{
 			UserID: uuid.NullUUID{
 				UUID:  request.UserID,

@@ -2,11 +2,15 @@ package provider
 
 import (
 	adapters "github.com/itsLeonB/cashback/internal/adapters/repository"
+	monetizationAdapter "github.com/itsLeonB/cashback/internal/adapters/repository/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
+	"github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
+	monetizationRepo "github.com/itsLeonB/cashback/internal/domain/repository/monetization"
 	"github.com/itsLeonB/go-crud"
+	"gorm.io/gorm"
 )
 
 type Repositories struct {
@@ -34,35 +38,44 @@ type Repositories struct {
 	OtherFee     repository.OtherFeeRepository
 	ExpenseBill  crud.Repository[expenses.ExpenseBill]
 
+	// Monetization
+	Plan         crud.Repository[monetization.Plan]
+	PlanVersion  monetizationRepo.PlanVersionRepository
+	Subscription crud.Repository[monetization.Subscription]
+
 	// Infra
 	Notification     repository.NotificationRepository
 	PushSubscription repository.PushSubscriptionRepository
 }
 
-func ProvideRepositories(dataSource *DataSources) *Repositories {
+func ProvideRepositories(db *gorm.DB) *Repositories {
 	return &Repositories{
-		Transactor: crud.NewTransactor(dataSource.Gorm),
+		Transactor: crud.NewTransactor(db),
 
-		User:               crud.NewRepository[users.User](dataSource.Gorm),
-		Profile:            adapters.NewProfileRepository(dataSource.Gorm),
-		Friendship:         adapters.NewFriendshipRepository(dataSource.Gorm),
-		RelatedProfile:     crud.NewRepository[users.RelatedProfile](dataSource.Gorm),
-		PasswordResetToken: crud.NewRepository[users.PasswordResetToken](dataSource.Gorm),
-		OAuthAccount:       crud.NewRepository[users.OAuthAccount](dataSource.Gorm),
-		FriendshipRequest:  crud.NewRepository[users.FriendshipRequest](dataSource.Gorm),
-		Session:            crud.NewRepository[users.Session](dataSource.Gorm),
-		RefreshToken:       crud.NewRepository[users.RefreshToken](dataSource.Gorm),
+		User:               crud.NewRepository[users.User](db),
+		Profile:            adapters.NewProfileRepository(db),
+		Friendship:         adapters.NewFriendshipRepository(db),
+		RelatedProfile:     crud.NewRepository[users.RelatedProfile](db),
+		PasswordResetToken: crud.NewRepository[users.PasswordResetToken](db),
+		OAuthAccount:       crud.NewRepository[users.OAuthAccount](db),
+		FriendshipRequest:  crud.NewRepository[users.FriendshipRequest](db),
+		Session:            crud.NewRepository[users.Session](db),
+		RefreshToken:       crud.NewRepository[users.RefreshToken](db),
 
-		DebtTransaction:       adapters.NewDebtTransactionRepository(dataSource.Gorm),
-		TransferMethod:        adapters.NewTransferMethodRepository(dataSource.Gorm),
-		ProfileTransferMethod: crud.NewRepository[debts.ProfileTransferMethod](dataSource.Gorm),
+		DebtTransaction:       adapters.NewDebtTransactionRepository(db),
+		TransferMethod:        adapters.NewTransferMethodRepository(db),
+		ProfileTransferMethod: crud.NewRepository[debts.ProfileTransferMethod](db),
 
-		GroupExpense: adapters.NewGroupExpenseRepository(dataSource.Gorm),
-		ExpenseItem:  adapters.NewExpenseItemRepository(dataSource.Gorm),
-		OtherFee:     adapters.NewOtherFeeRepository(dataSource.Gorm),
-		ExpenseBill:  crud.NewRepository[expenses.ExpenseBill](dataSource.Gorm),
+		GroupExpense: adapters.NewGroupExpenseRepository(db),
+		ExpenseItem:  adapters.NewExpenseItemRepository(db),
+		OtherFee:     adapters.NewOtherFeeRepository(db),
+		ExpenseBill:  crud.NewRepository[expenses.ExpenseBill](db),
 
-		Notification:     adapters.NewNotificationRepository(dataSource.Gorm),
-		PushSubscription: adapters.NewPushSubscriptionRepository(dataSource.Gorm),
+		Plan:         crud.NewRepository[monetization.Plan](db),
+		PlanVersion:  monetizationAdapter.NewPlanVersionRepository(db),
+		Subscription: crud.NewRepository[monetization.Subscription](db),
+
+		Notification:     adapters.NewNotificationRepository(db),
+		PushSubscription: adapters.NewPushSubscriptionRepository(db),
 	}
 }

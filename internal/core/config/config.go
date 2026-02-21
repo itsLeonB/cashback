@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 
+	"github.com/itsLeonB/cashback/internal/core/config/admin"
 	"github.com/itsLeonB/ungerr"
 	"github.com/kelseyhightower/envconfig"
 	"golang.org/x/oauth2/google"
@@ -28,6 +29,10 @@ var Global *Config
 
 func Load() error {
 	var errs error
+
+	if err := admin.Load(); err != nil {
+		errs = errors.Join(errs, err)
+	}
 
 	var app App
 	if err := envconfig.Process("APP", &app); err != nil {

@@ -45,6 +45,22 @@ func (pr *profileRepositoryGorm) FindByIDs(ctx context.Context, ids []uuid.UUID)
 	return profiles, nil
 }
 
+func (pr *profileRepositoryGorm) FindRealProfiles(ctx context.Context) ([]users.UserProfile, error) {
+	db, err := pr.GetGormInstance(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var profiles []users.UserProfile
+	if err := db.
+		Where("user_id IS NOT NULL").
+		Find(&profiles).Error; err != nil {
+		return nil, ungerr.Wrap(err, appconstant.ErrDataSelect)
+	}
+
+	return profiles, nil
+}
+
 func (pr *profileRepositoryGorm) SearchByName(ctx context.Context, query string, limit int) ([]users.UserProfile, error) {
 	db, err := pr.GetGormInstance(ctx)
 	if err != nil {

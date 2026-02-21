@@ -7,6 +7,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/cashback/internal/domain/service/fee"
+	"github.com/itsLeonB/cashback/internal/domain/service/monetization"
 	"github.com/itsLeonB/sekure"
 )
 
@@ -33,6 +34,11 @@ type Services struct {
 	ExpenseItem  service.ExpenseItemService
 	OtherFee     service.OtherFeeService
 
+	// Monetization
+	Plan         monetization.PlanService
+	PlanVersion  monetization.PlanVersionService
+	Subscription monetization.SubscriptionService
+
 	// Infra
 	Notification     service.NotificationService
 	PushNotification service.PushNotificationService
@@ -49,8 +55,10 @@ func ProvideServices(
 	appConfig config.App,
 	pushConfig config.Push,
 ) *Services {
+	subs := monetization.NewSubscriptionService(repos.Transactor, repos.Subscription, repos.PlanVersion)
+
 	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)
-	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile)
+	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile, subs)
 	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken)
 	session := service.NewSessionService(jwt, user, repos.Transactor, repos.Session, repos.RefreshToken)
 
@@ -82,6 +90,10 @@ func ProvideServices(
 		ExpenseBill:  service.NewExpenseBillService(coreSvc.Queue, repos.ExpenseBill, repos.Transactor, coreSvc.Image, coreSvc.OCR, groupExpense),
 		ExpenseItem:  service.NewExpenseItemService(repos.Transactor, repos.ExpenseItem, groupExpense),
 		OtherFee:     service.NewOtherFeeService(repos.Transactor, repos.GroupExpense, repos.OtherFee, groupExpense),
+
+		Plan:         monetization.NewPlanService(repos.Transactor, repos.Plan, repos.PlanVersion),
+		PlanVersion:  monetization.NewPlanVersionService(repos.Transactor, repos.PlanVersion),
+		Subscription: subs,
 
 		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense, coreSvc.Queue),
 		PushNotification: pushNotification,

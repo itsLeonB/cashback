@@ -8,13 +8,15 @@ import (
 
 func SubscriptionToResponse(s entity.Subscription) dto.SubscriptionResponse {
 	return dto.SubscriptionResponse{
-		BaseDTO:       mapper.BaseToDTO(s.BaseEntity),
-		ProfileID:     s.ProfileID,
-		ProfileName:   s.Profile.Name,
-		PlanVersionID: s.PlanVersionID,
-		PlanName:      s.PlanVersion.Plan.Name,
-		EndsAt:        s.EndsAt.Time,
-		CanceledAt:    s.CanceledAt.Time,
-		AutoRenew:     s.AutoRenew,
+		BaseDTO:            mapper.BaseToDTO(s.BaseEntity),
+		ProfileID:          s.ProfileID,
+		ProfileName:        s.Profile.Name,
+		PlanVersionID:      s.PlanVersionID,
+		PlanName:           s.PlanVersion.Plan.Name,
+		EndsAt:             s.EndsAt.Time,
+		CanceledAt:         s.CanceledAt.Time,
+		AutoRenew:          s.AutoRenew,
+		BillUploadsDaily:   int(s.PlanVersion.BillUploadsDaily),
+		BillUploadsMonthly: int(s.PlanVersion.BillUploadsMonthly),
 	}
 }

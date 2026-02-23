@@ -13,13 +13,11 @@ import (
 
 type profileRepositoryGorm struct {
 	crud.Repository[users.UserProfile]
-	db *gorm.DB
 }
 
 func NewProfileRepository(db *gorm.DB) *profileRepositoryGorm {
 	return &profileRepositoryGorm{
 		crud.NewRepository[users.UserProfile](db),
-		db,
 	}
 }
 

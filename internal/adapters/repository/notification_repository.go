@@ -15,13 +15,11 @@ import (
 
 type notificationRepositoryGorm struct {
 	crud.Repository[entity.Notification]
-	db *gorm.DB
 }
 
 func NewNotificationRepository(db *gorm.DB) *notificationRepositoryGorm {
 	return &notificationRepositoryGorm{
 		crud.NewRepository[entity.Notification](db),
-		db,
 	}
 }
 

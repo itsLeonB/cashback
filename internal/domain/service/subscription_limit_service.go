@@ -92,7 +92,7 @@ func (sls *subscriptionLimitService) CheckUploadLimit(ctx context.Context, profi
 		}
 
 		if !uploadLimit.CanUpload {
-			return ungerr.ForbiddenError("bill uploads for today has reached current plan limit")
+			return ungerr.ForbiddenError("bill uploads for this month has reached current plan limit")
 		}
 	}
 

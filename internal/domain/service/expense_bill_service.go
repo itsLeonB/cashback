@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/config"
@@ -18,7 +17,6 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
-	"github.com/itsLeonB/cashback/internal/domain/service/monetization"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -26,13 +24,13 @@ import (
 )
 
 type expenseBillServiceImpl struct {
-	taskQueue       queue.TaskQueue
-	billRepo        repository.ExpenseBillRepository
-	transactor      crud.Transactor
-	imageSvc        storage.ImageService
-	ocrSvc          ocr.OCRService
-	expenseSvc      GroupExpenseService
-	subscriptionSvc monetization.SubscriptionService
+	taskQueue            queue.TaskQueue
+	billRepo             repository.ExpenseBillRepository
+	transactor           crud.Transactor
+	imageSvc             storage.ImageService
+	ocrSvc               ocr.OCRService
+	expenseSvc           GroupExpenseService
+	subscriptionLimitSvc SubscriptionLimitService
 }
 
 func NewExpenseBillService(
@@ -42,7 +40,7 @@ func NewExpenseBillService(
 	imageSvc storage.ImageService,
 	ocrSvc ocr.OCRService,
 	expenseSvc GroupExpenseService,
-	subscriptionSvc monetization.SubscriptionService,
+	subscriptionLimitSvc SubscriptionLimitService,
 ) ExpenseBillService {
 	return &expenseBillServiceImpl{
 		taskQueue,
@@ -51,7 +49,7 @@ func NewExpenseBillService(
 		imageSvc,
 		ocrSvc,
 		expenseSvc,
-		subscriptionSvc,
+		subscriptionLimitSvc,
 	}
 }
 
@@ -95,7 +93,7 @@ func (ebs *expenseBillServiceImpl) checkIfUploadAllowed(ctx context.Context, pro
 	eg, ctx := errgroup.WithContext(ctx)
 
 	eg.Go(func() error {
-		return ebs.checkUploadLimit(ctx, profileID)
+		return ebs.subscriptionLimitSvc.CheckUploadLimit(ctx, profileID)
 	})
 
 	eg.Go(func() error {
@@ -103,89 +101,6 @@ func (ebs *expenseBillServiceImpl) checkIfUploadAllowed(ctx context.Context, pro
 	})
 
 	return eg.Wait()
-}
-
-func (ebs *expenseBillServiceImpl) checkUploadLimit(ctx context.Context, profileID uuid.UUID) error {
-	subscription, err := ebs.subscriptionSvc.GetCurrentSubscription(ctx, profileID)
-	if err != nil {
-		return err
-	}
-
-	// No limits set - early return
-	if subscription.BillUploadsDaily == 0 && subscription.BillUploadsMonthly == 0 {
-		return nil
-	}
-
-	now := time.Now()
-	year, month, day := now.Date()
-
-	// Check daily limit first (more restrictive, faster to fail)
-	if subscription.BillUploadsDaily > 0 {
-		if err := ebs.checkDailyLimit(ctx, subscription.BillUploadsDaily, profileID, year, int(month), day); err != nil {
-			return err
-		}
-	}
-
-	// Only check monthly if daily passed
-	if subscription.BillUploadsMonthly > 0 {
-		if err := ebs.checkMonthlyLimit(ctx, subscription.BillUploadsMonthly, profileID, year, month); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (ebs *expenseBillServiceImpl) checkMonthlyLimit(
-	ctx context.Context,
-	monthlyLimit int,
-	profileID uuid.UUID,
-	year int,
-	month time.Month,
-) error {
-	startOfMonth := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
-	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Nanosecond)
-
-	monthlyCount, err := ebs.billRepo.CountUploadedByDateRange(ctx, profileID, startOfMonth, endOfMonth)
-	if err != nil {
-		return err
-	}
-
-	if monthlyCount >= monthlyLimit {
-		return ungerr.ForbiddenError("bill uploads for current month has reached current plan limit")
-	}
-
-	return nil
-}
-
-func (ebs *expenseBillServiceImpl) checkDailyLimit(
-	ctx context.Context,
-	dailyLimit int,
-	profileID uuid.UUID,
-	year int,
-	month int,
-	day int,
-) error {
-	startOfDay, err := ezutil.GetStartOfDay(year, month, day)
-	if err != nil {
-		return err
-	}
-
-	endOfDay, err := ezutil.GetEndOfDay(year, month, day)
-	if err != nil {
-		return err
-	}
-
-	dailyCount, err := ebs.billRepo.CountUploadedByDateRange(ctx, profileID, startOfDay, endOfDay)
-	if err != nil {
-		return err
-	}
-
-	if dailyCount >= dailyLimit {
-		return ungerr.ForbiddenError("bill uploads for today has reached current plan limit")
-	}
-
-	return nil
 }
 
 func (ebs *expenseBillServiceImpl) ensureSingleBill(ctx context.Context, profileID, expenseID uuid.UUID) error {

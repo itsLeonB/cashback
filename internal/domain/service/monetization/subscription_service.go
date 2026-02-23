@@ -22,7 +22,7 @@ type SubscriptionService interface {
 	Delete(ctx context.Context, id uuid.UUID) (dto.SubscriptionResponse, error)
 
 	AttachDefaultSubscription(ctx context.Context, profileID uuid.UUID) error
-	GetCurrentSubscription(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error)
+	GetCurrentSubscription(ctx context.Context, profileID uuid.UUID) (entity.Subscription, error)
 }
 
 type subscriptionService struct {
@@ -161,24 +161,24 @@ func (ss *subscriptionService) AttachDefaultSubscription(ctx context.Context, pr
 	return err
 }
 
-func (ss *subscriptionService) GetCurrentSubscription(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error) {
+func (ss *subscriptionService) GetCurrentSubscription(ctx context.Context, profileID uuid.UUID) (entity.Subscription, error) {
 	spec := crud.Specification[entity.Subscription]{}
 	spec.Model.ProfileID = profileID
 	spec.PreloadRelations = []string{"PlanVersion", "PlanVersion.Plan"}
 
 	subscriptions, err := ss.subscriptionRepo.FindAll(ctx, spec)
 	if err != nil {
-		return dto.SubscriptionResponse{}, err
+		return entity.Subscription{}, err
 	}
 
 	now := time.Now()
 	for _, sub := range subscriptions {
 		if sub.IsActive(now) {
-			return mapper.SubscriptionToResponse(sub), nil
+			return sub, nil
 		}
 	}
 
-	return dto.SubscriptionResponse{}, nil
+	return entity.Subscription{}, nil
 }
 
 func (ss *subscriptionService) getByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error) {

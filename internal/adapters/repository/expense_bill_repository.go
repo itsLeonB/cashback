@@ -32,9 +32,9 @@ func (sr *expenseBillRepo) CountUploadedByDateRange(ctx context.Context, profile
 
 	var count int64
 	err = db.Model(&expenses.ExpenseBill{}).
-		Joins("JOIN group_expenses ON group_expenses.id = expense_bills.group_expense_id").
+		Joins("JOIN group_expenses ON group_expenses.id = group_expense_bills.group_expense_id").
 		Where("group_expenses.creator_profile_id = ?", profileID).
-		Where("expense_bills.created_at >= ? AND expense_bills.created_at <= ?", start, end).
+		Where("group_expense_bills.created_at >= ? AND group_expense_bills.created_at <= ?", start, end).
 		Count(&count).Error
 
 	if err != nil {

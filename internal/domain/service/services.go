@@ -145,6 +145,11 @@ type ExpenseBillService interface {
 	TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) error
 }
 
+type SubscriptionLimitService interface {
+	GetCurrent(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error)
+	CheckUploadLimit(ctx context.Context, profileID uuid.UUID) error
+}
+
 type ProfileTransferMethodService interface {
 	Add(ctx context.Context, req dto.NewProfileTransferMethodRequest) error
 	GetAllByProfileID(ctx context.Context, profileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error)

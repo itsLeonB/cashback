@@ -20,7 +20,6 @@ import (
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
-	"golang.org/x/sync/errgroup"
 )
 
 type expenseBillServiceImpl struct {
@@ -90,17 +89,11 @@ func (ebs *expenseBillServiceImpl) Save(ctx context.Context, req *dto.NewExpense
 }
 
 func (ebs *expenseBillServiceImpl) checkIfUploadAllowed(ctx context.Context, profileID, groupExpenseID uuid.UUID) error {
-	eg, ctx := errgroup.WithContext(ctx)
+	if err := ebs.subscriptionLimitSvc.CheckUploadLimit(ctx, profileID); err != nil {
+		return err
+	}
 
-	eg.Go(func() error {
-		return ebs.subscriptionLimitSvc.CheckUploadLimit(ctx, profileID)
-	})
-
-	eg.Go(func() error {
-		return ebs.ensureSingleBill(ctx, profileID, groupExpenseID)
-	})
-
-	return eg.Wait()
+	return ebs.ensureSingleBill(ctx, profileID, groupExpenseID)
 }
 
 func (ebs *expenseBillServiceImpl) ensureSingleBill(ctx context.Context, profileID, expenseID uuid.UUID) error {

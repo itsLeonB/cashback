@@ -13,13 +13,11 @@ import (
 )
 
 type otherFeeRepositoryGorm struct {
-	db *gorm.DB
 	crud.Repository[expenses.OtherFee]
 }
 
 func NewOtherFeeRepository(db *gorm.DB) *otherFeeRepositoryGorm {
 	return &otherFeeRepositoryGorm{
-		db,
 		crud.NewRepository[expenses.OtherFee](db),
 	}
 }

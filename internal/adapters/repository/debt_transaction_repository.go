@@ -14,13 +14,11 @@ import (
 
 type debtTransactionRepositoryGorm struct {
 	crud.Repository[debts.DebtTransaction]
-	db *gorm.DB
 }
 
 func NewDebtTransactionRepository(db *gorm.DB) *debtTransactionRepositoryGorm {
 	return &debtTransactionRepositoryGorm{
 		crud.NewRepository[debts.DebtTransaction](db),
-		db,
 	}
 }
 

@@ -12,13 +12,11 @@ import (
 
 type pushSubscriptionRepositoryGorm struct {
 	crud.Repository[entity.PushSubscription]
-	db *gorm.DB
 }
 
 func NewPushSubscriptionRepository(db *gorm.DB) *pushSubscriptionRepositoryGorm {
 	return &pushSubscriptionRepositoryGorm{
 		crud.NewRepository[entity.PushSubscription](db),
-		db,
 	}
 }
 

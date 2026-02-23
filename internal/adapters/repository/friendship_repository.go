@@ -13,13 +13,11 @@ import (
 
 type friendshipRepositoryGorm struct {
 	crud.Repository[users.Friendship]
-	db *gorm.DB
 }
 
 func NewFriendshipRepository(db *gorm.DB) *friendshipRepositoryGorm {
 	return &friendshipRepositoryGorm{
 		crud.NewRepository[users.Friendship](db),
-		db,
 	}
 }
 

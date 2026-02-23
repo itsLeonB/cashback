@@ -12,20 +12,23 @@ import (
 
 type transferMethodRepositoryGorm struct {
 	crud.Repository[debts.TransferMethod]
-	db *gorm.DB
 }
 
 func NewTransferMethodRepository(db *gorm.DB) *transferMethodRepositoryGorm {
 	return &transferMethodRepositoryGorm{
 		crud.NewRepository[debts.TransferMethod](db),
-		db,
 	}
 }
 
 func (tmr *transferMethodRepositoryGorm) GetAllByParentFilter(ctx context.Context, filter debts.ParentFilter, profileID uuid.UUID) ([]debts.TransferMethod, error) {
+	db, err := tmr.GetGormInstance(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	var methods []debts.TransferMethod
 
-	query := tmr.db
+	query := db
 	switch filter {
 	case debts.ParentOnly:
 		query = query.Where("parent_id IS NULL")

@@ -4,7 +4,6 @@ import (
 	adapters "github.com/itsLeonB/cashback/internal/adapters/repository"
 	monetizationAdapter "github.com/itsLeonB/cashback/internal/adapters/repository/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
-	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
@@ -36,7 +35,7 @@ type Repositories struct {
 	GroupExpense repository.GroupExpenseRepository
 	ExpenseItem  repository.ExpenseItemRepository
 	OtherFee     repository.OtherFeeRepository
-	ExpenseBill  crud.Repository[expenses.ExpenseBill]
+	ExpenseBill  repository.ExpenseBillRepository
 
 	// Monetization
 	Plan         crud.Repository[monetization.Plan]
@@ -69,7 +68,7 @@ func ProvideRepositories(db *gorm.DB) *Repositories {
 		GroupExpense: adapters.NewGroupExpenseRepository(db),
 		ExpenseItem:  adapters.NewExpenseItemRepository(db),
 		OtherFee:     adapters.NewOtherFeeRepository(db),
-		ExpenseBill:  crud.NewRepository[expenses.ExpenseBill](db),
+		ExpenseBill:  adapters.NewExpenseBillRepository(db),
 
 		Plan:         crud.NewRepository[monetization.Plan](db),
 		PlanVersion:  monetizationAdapter.NewPlanVersionRepository(db),

@@ -16,27 +16,30 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/message"
+	"github.com/itsLeonB/cashback/internal/domain/repository"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 )
 
 type expenseBillServiceImpl struct {
-	taskQueue  queue.TaskQueue
-	billRepo   crud.Repository[expenses.ExpenseBill]
-	transactor crud.Transactor
-	imageSvc   storage.ImageService
-	ocrSvc     ocr.OCRService
-	expenseSvc GroupExpenseService
+	taskQueue            queue.TaskQueue
+	billRepo             repository.ExpenseBillRepository
+	transactor           crud.Transactor
+	imageSvc             storage.ImageService
+	ocrSvc               ocr.OCRService
+	expenseSvc           GroupExpenseService
+	subscriptionLimitSvc SubscriptionLimitService
 }
 
 func NewExpenseBillService(
 	taskQueue queue.TaskQueue,
-	billRepo crud.Repository[expenses.ExpenseBill],
+	billRepo repository.ExpenseBillRepository,
 	transactor crud.Transactor,
 	imageSvc storage.ImageService,
 	ocrSvc ocr.OCRService,
 	expenseSvc GroupExpenseService,
+	subscriptionLimitSvc SubscriptionLimitService,
 ) ExpenseBillService {
 	return &expenseBillServiceImpl{
 		taskQueue,
@@ -45,12 +48,13 @@ func NewExpenseBillService(
 		imageSvc,
 		ocrSvc,
 		expenseSvc,
+		subscriptionLimitSvc,
 	}
 }
 
 func (ebs *expenseBillServiceImpl) Save(ctx context.Context, req *dto.NewExpenseBillRequest) error {
 	return ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		if err := ebs.ensureSingleBill(ctx, req.ProfileID, req.GroupExpenseID); err != nil {
+		if err := ebs.checkIfUploadAllowed(ctx, req.ProfileID, req.GroupExpenseID); err != nil {
 			return err
 		}
 
@@ -84,15 +88,26 @@ func (ebs *expenseBillServiceImpl) Save(ctx context.Context, req *dto.NewExpense
 	})
 }
 
+func (ebs *expenseBillServiceImpl) checkIfUploadAllowed(ctx context.Context, profileID, groupExpenseID uuid.UUID) error {
+	if err := ebs.subscriptionLimitSvc.CheckUploadLimit(ctx, profileID); err != nil {
+		return err
+	}
+
+	return ebs.ensureSingleBill(ctx, profileID, groupExpenseID)
+}
+
 func (ebs *expenseBillServiceImpl) ensureSingleBill(ctx context.Context, profileID, expenseID uuid.UUID) error {
 	expense, err := ebs.expenseSvc.GetUnconfirmedGroupExpenseForUpdate(ctx, profileID, expenseID)
 	if err != nil {
 		return err
 	}
+
+	// No existing bill - nothing to check
 	if expense.Bill.IsZero() {
 		return nil
 	}
 
+	// Only NotDetectedBill status can be replaced
 	if expense.Bill.Status != expenses.NotDetectedBill {
 		return ungerr.UnprocessableEntityError("cannot upload another bill")
 	}

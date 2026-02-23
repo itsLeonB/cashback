@@ -3,11 +3,10 @@ package mapper
 import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
-	"github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 )
 
-func ProfileToResponse(profile users.UserProfile, email string, anonProfileIDs []uuid.UUID, realProfileID uuid.UUID, currentSubscription monetization.SubscriptionResponse) dto.ProfileResponse {
+func ProfileToResponse(profile users.UserProfile, email string, anonProfileIDs []uuid.UUID, realProfileID uuid.UUID, subscription dto.SubscriptionResponse) dto.ProfileResponse {
 	associatedAnonProfileIDs := anonProfileIDs
 	if len(associatedAnonProfileIDs) < 1 {
 		for _, anonProfile := range profile.RelatedAnonProfiles {
@@ -28,12 +27,7 @@ func ProfileToResponse(profile users.UserProfile, email string, anonProfileIDs [
 		IsAnonymous:              !profile.UserID.Valid,
 		AssociatedAnonProfileIDs: associatedAnonProfileIDs,
 		RealProfileID:            realProfileID,
-		CurrentSubscription: dto.SubscriptionResponse{
-			BaseDTO:    currentSubscription.BaseDTO,
-			ProfileID:  currentSubscription.ProfileID,
-			EndsAt:     currentSubscription.EndsAt,
-			CanceledAt: currentSubscription.CanceledAt,
-		},
+		CurrentSubscription:      subscription,
 	}
 }
 

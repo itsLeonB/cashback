@@ -14,13 +14,11 @@ import (
 
 type groupExpenseRepositoryGorm struct {
 	crud.Repository[expenses.GroupExpense]
-	db *gorm.DB
 }
 
 func NewGroupExpenseRepository(db *gorm.DB) *groupExpenseRepositoryGorm {
 	return &groupExpenseRepositoryGorm{
 		crud.NewRepository[expenses.GroupExpense](db),
-		db,
 	}
 }
 

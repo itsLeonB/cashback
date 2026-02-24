@@ -167,7 +167,7 @@ func (pvs *planVersionService) GetActive(ctx context.Context) ([]dto.PlanVersion
 		versionsByPlanID[planVersion.PlanID] = append(versionsByPlanID[planVersion.PlanID], planVersion)
 	}
 
-	responses := make([]dto.PlanVersionResponse, len(versionsByPlanID))
+	responses := make([]dto.PlanVersionResponse, 0, len(versionsByPlanID))
 	for _, versions := range versionsByPlanID {
 		responses = append(responses, mapper.PlanVersionToResponse(versions[0]))
 	}

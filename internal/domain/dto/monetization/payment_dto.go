@@ -27,5 +27,5 @@ type PaymentResponse struct {
 	StartsAt              time.Time       `json:"startsAt,omitzero"`
 	EndsAt                time.Time       `json:"endsAt,omitzero"`
 	GatewayEventID        string          `json:"gatewayEventId,omitzero"`
-	PaidAt                time.Time       `json:"paidAt"`
+	PaidAt                time.Time       `json:"paidAt,omitzero"`
 }

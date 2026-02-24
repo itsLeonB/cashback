@@ -200,8 +200,7 @@ func (ss *subscriptionService) CreatePurchase(ctx context.Context, req dto.Purch
 	}
 
 	var resp dto.PaymentResponse
-	var err error
-	err = ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+	err := ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		planVerSpec := crud.Specification[entity.PlanVersion]{}
 		planVerSpec.Model.ID = req.PlanVersionID
 		planVerSpec.Model.PlanID = req.PlanID

@@ -34,8 +34,12 @@ func getTransitioner(oldStatus entity.SubscriptionStatus) (transitioner, error) 
 	switch oldStatus {
 	case entity.SubscriptionIncompletePayment:
 		return fromIncomplete{}, nil
+	case entity.SubscriptionActive:
+		return fromActive{}, nil
+	case entity.SubscriptionPastDuePayment:
+		return fromPastDue{}, nil
 	default:
-		return nil, ungerr.Unknownf("unknown status: %s", oldStatus)
+		return nil, ungerr.Unknownf("unhandled transitioner from status: %s", oldStatus)
 	}
 }
 

@@ -55,8 +55,7 @@ func (ps *paymentService) IsReady() error {
 
 func (ps *paymentService) Create(ctx context.Context, req dto.NewPaymentRequest) (dto.PaymentResponse, error) {
 	var resp dto.PaymentResponse
-	var err error
-	err = ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		newPayment := entity.Payment{
 			SubscriptionID: req.SubscriptionID,
 			Amount:         req.Amount,

@@ -35,5 +35,6 @@ type Subscription struct {
 
 func (s *Subscription) IsActive(t time.Time) bool {
 	return (!s.EndsAt.Valid || !s.EndsAt.Time.Before(t)) &&
-		(!s.CanceledAt.Valid || !s.CanceledAt.Time.Before(t))
+		(!s.CanceledAt.Valid || !s.CanceledAt.Time.Before(t)) &&
+		(s.Status == SubscriptionActive || s.Status == SubscriptionPastDuePayment)
 }

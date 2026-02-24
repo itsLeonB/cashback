@@ -22,7 +22,7 @@ import (
 type PaymentService interface {
 	IsReady() error
 	Create(ctx context.Context, req dto.NewPaymentRequest) (dto.PaymentResponse, error)
-	HandleNotification(ctx context.Context, orderID string) error
+	HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error
 }
 
 func NewPaymentService(
@@ -85,9 +85,9 @@ func (ps *paymentService) Create(ctx context.Context, req dto.NewPaymentRequest)
 	return resp, err
 }
 
-func (ps *paymentService) HandleNotification(ctx context.Context, orderID string) error {
+func (ps *paymentService) HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error {
 	return ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		id, err := ezutil.Parse[uuid.UUID](orderID)
+		id, err := ezutil.Parse[uuid.UUID](req.OrderID)
 		if err != nil {
 			return err
 		}
@@ -107,7 +107,7 @@ func (ps *paymentService) HandleNotification(ctx context.Context, orderID string
 			return nil
 		}
 
-		newStatus, err := ps.gateway.CheckStatus(ctx, orderID)
+		newStatus, err := ps.gateway.CheckStatus(ctx, req)
 		if err != nil {
 			logger.Error(err)
 		}

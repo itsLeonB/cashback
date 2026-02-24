@@ -2,10 +2,13 @@ package payment
 
 import (
 	"context"
+	"crypto/sha512"
 	"database/sql"
+	"fmt"
 
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	"github.com/itsLeonB/ungerr"
 	"github.com/midtrans/midtrans-go"
@@ -16,6 +19,7 @@ import (
 type midtransGateway struct {
 	snapClient *snap.Client
 	coreClient *coreapi.Client
+	serverKey  string
 }
 
 func newMidtransGateway(cfg config.Payment) (*midtransGateway, error) {
@@ -30,7 +34,7 @@ func newMidtransGateway(cfg config.Payment) (*midtransGateway, error) {
 	snapClient.New(cfg.ServerKey, env)
 	coreClient.New(cfg.ServerKey, env)
 
-	return &midtransGateway{snapClient, coreClient}, nil
+	return &midtransGateway{snapClient, coreClient, cfg.ServerKey}, nil
 }
 
 func loadMidtransEnv(envCfg string) (midtrans.EnvironmentType, error) {
@@ -69,10 +73,14 @@ func (mg *midtransGateway) CreateTransaction(ctx context.Context, payment entity
 	return payment, nil
 }
 
-func (mg *midtransGateway) CheckStatus(ctx context.Context, orderID string) (entity.PaymentStatus, error) {
-	trxStatusResp, err := mg.coreClient.CheckTransaction(orderID)
+func (mg *midtransGateway) CheckStatus(ctx context.Context, req dto.MidtransNotificationPayload) (entity.PaymentStatus, error) {
+	if err := mg.validate(req); err != nil {
+		return entity.ErrorPayment, err
+	}
+
+	trxStatusResp, err := mg.coreClient.CheckTransaction(req.OrderID)
 	if err != nil {
-		return entity.ErrorPayment, ungerr.Wrapf(err, "error checking transaction status of ID: %s", orderID)
+		return entity.ErrorPayment, ungerr.Wrapf(err, "error checking transaction status of ID: %s", req.OrderID)
 	}
 
 	switch trxStatusResp.TransactionStatus {
@@ -97,4 +105,15 @@ func (mg *midtransGateway) CheckStatus(ctx context.Context, orderID string) (ent
 	default:
 		return entity.ErrorPayment, ungerr.Unknownf("unhandled transaction status: %s", trxStatusResp.TransactionStatus)
 	}
+}
+
+func (mg *midtransGateway) validate(req dto.MidtransNotificationPayload) error {
+	checkKey := req.OrderID + req.StatusCode + req.GrossAmount + mg.serverKey
+	constructedKey := sha512.Sum512([]byte(checkKey))
+
+	if fmt.Sprint(constructedKey) == req.SignatureKey {
+		return nil
+	}
+
+	return ungerr.Unknown("signature key cannot be validated")
 }

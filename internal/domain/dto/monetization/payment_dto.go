@@ -29,3 +29,10 @@ type PaymentResponse struct {
 	GatewayEventID        string          `json:"gatewayEventId,omitzero"`
 	PaidAt                time.Time       `json:"paidAt,omitzero"`
 }
+
+type MidtransNotificationPayload struct {
+	OrderID      string `json:"order_id" binding:"required"`
+	StatusCode   string `json:"status_code" binding:"required"`
+	GrossAmount  string `json:"gross_amount" binding:"required"`
+	SignatureKey string `json:"signature_key" binding:"required"`
+}

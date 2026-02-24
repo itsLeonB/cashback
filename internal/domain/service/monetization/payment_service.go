@@ -8,9 +8,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	mapper "github.com/itsLeonB/cashback/internal/domain/mapper/monetization"
+	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization/payment"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
@@ -27,11 +29,13 @@ func NewPaymentService(
 	gateway payment.Gateway,
 	transactor crud.Transactor,
 	paymentRepo crud.Repository[entity.Payment],
+	taskQueue queue.TaskQueue,
 ) *paymentService {
 	return &paymentService{
 		gateway,
 		transactor,
 		paymentRepo,
+		taskQueue,
 	}
 }
 
@@ -39,6 +43,7 @@ type paymentService struct {
 	gateway     payment.Gateway
 	transactor  crud.Transactor
 	paymentRepo crud.Repository[entity.Payment]
+	taskQueue   queue.TaskQueue
 }
 
 func (ps *paymentService) IsReady() error {
@@ -99,32 +104,68 @@ func (ps *paymentService) HandleNotification(ctx context.Context, orderID string
 		if payment.IsZero() {
 			return ungerr.NotFoundError(fmt.Sprintf("payment with ID %s is not found", id))
 		}
+		if payment.Status == entity.PaidPayment {
+			return nil
+		}
 
 		newStatus, err := ps.gateway.CheckStatus(ctx, orderID)
 		if err != nil {
 			logger.Error(err)
 		}
-		if newStatus == "" {
+		if newStatus == "" || newStatus == payment.Status {
 			return nil
 		}
 
-		payment.Status = newStatus
-
-		if newStatus == entity.ErrorPayment {
-			payment.FailureReason = sql.NullString{
-				String: err.Error(),
-				Valid:  true,
-			}
+		if err = ps.updatePaymentStatus(ctx, payment, newStatus, err); err != nil {
+			return err
 		}
 
-		if newStatus == entity.PaidPayment {
-			payment.PaidAt = sql.NullTime{
-				Time:  time.Now(),
-				Valid: true,
-			}
-		}
-
-		_, err = ps.paymentRepo.Update(ctx, payment)
-		return err
+		return ps.queueSubscriptionTransitioned(ctx, newStatus, payment.SubscriptionID)
 	})
+}
+
+func (ps *paymentService) updatePaymentStatus(ctx context.Context, payment entity.Payment, newStatus entity.PaymentStatus, statusErr error) error {
+	payment.Status = newStatus
+
+	if newStatus == entity.ErrorPayment {
+		payment.FailureReason = sql.NullString{
+			String: statusErr.Error(),
+			Valid:  true,
+		}
+	}
+
+	if newStatus == entity.PaidPayment {
+		payment.PaidAt = sql.NullTime{
+			Time:  time.Now(),
+			Valid: true,
+		}
+	}
+
+	_, err := ps.paymentRepo.Update(ctx, payment)
+	return err
+}
+
+func (ps *paymentService) queueSubscriptionTransitioned(ctx context.Context, newStatus entity.PaymentStatus, subID uuid.UUID) error {
+	var subStatus entity.SubscriptionStatus
+	switch newStatus {
+	case entity.PaidPayment:
+		subStatus = entity.SubscriptionActive
+	case entity.CanceledPayment:
+		subStatus = entity.SubscriptionCanceled
+	case entity.ErrorPayment:
+		subStatus = entity.SubscriptionCanceled
+	case entity.PendingPayment:
+		subStatus = entity.SubscriptionIncompletePayment
+	case entity.ProcessingPayment:
+		subStatus = entity.SubscriptionIncompletePayment
+	default:
+		return ungerr.Unknownf("unhandled payment status: %s", newStatus)
+	}
+
+	msg := message.SubscriptionStatusTransitioned{
+		ID:     subID,
+		Status: subStatus,
+	}
+
+	return ps.taskQueue.Enqueue(ctx, msg)
 }

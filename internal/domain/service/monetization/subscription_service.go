@@ -10,6 +10,7 @@ import (
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	mapper "github.com/itsLeonB/cashback/internal/domain/mapper/monetization"
+	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization/subscription"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
@@ -30,6 +31,7 @@ type SubscriptionService interface {
 	// Internal
 	AttachDefaultSubscription(ctx context.Context, profileID uuid.UUID) error
 	GetCurrentSubscription(ctx context.Context, profileID uuid.UUID) (entity.Subscription, error)
+	TransitionStatus(ctx context.Context, msg message.SubscriptionStatusTransitioned) error
 }
 
 type subscriptionService struct {
@@ -246,10 +248,10 @@ func (ss *subscriptionService) CreatePurchase(ctx context.Context, req dto.Purch
 	return resp, err
 }
 
-func (ss *subscriptionService) transitionStatus(ctx context.Context, id uuid.UUID, newStatus entity.SubscriptionStatus) error {
+func (ss *subscriptionService) TransitionStatus(ctx context.Context, msg message.SubscriptionStatusTransitioned) error {
 	return ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[entity.Subscription]{}
-		spec.Model.ID = id
+		spec.Model.ID = msg.ID
 		spec.ForUpdate = true
 		spec.PreloadRelations = []string{"Payments"}
 		subs, err := ss.subscriptionRepo.FindFirst(ctx, spec)
@@ -257,10 +259,10 @@ func (ss *subscriptionService) transitionStatus(ctx context.Context, id uuid.UUI
 			return err
 		}
 		if subs.IsZero() {
-			return ungerr.NotFoundError(fmt.Sprintf("subscription ID %s is not found", id))
+			return ungerr.NotFoundError(fmt.Sprintf("subscription ID %s is not found", msg.ID))
 		}
 
-		patchedSubs, err := subscription.TransitionStatus(subs, newStatus)
+		patchedSubs, err := subscription.TransitionStatus(subs, msg.Status)
 		if err != nil {
 			return err
 		}

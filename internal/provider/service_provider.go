@@ -64,7 +64,7 @@ func ProvideServices(
 		logger.Error(err)
 	}
 
-	payment := monetization.NewPaymentService(paymentGateway, repos.Transactor, repos.Payment)
+	payment := monetization.NewPaymentService(paymentGateway, repos.Transactor, repos.Payment, coreSvc.Queue)
 	subs := monetization.NewSubscriptionService(repos.Transactor, repos.Subscription, repos.PlanVersion, payment)
 	subsLimit := service.NewSubscriptionLimitService(subs, repos.ExpenseBill)
 

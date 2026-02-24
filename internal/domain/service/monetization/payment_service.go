@@ -86,6 +86,10 @@ func (ps *paymentService) Create(ctx context.Context, req dto.NewPaymentRequest)
 }
 
 func (ps *paymentService) HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error {
+	if err := ps.IsReady(); err != nil {
+		return err
+	}
+
 	return ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		id, err := ezutil.Parse[uuid.UUID](req.OrderID)
 		if err != nil {

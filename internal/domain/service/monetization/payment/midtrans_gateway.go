@@ -56,17 +56,13 @@ func (mg *midtransGateway) CreateTransaction(ctx context.Context, payment entity
 		},
 	}
 
-	resp, err := mg.snapClient.CreateTransaction(req)
+	token, err := mg.snapClient.CreateTransactionToken(req)
 	if err != nil {
 		return entity.Payment{}, ungerr.Wrap(err, "error creating midtrans transaction")
 	}
 
-	if resp.StatusCode[0] != '2' {
-		return entity.Payment{}, ungerr.Unknownf("non-success status code: %s", resp.StatusCode)
-	}
-
 	payment.GatewayTransactionID = sql.NullString{
-		String: resp.Token,
+		String: token,
 		Valid:  true,
 	}
 

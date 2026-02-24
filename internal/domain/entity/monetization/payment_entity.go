@@ -11,10 +11,11 @@ import (
 type PaymentStatus string
 
 const (
-	PendingPayment  = "pending"
-	PaidPayment     = "paid"
-	CanceledPayment = "canceled"
-	ErrorPayment    = "error"
+	PendingPayment    = "pending"
+	ProcessingPayment = "processing"
+	PaidPayment       = "paid"
+	CanceledPayment   = "canceled"
+	ErrorPayment      = "error"
 )
 
 type Payment struct {
@@ -25,7 +26,7 @@ type Payment struct {
 	Gateway               string
 	GatewayTransactionID  sql.NullString
 	GatewaySubscriptionID sql.NullString
-	Status                string
+	Status                PaymentStatus
 	FailureReason         sql.NullString
 	StartsAt              sql.NullTime
 	EndsAt                sql.NullTime

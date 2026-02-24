@@ -8,6 +8,12 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+type NewPaymentRequest struct {
+	SubscriptionID uuid.UUID
+	Currency       string
+	Amount         decimal.Decimal
+}
+
 type PaymentResponse struct {
 	dto.BaseDTO
 	SubscriptionID        uuid.UUID       `json:"subscriptionId"`

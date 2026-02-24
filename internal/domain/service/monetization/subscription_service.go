@@ -10,7 +10,6 @@ import (
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	mapper "github.com/itsLeonB/cashback/internal/domain/mapper/monetization"
-	"github.com/itsLeonB/cashback/internal/domain/service/monetization/payment"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization/subscription"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
@@ -37,23 +36,20 @@ type subscriptionService struct {
 	transactor       crud.Transactor
 	subscriptionRepo crud.Repository[entity.Subscription]
 	planVersionRepo  crud.Repository[entity.PlanVersion]
-	paymentRepo      crud.Repository[entity.Payment]
-	paymentGateway   payment.Gateway
+	paymentService   PaymentService
 }
 
 func NewSubscriptionService(
 	transactor crud.Transactor,
 	repo crud.Repository[entity.Subscription],
 	planVersionRepo crud.Repository[entity.PlanVersion],
-	paymentRepo crud.Repository[entity.Payment],
-	paymentGateway payment.Gateway,
+	paymentService PaymentService,
 ) *subscriptionService {
 	return &subscriptionService{
 		transactor,
 		repo,
 		planVersionRepo,
-		paymentRepo,
-		paymentGateway,
+		paymentService,
 	}
 }
 
@@ -196,8 +192,8 @@ func (ss *subscriptionService) GetCurrentSubscription(ctx context.Context, profi
 }
 
 func (ss *subscriptionService) CreatePurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error) {
-	if ss.paymentGateway == nil {
-		return dto.PaymentResponse{}, ungerr.Unknown("payment gateway is unitialized")
+	if err := ss.paymentService.IsReady(); err != nil {
+		return dto.PaymentResponse{}, err
 	}
 
 	var resp dto.PaymentResponse
@@ -238,31 +234,14 @@ func (ss *subscriptionService) CreatePurchase(ctx context.Context, req dto.Purch
 			return err
 		}
 
-		newPayment := entity.Payment{
+		newPayment := dto.NewPaymentRequest{
 			SubscriptionID: insertedSubs.ID,
 			Amount:         planVersion.PriceAmount,
 			Currency:       planVersion.PriceCurrency,
-			Status:         entity.PendingPayment,
-			Gateway:        ss.paymentGateway.Provider(),
 		}
 
-		pendingPayment, err := ss.paymentRepo.Insert(ctx, newPayment)
-		if err != nil {
-			return err
-		}
-
-		requestedPayment, err := ss.paymentGateway.CreateTransaction(ctx, pendingPayment)
-		if err != nil {
-			return err
-		}
-
-		requestedPayment, err = ss.paymentRepo.Update(ctx, requestedPayment)
-		if err != nil {
-			return err
-		}
-
-		resp = mapper.PaymentToResponse(requestedPayment)
-		return nil
+		resp, err = ss.paymentService.Create(ctx, newPayment)
+		return err
 	})
 	return resp, err
 }

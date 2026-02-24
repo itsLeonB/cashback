@@ -15,7 +15,7 @@ func PaymentToResponse(p entity.Payment) dto.PaymentResponse {
 		Gateway:               p.Gateway,
 		GatewayTransactionID:  p.GatewayTransactionID.String,
 		GatewaySubscriptionID: p.GatewaySubscriptionID.String,
-		Status:                p.Status,
+		Status:                string(p.Status),
 		FailureReason:         p.FailureReason.String,
 		StartsAt:              p.StartsAt.Time,
 		EndsAt:                p.EndsAt.Time,

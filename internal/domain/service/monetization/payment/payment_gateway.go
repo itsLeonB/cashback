@@ -11,6 +11,7 @@ import (
 type Gateway interface {
 	Provider() string
 	CreateTransaction(ctx context.Context, payment entity.Payment) (entity.Payment, error)
+	CheckStatus(ctx context.Context, orderID string) (entity.PaymentStatus, error)
 }
 
 func NewGateway(cfg config.Payment) (Gateway, error) {

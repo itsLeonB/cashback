@@ -14,6 +14,8 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, middlewar
 	{
 		v1 := apiRoutes.Group("/v1")
 		{
+			v1.POST("/payments/midtrans/notifications", handlers.Payment.HandleNotification())
+
 			authRoutes := v1.Group("/auth")
 			{
 				authRoutes.POST("/register", handlers.Auth.HandleRegister())

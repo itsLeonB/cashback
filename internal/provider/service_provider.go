@@ -40,6 +40,7 @@ type Services struct {
 	Plan         monetization.PlanService
 	PlanVersion  monetization.PlanVersionService
 	Subscription monetization.SubscriptionService
+	Payment      monetization.PaymentService
 
 	// Infra
 	Notification     service.NotificationService
@@ -63,7 +64,8 @@ func ProvideServices(
 		logger.Error(err)
 	}
 
-	subs := monetization.NewSubscriptionService(repos.Transactor, repos.Subscription, repos.PlanVersion, repos.Payment, paymentGateway)
+	payment := monetization.NewPaymentService(paymentGateway, repos.Transactor, repos.Payment)
+	subs := monetization.NewSubscriptionService(repos.Transactor, repos.Subscription, repos.PlanVersion, payment)
 	subsLimit := service.NewSubscriptionLimitService(subs, repos.ExpenseBill)
 
 	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)
@@ -103,6 +105,7 @@ func ProvideServices(
 		Plan:         monetization.NewPlanService(repos.Transactor, repos.Plan, repos.PlanVersion),
 		PlanVersion:  monetization.NewPlanVersionService(repos.Transactor, repos.PlanVersion),
 		Subscription: subs,
+		Payment:      payment,
 
 		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense, coreSvc.Queue),
 		PushNotification: pushNotification,

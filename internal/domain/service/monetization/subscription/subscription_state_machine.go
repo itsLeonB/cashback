@@ -59,7 +59,7 @@ type fromIncomplete struct{}
 func (fromIncomplete) Transition(payments []entity.Payment, target entity.SubscriptionStatus) error {
 	switch target {
 	case entity.SubscriptionActive, entity.SubscriptionCanceled:
-		return anyValidPayments(payments)
+		return isValidPayment(latestPayment(payments))
 	default:
 		return ungerr.Unknownf("illegal state transition from incomplete to %s", target)
 	}
@@ -70,9 +70,9 @@ type fromActive struct{}
 func (fromActive) Transition(payments []entity.Payment, target entity.SubscriptionStatus) error {
 	switch target {
 	case entity.SubscriptionPastDuePayment:
-		return noValidPayments(payments)
+		return isInvalidPayment(latestPayment(payments))
 	case entity.SubscriptionCanceled:
-		return anyValidPayments(payments)
+		return isValidPayment(latestPayment(payments))
 	default:
 		return ungerr.Unknownf("illegal state transition from active to %s", target)
 	}
@@ -83,28 +83,40 @@ type fromPastDue struct{}
 func (fromPastDue) Transition(payments []entity.Payment, target entity.SubscriptionStatus) error {
 	switch target {
 	case entity.SubscriptionActive:
-		return anyValidPayments(payments)
+		return isValidPayment(latestPayment(payments))
 	case entity.SubscriptionCanceled:
-		return noValidPayments(payments)
+		return isInvalidPayment(latestPayment(payments))
 	default:
 		return ungerr.Unknownf("illegal state transition from past due to %s", target)
 	}
 }
 
-func anyValidPayments(payments []entity.Payment) error {
-	for _, payment := range payments {
-		if payment.Status == entity.PaidPayment {
-			return nil
-		}
+func isValidPayment(payment entity.Payment) error {
+	if payment.Status == entity.PaidPayment {
+		return nil
 	}
+
 	return ungerr.ForbiddenError("no valid payments found")
 }
 
-func noValidPayments(payments []entity.Payment) error {
-	for _, payment := range payments {
-		if payment.Status == entity.PaidPayment {
-			return ungerr.ForbiddenError("payment already paid")
-		}
+func isInvalidPayment(payment entity.Payment) error {
+	if payment.Status == entity.PaidPayment {
+		return ungerr.ForbiddenError("payment already paid")
 	}
 	return nil
+}
+
+func latestPayment(payments []entity.Payment) entity.Payment {
+	if len(payments) == 0 {
+		return entity.Payment{}
+	}
+
+	latest := payments[0]
+	for i := 1; i < len(payments); i++ {
+		if payments[i].CreatedAt.After(latest.CreatedAt) {
+			latest = payments[i]
+		}
+	}
+
+	return latest
 }

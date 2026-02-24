@@ -41,3 +41,14 @@ func (sh *SubscriptionHandler) HandleCreatePurchase() gin.HandlerFunc {
 		return sh.svc.CreatePurchase(ctx, req)
 	})
 }
+
+func (sh *SubscriptionHandler) HandleGetActiveDetails() gin.HandlerFunc {
+	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+		profileID, err := getProfileID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return sh.svc.GetActiveDetails(ctx, profileID)
+	})
+}

@@ -40,6 +40,7 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, middlewar
 					profileRoutes.POST("/associate", handlers.Profile.HandleAssociate())
 					profileRoutes.POST(transferMethodsRoute, handlers.ProfileTransferMethod.HandleAdd())
 					profileRoutes.GET(transferMethodsRoute, handlers.ProfileTransferMethod.HandleGetAllOwned())
+					profileRoutes.GET("/subscription", handlers.Subscription.HandleGetActiveDetails())
 				}
 
 				profilesRoutes := protectedRoutes.Group("/profiles")

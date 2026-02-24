@@ -1,6 +1,9 @@
 package subscription
 
 import (
+	"database/sql"
+	"time"
+
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	"github.com/itsLeonB/ungerr"
 )
@@ -13,6 +16,13 @@ func TransitionStatus(sub entity.Subscription, newStatus entity.SubscriptionStat
 
 	if err = transitioner.Transition(sub.Payments, newStatus); err != nil {
 		return entity.Subscription{}, err
+	}
+
+	if newStatus == entity.SubscriptionActive {
+		sub.EndsAt = sql.NullTime{
+			Time:  time.Now().AddDate(0, 1, 0),
+			Valid: true,
+		}
 	}
 
 	sub.Status = newStatus

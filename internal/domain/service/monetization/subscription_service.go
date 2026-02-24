@@ -27,6 +27,7 @@ type SubscriptionService interface {
 
 	// Public
 	CreatePurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error)
+	GetActiveDetails(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error)
 
 	// Internal
 	AttachDefaultSubscription(ctx context.Context, profileID uuid.UUID) error
@@ -270,6 +271,15 @@ func (ss *subscriptionService) TransitionStatus(ctx context.Context, msg message
 		_, err = ss.subscriptionRepo.Update(ctx, patchedSubs)
 		return err
 	})
+}
+
+func (ss *subscriptionService) GetActiveDetails(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error) {
+	sub, err := ss.GetCurrentSubscription(ctx, profileID)
+	if err != nil {
+		return dto.SubscriptionResponse{}, err
+	}
+
+	return mapper.SubscriptionToResponse(sub), nil
 }
 
 func (ss *subscriptionService) getByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error) {

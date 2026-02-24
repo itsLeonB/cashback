@@ -253,7 +253,7 @@ func (ss *subscriptionService) TransitionStatus(ctx context.Context, msg message
 		spec := crud.Specification[entity.Subscription]{}
 		spec.Model.ID = msg.ID
 		spec.ForUpdate = true
-		spec.PreloadRelations = []string{"Payments"}
+		spec.PreloadRelations = []string{"Payments, PlanVersion"}
 		subs, err := ss.subscriptionRepo.FindFirst(ctx, spec)
 		if err != nil {
 			return err

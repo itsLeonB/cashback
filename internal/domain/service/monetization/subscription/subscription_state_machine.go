@@ -19,8 +19,15 @@ func TransitionStatus(sub entity.Subscription, newStatus entity.SubscriptionStat
 	}
 
 	if newStatus == entity.SubscriptionActive {
+		endsAt := time.Now()
+		switch sub.PlanVersion.BillingInterval {
+		case entity.MonthlyInterval:
+			endsAt = endsAt.AddDate(0, 1, 0)
+		case entity.YearlyInterval:
+			endsAt = endsAt.AddDate(1, 0, 0)
+		}
 		sub.EndsAt = sql.NullTime{
-			Time:  time.Now().AddDate(0, 1, 0),
+			Time:  endsAt,
 			Valid: true,
 		}
 	}

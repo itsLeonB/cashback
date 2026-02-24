@@ -41,6 +41,7 @@ type Repositories struct {
 	Plan         crud.Repository[monetization.Plan]
 	PlanVersion  monetizationRepo.PlanVersionRepository
 	Subscription crud.Repository[monetization.Subscription]
+	Payment      crud.Repository[monetization.Payment]
 
 	// Infra
 	Notification     repository.NotificationRepository
@@ -73,6 +74,7 @@ func ProvideRepositories(db *gorm.DB) *Repositories {
 		Plan:         crud.NewRepository[monetization.Plan](db),
 		PlanVersion:  monetizationAdapter.NewPlanVersionRepository(db),
 		Subscription: crud.NewRepository[monetization.Subscription](db),
+		Payment:      crud.NewRepository[monetization.Payment](db),
 
 		Notification:     adapters.NewNotificationRepository(db),
 		PushSubscription: adapters.NewPushSubscriptionRepository(db),

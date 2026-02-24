@@ -3,24 +3,32 @@ package monetization
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	mapper "github.com/itsLeonB/cashback/internal/domain/mapper/monetization"
+	"github.com/itsLeonB/cashback/internal/domain/service/monetization/payment"
+	"github.com/itsLeonB/cashback/internal/domain/service/monetization/subscription"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 )
 
 type SubscriptionService interface {
+	// Admin
 	Create(ctx context.Context, req dto.NewSubscriptionRequest) (dto.SubscriptionResponse, error)
 	GetList(ctx context.Context) ([]dto.SubscriptionResponse, error)
 	GetOne(ctx context.Context, id uuid.UUID) (dto.SubscriptionResponse, error)
 	Update(ctx context.Context, req dto.UpdateSubscriptionRequest) (dto.SubscriptionResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) (dto.SubscriptionResponse, error)
 
+	// Public
+	CreatePurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error)
+
+	// Internal
 	AttachDefaultSubscription(ctx context.Context, profileID uuid.UUID) error
 	GetCurrentSubscription(ctx context.Context, profileID uuid.UUID) (entity.Subscription, error)
 }
@@ -29,17 +37,23 @@ type subscriptionService struct {
 	transactor       crud.Transactor
 	subscriptionRepo crud.Repository[entity.Subscription]
 	planVersionRepo  crud.Repository[entity.PlanVersion]
+	paymentRepo      crud.Repository[entity.Payment]
+	paymentGateway   payment.Gateway
 }
 
 func NewSubscriptionService(
 	transactor crud.Transactor,
 	repo crud.Repository[entity.Subscription],
 	planVersionRepo crud.Repository[entity.PlanVersion],
+	paymentRepo crud.Repository[entity.Payment],
+	paymentGateway payment.Gateway,
 ) *subscriptionService {
 	return &subscriptionService{
 		transactor,
 		repo,
 		planVersionRepo,
+		paymentRepo,
+		paymentGateway,
 	}
 }
 
@@ -179,6 +193,102 @@ func (ss *subscriptionService) GetCurrentSubscription(ctx context.Context, profi
 	}
 
 	return entity.Subscription{}, nil
+}
+
+func (ss *subscriptionService) CreatePurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error) {
+	if ss.paymentGateway == nil {
+		return dto.PaymentResponse{}, ungerr.Unknown("payment gateway is unitialized")
+	}
+
+	var resp dto.PaymentResponse
+	var err error
+	err = ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		planVerSpec := crud.Specification[entity.PlanVersion]{}
+		planVerSpec.Model.ID = req.PlanVersionID
+		planVerSpec.Model.PlanID = req.PlanID
+		planVersion, err := ss.planVersionRepo.FindFirst(ctx, planVerSpec)
+		if err != nil {
+			return err
+		}
+		if planVersion.IsZero() {
+			return ungerr.NotFoundError(fmt.Sprintf("plan version ID %s is not found", req.PlanVersionID))
+		}
+
+		subsSpec := crud.Specification[entity.Subscription]{}
+		subsSpec.Model.ProfileID = req.ProfileID
+		subsSpec.Model.PlanVersionID = req.PlanVersionID
+		existingSubs, err := ss.subscriptionRepo.FindAll(ctx, subsSpec)
+		if err != nil {
+			return err
+		}
+		for _, sub := range existingSubs {
+			if sub.Status == entity.SubscriptionActive || sub.Status == entity.SubscriptionPastDuePayment {
+				return ungerr.ConflictError("user still have existing subscription")
+			}
+		}
+
+		newSubscription := entity.Subscription{
+			ProfileID:     req.ProfileID,
+			PlanVersionID: req.PlanVersionID,
+			Status:        entity.SubscriptionIncompletePayment,
+		}
+
+		insertedSubs, err := ss.subscriptionRepo.Insert(ctx, newSubscription)
+		if err != nil {
+			return err
+		}
+
+		newPayment := entity.Payment{
+			SubscriptionID: insertedSubs.ID,
+			Amount:         planVersion.PriceAmount,
+			Currency:       planVersion.PriceCurrency,
+			Status:         entity.PendingPayment,
+			Gateway:        ss.paymentGateway.Provider(),
+		}
+
+		pendingPayment, err := ss.paymentRepo.Insert(ctx, newPayment)
+		if err != nil {
+			return err
+		}
+
+		requestedPayment, err := ss.paymentGateway.CreateTransaction(ctx, pendingPayment)
+		if err != nil {
+			return err
+		}
+
+		requestedPayment, err = ss.paymentRepo.Update(ctx, requestedPayment)
+		if err != nil {
+			return err
+		}
+
+		resp = mapper.PaymentToResponse(requestedPayment)
+		return nil
+	})
+	return resp, err
+}
+
+func (ss *subscriptionService) transitionStatus(ctx context.Context, id uuid.UUID, newStatus entity.SubscriptionStatus) error {
+	return ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		spec := crud.Specification[entity.Subscription]{}
+		spec.Model.ID = id
+		spec.ForUpdate = true
+		spec.PreloadRelations = []string{"Payments"}
+		subs, err := ss.subscriptionRepo.FindFirst(ctx, spec)
+		if err != nil {
+			return err
+		}
+		if subs.IsZero() {
+			return ungerr.NotFoundError(fmt.Sprintf("subscription ID %s is not found", id))
+		}
+
+		patchedSubs, err := subscription.TransitionStatus(subs, newStatus)
+		if err != nil {
+			return err
+		}
+
+		_, err = ss.subscriptionRepo.Update(ctx, patchedSubs)
+		return err
+	})
 }
 
 func (ss *subscriptionService) getByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error) {

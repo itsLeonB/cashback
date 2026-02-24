@@ -17,7 +17,7 @@ func Setup(configs config.Config) (*server.Http, error) {
 		return nil, err
 	}
 
-	gin.SetMode(configs.Env)
+	gin.SetMode(configs.App.Env)
 	r := gin.New()
 	registerRoutes(r, configs, providers.Services, providers.AdminServices)
 

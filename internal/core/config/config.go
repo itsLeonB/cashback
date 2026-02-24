@@ -23,6 +23,7 @@ type Config struct {
 	Push
 	Valkey
 	GoogleCreds *google.Credentials
+	Payment
 }
 
 var Global *Config
@@ -83,6 +84,11 @@ func Load() error {
 		errs = errors.Join(errs, err)
 	}
 
+	var payment Payment
+	if err = envconfig.Process(payment.Prefix(), &payment); err != nil {
+		errs = errors.Join(errs, err)
+	}
+
 	if errs != nil {
 		return ungerr.Wrap(errs, "error loading config")
 	}
@@ -97,6 +103,7 @@ func Load() error {
 		push,
 		valkey,
 		googleCreds,
+		payment,
 	}
 
 	return nil

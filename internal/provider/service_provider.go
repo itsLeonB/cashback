@@ -5,9 +5,11 @@ import (
 
 	appembed "github.com/itsLeonB/cashback"
 	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/cashback/internal/domain/service/fee"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization"
+	"github.com/itsLeonB/cashback/internal/domain/service/monetization/payment"
 	"github.com/itsLeonB/sekure"
 )
 
@@ -51,11 +53,17 @@ func (s *Services) Shutdown() error {
 func ProvideServices(
 	repos *Repositories,
 	coreSvc *CoreServices,
-	authConfig config.Auth,
-	appConfig config.App,
-	pushConfig config.Push,
 ) *Services {
-	subs := monetization.NewSubscriptionService(repos.Transactor, repos.Subscription, repos.PlanVersion)
+	authConfig := config.Global.Auth
+	appConfig := config.Global.App
+	paymentConfig := config.Global.Payment
+
+	paymentGateway, err := payment.NewGateway(paymentConfig)
+	if err != nil {
+		logger.Error(err)
+	}
+
+	subs := monetization.NewSubscriptionService(repos.Transactor, repos.Subscription, repos.PlanVersion, repos.Payment, paymentGateway)
 	subsLimit := service.NewSubscriptionLimitService(subs, repos.ExpenseBill)
 
 	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)

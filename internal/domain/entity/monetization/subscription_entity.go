@@ -9,6 +9,15 @@ import (
 	"github.com/itsLeonB/go-crud"
 )
 
+type SubscriptionStatus string
+
+const (
+	SubscriptionIncompletePayment SubscriptionStatus = "incomplete_payment"
+	SubscriptionActive            SubscriptionStatus = "active"
+	SubscriptionPastDuePayment    SubscriptionStatus = "past_due_payment"
+	SubscriptionCanceled          SubscriptionStatus = "canceled"
+)
+
 type Subscription struct {
 	crud.BaseEntity
 	ProfileID     uuid.UUID
@@ -16,10 +25,12 @@ type Subscription struct {
 	EndsAt        sql.NullTime
 	CanceledAt    sql.NullTime
 	AutoRenew     bool
+	Status        SubscriptionStatus
 
 	// Relationships
 	Profile     users.UserProfile
 	PlanVersion PlanVersion
+	Payments    []Payment
 }
 
 func (s *Subscription) IsActive(t time.Time) bool {

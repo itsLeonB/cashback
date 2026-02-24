@@ -15,6 +15,12 @@ type NewSubscriptionRequest struct {
 	AutoRenew     bool      `json:"autoRenew"`
 }
 
+type PurchaseSubscriptionRequest struct {
+	ProfileID     uuid.UUID `json:"-"`
+	PlanID        uuid.UUID `json:"-"`
+	PlanVersionID uuid.UUID `json:"-"`
+}
+
 type SubscriptionResponse struct {
 	dto.BaseDTO
 	ProfileID          uuid.UUID `json:"profileId"`

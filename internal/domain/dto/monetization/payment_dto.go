@@ -20,7 +20,7 @@ type PaymentResponse struct {
 	Amount                decimal.Decimal `json:"amount"`
 	Currency              string          `json:"currency"`
 	Gateway               string          `json:"gateway"`
-	GatewayTransactionID  string          `json:"gatewayTransactionId"`
+	GatewayTransactionID  string          `json:"gatewayTransactionId,omitzero"`
 	GatewaySubscriptionID string          `json:"gatewaySubscriptionId,omitzero"`
 	Status                string          `json:"status"`
 	FailureReason         string          `json:"failureReason,omitzero"`
@@ -31,8 +31,9 @@ type PaymentResponse struct {
 }
 
 type MidtransNotificationPayload struct {
-	OrderID      string `json:"order_id" binding:"required"`
-	StatusCode   string `json:"status_code" binding:"required"`
-	GrossAmount  string `json:"gross_amount" binding:"required"`
-	SignatureKey string `json:"signature_key" binding:"required"`
+	OrderID       string `json:"order_id" binding:"required"`
+	StatusCode    string `json:"status_code" binding:"required"`
+	GrossAmount   string `json:"gross_amount" binding:"required"`
+	SignatureKey  string `json:"signature_key" binding:"required"`
+	StatusMessage string `json:"status_message"`
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha512"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/itsLeonB/cashback/internal/core/config"
@@ -97,7 +98,13 @@ func (mg *midtransGateway) CheckStatus(ctx context.Context, req dto.MidtransNoti
 	case "settlement":
 		return entity.PaidPayment, nil
 	case "deny":
-		return "", nil
+		var e error
+		if req.StatusMessage == "" {
+			e = errors.New("unknown")
+		} else {
+			e = errors.New(req.StatusMessage)
+		}
+		return entity.ErrorPayment, e
 	case "cancel", "expire":
 		return entity.CanceledPayment, nil
 	case "pending":

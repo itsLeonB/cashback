@@ -48,7 +48,7 @@ type paymentService struct {
 
 func (ps *paymentService) IsReady() error {
 	if ps.gateway == nil {
-		return ungerr.Unknown("payment gateway is unitialized")
+		return ungerr.Unknown("payment gateway is uninitialized")
 	}
 	return nil
 }
@@ -126,7 +126,7 @@ func (ps *paymentService) HandleNotification(ctx context.Context, req dto.Midtra
 func (ps *paymentService) updatePaymentStatus(ctx context.Context, payment entity.Payment, newStatus entity.PaymentStatus, statusErr error) error {
 	payment.Status = newStatus
 
-	if newStatus == entity.ErrorPayment {
+	if newStatus == entity.ErrorPayment && statusErr != nil {
 		payment.FailureReason = sql.NullString{
 			String: statusErr.Error(),
 			Valid:  true,

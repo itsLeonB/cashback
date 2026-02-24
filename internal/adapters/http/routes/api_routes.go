@@ -120,7 +120,11 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, middlewar
 					pushRoutes.POST("/unsubscribe", handlers.PushSubscription.HandleUnsubscribe())
 				}
 
-				protectedRoutes.POST(fmt.Sprintf("/plans/:%s/versions/:%s/subscriptions", appconstant.ContextPlanID.String(), appconstant.ContextPlanVersionID.String()), handlers.Subscription.HandleCreatePurchase())
+				planRoutes := protectedRoutes.Group("/plans")
+				{
+					planRoutes.POST(fmt.Sprintf("/:%s/versions/:%s/subscriptions", appconstant.ContextPlanID.String(), appconstant.ContextPlanVersionID.String()), handlers.Subscription.HandleCreatePurchase())
+					planRoutes.GET("", handlers.Plan.HandleGetActive())
+				}
 			}
 		}
 	}

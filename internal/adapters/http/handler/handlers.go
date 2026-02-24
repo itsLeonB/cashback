@@ -20,6 +20,7 @@ type Handlers struct {
 	PushSubscription      *PushSubscriptionHandler
 	Subscription          *SubscriptionHandler
 	Payment               *PaymentHandler
+	Plan                  *PlanHandler
 }
 
 func ProvideHandlers(services *provider.Services) *Handlers {
@@ -39,5 +40,6 @@ func ProvideHandlers(services *provider.Services) *Handlers {
 		NewPushSubscriptionHandler(services.PushNotification),
 		&SubscriptionHandler{services.Subscription},
 		&PaymentHandler{services.Payment},
+		&PlanHandler{services.PlanVersion},
 	}
 }

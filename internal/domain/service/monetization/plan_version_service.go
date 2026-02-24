@@ -3,6 +3,7 @@ package monetization
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
@@ -15,11 +16,15 @@ import (
 )
 
 type PlanVersionService interface {
+	// Admin
 	Create(ctx context.Context, req dto.NewPlanVersionRequest) (dto.PlanVersionResponse, error)
 	GetList(ctx context.Context) ([]dto.PlanVersionResponse, error)
 	GetOne(ctx context.Context, id uuid.UUID) (dto.PlanVersionResponse, error)
 	Update(ctx context.Context, req dto.UpdatePlanVersionRequest) (dto.PlanVersionResponse, error)
 	Delete(ctx context.Context, id uuid.UUID) (dto.PlanVersionResponse, error)
+
+	// Public
+	GetActive(ctx context.Context) ([]dto.PlanVersionResponse, error)
 }
 
 type planVersionService struct {
@@ -139,6 +144,35 @@ func (pvs *planVersionService) Delete(ctx context.Context, id uuid.UUID) (dto.Pl
 		return nil
 	})
 	return resp, err
+}
+
+func (pvs *planVersionService) GetActive(ctx context.Context) ([]dto.PlanVersionResponse, error) {
+	spec := crud.Specification[entity.PlanVersion]{}
+	spec.PreloadRelations = []string{"Plan"}
+	planVersions, err := pvs.planVersionRepo.FindAll(ctx, spec)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+
+	versionsByPlanID := make(map[uuid.UUID][]entity.PlanVersion)
+	for _, planVersion := range planVersions {
+		if planVersion.EffectiveFrom.After(now) || (planVersion.EffectiveTo.Valid && planVersion.EffectiveTo.Time.Before(now)) || !planVersion.Plan.IsActive {
+			continue
+		}
+		if _, exists := versionsByPlanID[planVersion.PlanID]; !exists {
+			versionsByPlanID[planVersion.PlanID] = []entity.PlanVersion{}
+		}
+		versionsByPlanID[planVersion.PlanID] = append(versionsByPlanID[planVersion.PlanID], planVersion)
+	}
+
+	responses := make([]dto.PlanVersionResponse, len(versionsByPlanID))
+	for _, versions := range versionsByPlanID {
+		responses = append(responses, mapper.PlanVersionToResponse(versions[0]))
+	}
+
+	return responses, nil
 }
 
 func (pvs *planVersionService) getByID(ctx context.Context, id uuid.UUID, forUpdate bool, relations []string) (entity.PlanVersion, error) {

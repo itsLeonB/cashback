@@ -23,6 +23,7 @@ type PaymentService interface {
 	IsReady() error
 	NewPurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error)
 	HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error
+	MakePayment(ctx context.Context, subscriptionID uuid.UUID) (dto.PaymentResponse, error)
 }
 
 func NewPaymentService(
@@ -155,6 +156,26 @@ func (ps *paymentService) HandleNotification(ctx context.Context, req dto.Midtra
 
 		return ps.queueSubscriptionTransitioned(ctx, newStatus, payment.SubscriptionID)
 	})
+}
+
+func (ps *paymentService) MakePayment(ctx context.Context, subscriptionID uuid.UUID) (dto.PaymentResponse, error) {
+	var resp dto.PaymentResponse
+	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		subscription, err := ps.subscriptionSvc.GetByID(ctx, subscriptionID, true)
+		if err != nil {
+			return err
+		}
+
+		req := dto.NewPaymentRequest{
+			SubscriptionID: subscriptionID,
+			Currency:       subscription.PlanVersion.PriceCurrency,
+			Amount:         subscription.PlanVersion.PriceAmount,
+		}
+
+		resp, err = ps.create(ctx, req)
+		return err
+	})
+	return resp, err
 }
 
 func (ps *paymentService) updatePaymentStatus(

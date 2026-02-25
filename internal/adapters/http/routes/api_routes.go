@@ -125,6 +125,8 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, middlewar
 					planRoutes.POST(fmt.Sprintf("/:%s/versions/:%s/subscriptions", appconstant.ContextPlanID.String(), appconstant.ContextPlanVersionID.String()), handlers.Subscription.HandleCreatePurchase())
 					planRoutes.GET("", handlers.Plan.HandleGetActive())
 				}
+
+				protectedRoutes.POST(fmt.Sprintf("/subscriptions/:%s", appconstant.ContextSubscriptionID.String()), handlers.Payment.HandleMakePayment())
 			}
 		}
 	}

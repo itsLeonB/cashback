@@ -37,7 +37,7 @@ type Subscription struct {
 
 func (s *Subscription) IsActive(t time.Time) bool {
 	return s.PlanVersion.IsDefault || ((s.CurrentPeriodEnd.Valid && s.CurrentPeriodEnd.Time.After(t)) &&
-		(s.CurrentPeriodStart.Valid && s.CurrentPeriodStart.Time.Before(t)) &&
+		(s.CurrentPeriodStart.Valid && !s.CurrentPeriodStart.Time.After(t)) &&
 		(s.Status == SubscriptionActive || s.Status == SubscriptionPastDuePayment))
 }
 

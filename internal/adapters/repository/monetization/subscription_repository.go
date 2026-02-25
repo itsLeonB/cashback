@@ -27,7 +27,7 @@ func (sr *subscriptionRepository) UpdatePastDues(ctx context.Context) error {
 	}
 
 	result := db.Model(&entity.Subscription{}).
-		Where("current_period_end IS NOT NULL AND current_period_end < ? AND status = ?", time.Now(), entity.SubscriptionActive).
+		Where("current_period_end IS NOT NULL AND current_period_end <= ? AND status = ?", time.Now(), entity.SubscriptionActive).
 		Update("status", entity.SubscriptionPastDuePayment)
 
 	if err = result.Error; err != nil {
@@ -52,7 +52,7 @@ func (sr *subscriptionRepository) FindNearingDueDate(ctx context.Context) ([]ent
 
 	err = db.
 		Preload("Profile").
-		Where("current_period_end IS NOT NULL AND current_period_end > ? AND current_period_end < ? AND status = ?", now, in3Days, entity.SubscriptionActive).
+		Where("current_period_end IS NOT NULL AND current_period_end > ? AND current_period_end <= ? AND status = ?", now, in3Days, entity.SubscriptionActive).
 		Find(&subscriptions).
 		Error
 

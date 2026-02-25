@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
@@ -21,6 +22,8 @@ type midtransGateway struct {
 	snapClient *snap.Client
 	coreClient *coreapi.Client
 	serverKey  string
+	snapMu     sync.Mutex
+	coreMu     sync.Mutex
 }
 
 func newMidtransGateway(cfg config.Payment) (*midtransGateway, error) {
@@ -35,7 +38,7 @@ func newMidtransGateway(cfg config.Payment) (*midtransGateway, error) {
 	snapClient.New(cfg.ServerKey, env)
 	coreClient.New(cfg.ServerKey, env)
 
-	return &midtransGateway{snapClient, coreClient, cfg.ServerKey}, nil
+	return &midtransGateway{snapClient, coreClient, cfg.ServerKey, sync.Mutex{}, sync.Mutex{}}, nil
 }
 
 func loadMidtransEnv(envCfg string) (midtrans.EnvironmentType, error) {
@@ -61,7 +64,10 @@ func (mg *midtransGateway) CreateTransaction(ctx context.Context, payment entity
 		},
 	}
 
+	mg.snapMu.Lock()
+	mg.snapClient.Options.SetContext(ctx)
 	token, err := mg.snapClient.CreateTransactionToken(req)
+	mg.snapMu.Unlock()
 	if err != nil {
 		return entity.Payment{}, ungerr.Wrap(err, "error creating midtrans transaction")
 	}
@@ -79,7 +85,10 @@ func (mg *midtransGateway) CheckStatus(ctx context.Context, req dto.MidtransNoti
 		return entity.ErrorPayment, err
 	}
 
+	mg.coreMu.Lock()
+	mg.coreClient.Options.SetContext(ctx)
 	trxStatusResp, err := mg.coreClient.CheckTransaction(req.OrderID)
+	mg.coreMu.Unlock()
 	if err != nil {
 		return entity.ErrorPayment, ungerr.Wrapf(err, "error checking transaction status of ID: %s", req.OrderID)
 	}

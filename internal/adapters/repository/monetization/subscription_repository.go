@@ -27,14 +27,14 @@ func (sr *subscriptionRepository) UpdatePastDues(ctx context.Context) error {
 	}
 
 	result := db.Model(&entity.Subscription{}).
-		Where("current_period_end IS NOT NULL AND current_period_end < ? AND status != ?", time.Now(), entity.SubscriptionPastDuePayment).
+		Where("current_period_end IS NOT NULL AND current_period_end < ? AND status = ?", time.Now(), entity.SubscriptionActive).
 		Update("status", entity.SubscriptionPastDuePayment)
 
 	if err = result.Error; err != nil {
 		return ungerr.Wrap(err, appconstant.ErrDataUpdate)
 	}
 
-	logger.Infof("%d subscriptions is now having past due payments", result.RowsAffected)
+	logger.Infof("%d subscriptions now have past due payments", result.RowsAffected)
 
 	return nil
 }

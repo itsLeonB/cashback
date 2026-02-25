@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
@@ -51,6 +52,9 @@ type paymentService struct {
 }
 
 func (ps *paymentService) IsReady() error {
+	if !config.Global.Flag.SubscriptionPurchaseEnabled {
+		return ungerr.ForbiddenError("feature is disabled")
+	}
 	if ps.gateway == nil {
 		return ungerr.Unknown("payment gateway is uninitialized")
 	}
@@ -159,6 +163,10 @@ func (ps *paymentService) HandleNotification(ctx context.Context, req dto.Midtra
 }
 
 func (ps *paymentService) MakePayment(ctx context.Context, subscriptionID uuid.UUID) (dto.PaymentResponse, error) {
+	if err := ps.IsReady(); err != nil {
+		return dto.PaymentResponse{}, err
+	}
+
 	var resp dto.PaymentResponse
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		subscription, err := ps.subscriptionSvc.GetByID(ctx, subscriptionID, true)

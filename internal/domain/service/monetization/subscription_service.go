@@ -331,7 +331,12 @@ func (ss *subscriptionService) PublishSubscriptionDueNotifications(ctx context.C
 		return sub.Profile.UserID.UUID
 	})
 
-	logger.Infof("%d is nearing its payment due dates", len(userIDs))
+	if len(userIDs) == 0 {
+		logger.Infof("no subscriptions nearing payment due date")
+		return nil
+	}
+
+	logger.Infof("%d subscriptions nearing payment due date", len(userIDs))
 
 	msg := message.SubscriptionNearingDue{
 		UserIDs: userIDs,

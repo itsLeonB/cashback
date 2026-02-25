@@ -118,7 +118,7 @@ func (mg *midtransGateway) validate(req dto.MidtransNotificationPayload) error {
 	checkKey := req.OrderID + req.StatusCode + req.GrossAmount + mg.serverKey
 	constructedKey := sha512.Sum512([]byte(checkKey))
 
-	if fmt.Sprint(constructedKey) == req.SignatureKey {
+	if fmt.Sprintf("%x", constructedKey) == req.SignatureKey {
 		return nil
 	}
 

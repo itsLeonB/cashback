@@ -168,12 +168,11 @@ func (us *userServiceImpl) SendSubscriptionNearingDueDateMail(ctx context.Contex
 		return err
 	}
 
-	subject := fmt.Sprintf(`Your Cashus subscription is nearing its payment due date.
-Please make a payment soon to keep your benefits.
-View your current subscription: %s/subscription`, config.Global.ClientUrls[0])
+	subscriptionURL := fmt.Sprintf("%s/subscription", config.Global.ClientUrls[0])
 
 	mailMsg := mail.MailMessage{
-		Subject: subject,
+		Subject:     "Your Cashus subscription payment is due soon",
+		TextContent: fmt.Sprintf("Please make a payment soon to keep your benefits.\nView your current subscription: %s", subscriptionURL),
 	}
 
 	for _, user := range usrs {

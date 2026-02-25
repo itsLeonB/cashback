@@ -34,6 +34,8 @@ type SubscriptionResponse struct {
 	BillUploadsMonthly int       `json:"billUploadsMonthly"`
 	Status             string    `json:"status"`
 	PaymentDueDays     int       `json:"paymentDueDays"`
+	CurrentPeriodStart time.Time `json:"currentPeriodStart,omitzero"`
+	CurrentPeriodEnd   time.Time `json:"currentPeriodEnd,omitzero"`
 }
 
 type UpdateSubscriptionRequest struct {

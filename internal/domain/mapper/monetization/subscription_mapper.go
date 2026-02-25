@@ -34,5 +34,7 @@ func SubscriptionToResponse(s entity.Subscription, t time.Time) dto.Subscription
 		BillUploadsMonthly: int(s.PlanVersion.BillUploadsMonthly),
 		Status:             string(s.Status),
 		PaymentDueDays:     dueDays,
+		CurrentPeriodStart: s.CurrentPeriodStart.Time,
+		CurrentPeriodEnd:   s.CurrentPeriodEnd.Time,
 	}
 }

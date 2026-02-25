@@ -52,7 +52,7 @@ type paymentService struct {
 }
 
 func (ps *paymentService) IsReady() error {
-	if !config.Global.Flag.SubscriptionPurchaseEnabled {
+	if !config.Global.SubscriptionPurchaseEnabled {
 		return ungerr.ForbiddenError("feature is disabled")
 	}
 	if ps.gateway == nil {

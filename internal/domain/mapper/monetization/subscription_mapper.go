@@ -17,7 +17,7 @@ func SimpleSubscriptionMapper() func(entity.Subscription) dto.SubscriptionRespon
 
 func SubscriptionToResponse(s entity.Subscription, t time.Time) dto.SubscriptionResponse {
 	dueDays := -1
-	if s.CurrentPeriodEnd.Valid && s.CurrentPeriodEnd.Time.After(t) {
+	if s.CurrentPeriodEnd.Valid && !s.CurrentPeriodEnd.Time.Before(t) {
 		dueHours := s.CurrentPeriodEnd.Time.Sub(t).Hours()
 		dueDays = int(math.Ceil(dueHours / 24))
 	}

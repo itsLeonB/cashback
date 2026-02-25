@@ -12,6 +12,7 @@ import (
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	mapper "github.com/itsLeonB/cashback/internal/domain/mapper/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/message"
+	repository "github.com/itsLeonB/cashback/internal/domain/repository/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization/subscription"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
@@ -35,17 +36,18 @@ type SubscriptionService interface {
 	TransitionStatus(ctx context.Context, msg message.SubscriptionStatusTransitioned) error
 	CreateNew(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.NewPaymentRequest, error)
 	GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error)
+	UpdatePastDues(ctx context.Context) error
 }
 
 type subscriptionService struct {
 	transactor       crud.Transactor
-	subscriptionRepo crud.Repository[entity.Subscription]
+	subscriptionRepo repository.SubscriptionRepository
 	planVersionRepo  crud.Repository[entity.PlanVersion]
 }
 
 func NewSubscriptionService(
 	transactor crud.Transactor,
-	repo crud.Repository[entity.Subscription],
+	repo repository.SubscriptionRepository,
 	planVersionRepo crud.Repository[entity.PlanVersion],
 ) *subscriptionService {
 	return &subscriptionService{
@@ -298,4 +300,8 @@ func (ss *subscriptionService) GetByID(ctx context.Context, id uuid.UUID, forUpd
 		return entity.Subscription{}, ungerr.NotFoundError("subscription is not found")
 	}
 	return subscription, nil
+}
+
+func (ss *subscriptionService) UpdatePastDues(ctx context.Context) error {
+	return ss.subscriptionRepo.UpdatePastDues(ctx)
 }

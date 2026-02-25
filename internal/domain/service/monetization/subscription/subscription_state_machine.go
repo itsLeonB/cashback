@@ -1,9 +1,6 @@
 package subscription
 
 import (
-	"database/sql"
-	"time"
-
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	"github.com/itsLeonB/ungerr"
 )
@@ -14,22 +11,15 @@ func TransitionStatus(sub entity.Subscription, newStatus entity.SubscriptionStat
 		return entity.Subscription{}, err
 	}
 
-	if err = transitioner.Transition(sub.Payments, newStatus); err != nil {
+	payment := latestPayment(sub.Payments)
+
+	if err = transitioner.Transition(payment, newStatus); err != nil {
 		return entity.Subscription{}, err
 	}
 
 	if newStatus == entity.SubscriptionActive {
-		endsAt := time.Now()
-		switch sub.PlanVersion.BillingInterval {
-		case entity.MonthlyInterval:
-			endsAt = endsAt.AddDate(0, 1, 0)
-		case entity.YearlyInterval:
-			endsAt = endsAt.AddDate(1, 0, 0)
-		}
-		sub.EndsAt = sql.NullTime{
-			Time:  endsAt,
-			Valid: true,
-		}
+		sub.CurrentPeriodStart = payment.StartsAt
+		sub.CurrentPeriodEnd = payment.EndsAt
 	}
 
 	sub.Status = newStatus
@@ -51,15 +41,15 @@ func getTransitioner(oldStatus entity.SubscriptionStatus) (transitioner, error) 
 }
 
 type transitioner interface {
-	Transition(payments []entity.Payment, target entity.SubscriptionStatus) error
+	Transition(payment entity.Payment, target entity.SubscriptionStatus) error
 }
 
 type fromIncomplete struct{}
 
-func (fromIncomplete) Transition(payments []entity.Payment, target entity.SubscriptionStatus) error {
+func (fromIncomplete) Transition(payment entity.Payment, target entity.SubscriptionStatus) error {
 	switch target {
 	case entity.SubscriptionActive, entity.SubscriptionCanceled:
-		return isValidPayment(latestPayment(payments))
+		return isValidPayment(payment)
 	default:
 		return ungerr.Unknownf("illegal state transition from incomplete to %s", target)
 	}
@@ -67,12 +57,12 @@ func (fromIncomplete) Transition(payments []entity.Payment, target entity.Subscr
 
 type fromActive struct{}
 
-func (fromActive) Transition(payments []entity.Payment, target entity.SubscriptionStatus) error {
+func (fromActive) Transition(payment entity.Payment, target entity.SubscriptionStatus) error {
 	switch target {
 	case entity.SubscriptionPastDuePayment:
-		return isInvalidPayment(latestPayment(payments))
+		return isInvalidPayment(payment)
 	case entity.SubscriptionCanceled:
-		return isValidPayment(latestPayment(payments))
+		return isValidPayment(payment)
 	default:
 		return ungerr.Unknownf("illegal state transition from active to %s", target)
 	}
@@ -80,12 +70,12 @@ func (fromActive) Transition(payments []entity.Payment, target entity.Subscripti
 
 type fromPastDue struct{}
 
-func (fromPastDue) Transition(payments []entity.Payment, target entity.SubscriptionStatus) error {
+func (fromPastDue) Transition(payment entity.Payment, target entity.SubscriptionStatus) error {
 	switch target {
 	case entity.SubscriptionActive:
-		return isValidPayment(latestPayment(payments))
+		return isValidPayment(payment)
 	case entity.SubscriptionCanceled:
-		return isInvalidPayment(latestPayment(payments))
+		return isInvalidPayment(payment)
 	default:
 		return ungerr.Unknownf("illegal state transition from past due to %s", target)
 	}

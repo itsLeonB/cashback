@@ -20,12 +20,14 @@ const (
 
 type Subscription struct {
 	crud.BaseEntity
-	ProfileID     uuid.UUID
-	PlanVersionID uuid.UUID
-	EndsAt        sql.NullTime
-	CanceledAt    sql.NullTime
-	AutoRenew     bool
-	Status        SubscriptionStatus
+	ProfileID          uuid.UUID
+	PlanVersionID      uuid.UUID
+	EndsAt             sql.NullTime
+	CanceledAt         sql.NullTime
+	AutoRenew          bool
+	Status             SubscriptionStatus
+	CurrentPeriodStart sql.NullTime
+	CurrentPeriodEnd   sql.NullTime
 
 	// Relationships
 	Profile     users.UserProfile
@@ -34,7 +36,7 @@ type Subscription struct {
 }
 
 func (s *Subscription) IsActive(t time.Time) bool {
-	return (!s.EndsAt.Valid || !s.EndsAt.Time.Before(t)) &&
-		(!s.CanceledAt.Valid || !s.CanceledAt.Time.Before(t)) &&
+	return (s.CurrentPeriodEnd.Valid && s.CurrentPeriodEnd.Time.After(t)) &&
+		(s.CurrentPeriodStart.Valid && s.CurrentPeriodStart.Time.Before(t)) &&
 		(s.Status == SubscriptionActive || s.Status == SubscriptionPastDuePayment)
 }

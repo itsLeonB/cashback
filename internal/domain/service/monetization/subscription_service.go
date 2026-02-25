@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,33 +27,31 @@ type SubscriptionService interface {
 	Delete(ctx context.Context, id uuid.UUID) (dto.SubscriptionResponse, error)
 
 	// Public
-	CreatePurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error)
 	GetActiveDetails(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error)
 
 	// Internal
 	AttachDefaultSubscription(ctx context.Context, profileID uuid.UUID) error
 	GetCurrentSubscription(ctx context.Context, profileID uuid.UUID) (entity.Subscription, error)
 	TransitionStatus(ctx context.Context, msg message.SubscriptionStatusTransitioned) error
+	CreateNew(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.NewPaymentRequest, error)
+	GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error)
 }
 
 type subscriptionService struct {
 	transactor       crud.Transactor
 	subscriptionRepo crud.Repository[entity.Subscription]
 	planVersionRepo  crud.Repository[entity.PlanVersion]
-	paymentService   PaymentService
 }
 
 func NewSubscriptionService(
 	transactor crud.Transactor,
 	repo crud.Repository[entity.Subscription],
 	planVersionRepo crud.Repository[entity.PlanVersion],
-	paymentService PaymentService,
 ) *subscriptionService {
 	return &subscriptionService{
 		transactor,
 		repo,
 		planVersionRepo,
-		paymentService,
 	}
 }
 
@@ -96,7 +95,7 @@ func (ss *subscriptionService) GetList(ctx context.Context) ([]dto.SubscriptionR
 }
 
 func (ss *subscriptionService) GetOne(ctx context.Context, id uuid.UUID) (dto.SubscriptionResponse, error) {
-	subscription, err := ss.getByID(ctx, id, false)
+	subscription, err := ss.GetByID(ctx, id, false)
 	if err != nil {
 		return dto.SubscriptionResponse{}, err
 	}
@@ -107,7 +106,7 @@ func (ss *subscriptionService) GetOne(ctx context.Context, id uuid.UUID) (dto.Su
 func (ss *subscriptionService) Update(ctx context.Context, req dto.UpdateSubscriptionRequest) (dto.SubscriptionResponse, error) {
 	var resp dto.SubscriptionResponse
 	err := ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		subscription, err := ss.getByID(ctx, req.ID, true)
+		subscription, err := ss.GetByID(ctx, req.ID, true)
 		if err != nil {
 			return err
 		}
@@ -140,7 +139,7 @@ func (ss *subscriptionService) Update(ctx context.Context, req dto.UpdateSubscri
 func (ss *subscriptionService) Delete(ctx context.Context, id uuid.UUID) (dto.SubscriptionResponse, error) {
 	var resp dto.SubscriptionResponse
 	err := ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		subscription, err := ss.getByID(ctx, id, true)
+		subscription, err := ss.GetByID(ctx, id, true)
 		if err != nil {
 			return err
 		}
@@ -184,6 +183,10 @@ func (ss *subscriptionService) GetCurrentSubscription(ctx context.Context, profi
 		return entity.Subscription{}, err
 	}
 
+	sort.Slice(subscriptions, func(i, j int) bool {
+		return subscriptions[i].PlanVersion.Plan.Priority < subscriptions[j].PlanVersion.Plan.Priority
+	})
+
 	now := time.Now()
 	for _, sub := range subscriptions {
 		if sub.IsActive(now) {
@@ -194,12 +197,8 @@ func (ss *subscriptionService) GetCurrentSubscription(ctx context.Context, profi
 	return entity.Subscription{}, nil
 }
 
-func (ss *subscriptionService) CreatePurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error) {
-	if err := ss.paymentService.IsReady(); err != nil {
-		return dto.PaymentResponse{}, err
-	}
-
-	var resp dto.PaymentResponse
+func (ss *subscriptionService) CreateNew(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.NewPaymentRequest, error) {
+	var resp dto.NewPaymentRequest
 	err := ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		planVerSpec := crud.Specification[entity.PlanVersion]{}
 		planVerSpec.Model.ID = req.PlanVersionID
@@ -236,14 +235,13 @@ func (ss *subscriptionService) CreatePurchase(ctx context.Context, req dto.Purch
 			return err
 		}
 
-		newPayment := dto.NewPaymentRequest{
+		resp = dto.NewPaymentRequest{
 			SubscriptionID: insertedSubs.ID,
 			Amount:         planVersion.PriceAmount,
 			Currency:       planVersion.PriceCurrency,
 		}
 
-		resp, err = ss.paymentService.Create(ctx, newPayment)
-		return err
+		return nil
 	})
 	return resp, err
 }
@@ -281,11 +279,11 @@ func (ss *subscriptionService) GetActiveDetails(ctx context.Context, profileID u
 	return mapper.SubscriptionToResponse(sub), nil
 }
 
-func (ss *subscriptionService) getByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error) {
+func (ss *subscriptionService) GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error) {
 	spec := crud.Specification[entity.Subscription]{}
 	spec.Model.ID = id
 	spec.ForUpdate = forUpdate
-	spec.PreloadRelations = []string{"Profile", "PlanVersion.Plan"}
+	spec.PreloadRelations = []string{"Profile", "PlanVersion", "PlanVersion.Plan"}
 	subscription, err := ss.subscriptionRepo.FindFirst(ctx, spec)
 	if err != nil {
 		return entity.Subscription{}, err

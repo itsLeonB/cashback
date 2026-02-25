@@ -21,7 +21,7 @@ import (
 
 type PaymentService interface {
 	IsReady() error
-	Create(ctx context.Context, req dto.NewPaymentRequest) (dto.PaymentResponse, error)
+	NewPurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error)
 	HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error
 }
 
@@ -30,20 +30,23 @@ func NewPaymentService(
 	transactor crud.Transactor,
 	paymentRepo crud.Repository[entity.Payment],
 	taskQueue queue.TaskQueue,
+	subscriptionSvc SubscriptionService,
 ) *paymentService {
 	return &paymentService{
 		gateway,
 		transactor,
 		paymentRepo,
 		taskQueue,
+		subscriptionSvc,
 	}
 }
 
 type paymentService struct {
-	gateway     payment.Gateway
-	transactor  crud.Transactor
-	paymentRepo crud.Repository[entity.Payment]
-	taskQueue   queue.TaskQueue
+	gateway         payment.Gateway
+	transactor      crud.Transactor
+	paymentRepo     crud.Repository[entity.Payment]
+	taskQueue       queue.TaskQueue
+	subscriptionSvc SubscriptionService
 }
 
 func (ps *paymentService) IsReady() error {
@@ -53,36 +56,49 @@ func (ps *paymentService) IsReady() error {
 	return nil
 }
 
-func (ps *paymentService) Create(ctx context.Context, req dto.NewPaymentRequest) (dto.PaymentResponse, error) {
+func (ps *paymentService) NewPurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error) {
+	if err := ps.IsReady(); err != nil {
+		return dto.PaymentResponse{}, err
+	}
+
 	var resp dto.PaymentResponse
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		newPayment := entity.Payment{
-			SubscriptionID: req.SubscriptionID,
-			Amount:         req.Amount,
-			Currency:       req.Currency,
-			Status:         entity.PendingPayment,
-			Gateway:        ps.gateway.Provider(),
-		}
-
-		pendingPayment, err := ps.paymentRepo.Insert(ctx, newPayment)
+		paymentRequest, err := ps.subscriptionSvc.CreateNew(ctx, req)
 		if err != nil {
 			return err
 		}
 
-		requestedPayment, err := ps.gateway.CreateTransaction(ctx, pendingPayment)
-		if err != nil {
-			return err
-		}
-
-		requestedPayment, err = ps.paymentRepo.Update(ctx, requestedPayment)
-		if err != nil {
-			return err
-		}
-
-		resp = mapper.PaymentToResponse(requestedPayment)
-		return nil
+		resp, err = ps.create(ctx, paymentRequest)
+		return err
 	})
 	return resp, err
+}
+
+func (ps *paymentService) create(ctx context.Context, req dto.NewPaymentRequest) (dto.PaymentResponse, error) {
+	newPayment := entity.Payment{
+		SubscriptionID: req.SubscriptionID,
+		Amount:         req.Amount,
+		Currency:       req.Currency,
+		Status:         entity.PendingPayment,
+		Gateway:        ps.gateway.Provider(),
+	}
+
+	pendingPayment, err := ps.paymentRepo.Insert(ctx, newPayment)
+	if err != nil {
+		return dto.PaymentResponse{}, err
+	}
+
+	requestedPayment, err := ps.gateway.CreateTransaction(ctx, pendingPayment)
+	if err != nil {
+		return dto.PaymentResponse{}, err
+	}
+
+	requestedPayment, err = ps.paymentRepo.Update(ctx, requestedPayment)
+	if err != nil {
+		return dto.PaymentResponse{}, err
+	}
+
+	return mapper.PaymentToResponse(requestedPayment), nil
 }
 
 func (ps *paymentService) HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error {
@@ -119,7 +135,21 @@ func (ps *paymentService) HandleNotification(ctx context.Context, req dto.Midtra
 			return nil
 		}
 
-		if err = ps.updatePaymentStatus(ctx, payment, newStatus, err); err != nil {
+		subs, err := ps.subscriptionSvc.GetByID(ctx, payment.SubscriptionID, false)
+		if err != nil {
+			return err
+		}
+
+		startsAt := time.Now()
+		endsAt := startsAt
+		switch subs.PlanVersion.BillingInterval {
+		case entity.MonthlyInterval:
+			endsAt = endsAt.AddDate(0, 1, 0)
+		case entity.YearlyInterval:
+			endsAt = endsAt.AddDate(1, 0, 0)
+		}
+
+		if err = ps.updatePaymentStatus(ctx, payment, newStatus, err, startsAt, endsAt); err != nil {
 			return err
 		}
 
@@ -127,7 +157,13 @@ func (ps *paymentService) HandleNotification(ctx context.Context, req dto.Midtra
 	})
 }
 
-func (ps *paymentService) updatePaymentStatus(ctx context.Context, payment entity.Payment, newStatus entity.PaymentStatus, statusErr error) error {
+func (ps *paymentService) updatePaymentStatus(
+	ctx context.Context,
+	payment entity.Payment,
+	newStatus entity.PaymentStatus,
+	statusErr error,
+	startsAt, endsAt time.Time,
+) error {
 	payment.Status = newStatus
 
 	if newStatus == entity.ErrorPayment && statusErr != nil {
@@ -140,6 +176,14 @@ func (ps *paymentService) updatePaymentStatus(ctx context.Context, payment entit
 	if newStatus == entity.PaidPayment {
 		payment.PaidAt = sql.NullTime{
 			Time:  time.Now(),
+			Valid: true,
+		}
+		payment.StartsAt = sql.NullTime{
+			Time:  startsAt,
+			Valid: true,
+		}
+		payment.EndsAt = sql.NullTime{
+			Time:  endsAt,
 			Valid: true,
 		}
 	}

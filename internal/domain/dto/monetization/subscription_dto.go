@@ -33,6 +33,7 @@ type SubscriptionResponse struct {
 	BillUploadsDaily   int       `json:"billUploadsDaily"`
 	BillUploadsMonthly int       `json:"billUploadsMonthly"`
 	Status             string    `json:"status"`
+	PaymentDueDays     int       `json:"paymentDueDays"`
 }
 
 type UpdateSubscriptionRequest struct {

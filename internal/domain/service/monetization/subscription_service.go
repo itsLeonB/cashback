@@ -80,7 +80,7 @@ func (ss *subscriptionService) Create(ctx context.Context, req dto.NewSubscripti
 		return dto.SubscriptionResponse{}, err
 	}
 
-	return mapper.SubscriptionToResponse(insertedSubscription), nil
+	return mapper.SubscriptionToResponse(insertedSubscription, time.Now()), nil
 }
 
 func (ss *subscriptionService) GetList(ctx context.Context) ([]dto.SubscriptionResponse, error) {
@@ -91,7 +91,7 @@ func (ss *subscriptionService) GetList(ctx context.Context) ([]dto.SubscriptionR
 		return nil, err
 	}
 
-	return ezutil.MapSlice(subscriptions, mapper.SubscriptionToResponse), nil
+	return ezutil.MapSlice(subscriptions, mapper.SimpleSubscriptionMapper()), nil
 }
 
 func (ss *subscriptionService) GetOne(ctx context.Context, id uuid.UUID) (dto.SubscriptionResponse, error) {
@@ -100,7 +100,7 @@ func (ss *subscriptionService) GetOne(ctx context.Context, id uuid.UUID) (dto.Su
 		return dto.SubscriptionResponse{}, err
 	}
 
-	return mapper.SubscriptionToResponse(subscription), nil
+	return mapper.SubscriptionToResponse(subscription, time.Now()), nil
 }
 
 func (ss *subscriptionService) Update(ctx context.Context, req dto.UpdateSubscriptionRequest) (dto.SubscriptionResponse, error) {
@@ -130,7 +130,7 @@ func (ss *subscriptionService) Update(ctx context.Context, req dto.UpdateSubscri
 			return err
 		}
 
-		resp = mapper.SubscriptionToResponse(updatedSubscription)
+		resp = mapper.SubscriptionToResponse(updatedSubscription, time.Now())
 		return nil
 	})
 	return resp, err
@@ -148,7 +148,7 @@ func (ss *subscriptionService) Delete(ctx context.Context, id uuid.UUID) (dto.Su
 			return err
 		}
 
-		resp = mapper.SubscriptionToResponse(subscription)
+		resp = mapper.SubscriptionToResponse(subscription, time.Now())
 		return nil
 	})
 	return resp, err
@@ -282,7 +282,7 @@ func (ss *subscriptionService) GetSubscribedDetails(ctx context.Context, profile
 		return dto.SubscriptionResponse{}, err
 	}
 
-	return mapper.SubscriptionToResponse(sub), nil
+	return mapper.SubscriptionToResponse(sub, time.Now()), nil
 }
 
 func (ss *subscriptionService) GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error) {

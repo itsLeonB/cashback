@@ -225,6 +225,7 @@ func (ss *subscriptionService) CreateNew(ctx context.Context, req dto.PurchaseSu
 			return ungerr.NotFoundError(fmt.Sprintf("plan version ID %s is not found", req.PlanVersionID))
 		}
 
+		var newSubscription entity.Subscription
 		subsSpec := crud.Specification[entity.Subscription]{}
 		subsSpec.Model.ProfileID = req.ProfileID
 		subsSpec.Model.PlanVersionID = req.PlanVersionID
@@ -236,21 +237,29 @@ func (ss *subscriptionService) CreateNew(ctx context.Context, req dto.PurchaseSu
 			if sub.Status == entity.SubscriptionActive || sub.Status == entity.SubscriptionPastDuePayment {
 				return ungerr.ConflictError("user still have existing subscription")
 			}
+			if sub.Status == entity.SubscriptionIncompletePayment {
+				newSubscription = sub
+			}
 		}
 
-		newSubscription := entity.Subscription{
-			ProfileID:     req.ProfileID,
-			PlanVersionID: req.PlanVersionID,
-			Status:        entity.SubscriptionIncompletePayment,
-		}
-
-		insertedSubs, err := ss.subscriptionRepo.Insert(ctx, newSubscription)
-		if err != nil {
-			return err
+		var subID uuid.UUID
+		if newSubscription.IsZero() {
+			newSubscription = entity.Subscription{
+				ProfileID:     req.ProfileID,
+				PlanVersionID: req.PlanVersionID,
+				Status:        entity.SubscriptionIncompletePayment,
+			}
+			insertedSubs, err := ss.subscriptionRepo.Insert(ctx, newSubscription)
+			if err != nil {
+				return err
+			}
+			subID = insertedSubs.ID
+		} else {
+			subID = newSubscription.ID
 		}
 
 		resp = dto.NewPaymentRequest{
-			SubscriptionID: insertedSubs.ID,
+			SubscriptionID: subID,
 			Amount:         planVersion.PriceAmount,
 			Currency:       planVersion.PriceCurrency,
 		}

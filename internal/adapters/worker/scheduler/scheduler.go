@@ -20,39 +20,30 @@ type Scheduler struct {
 
 func Setup(providers *provider.Providers) (*Scheduler, error) {
 	s := &Scheduler{providers.Services.ExpenseBill, providers.Services.Subscription, cron.New()}
+	schedules := s.getSchedules()
 
 	var err error
-	if _, e := s.cron.AddFunc("0 21 * * *", s.doCleanup); e != nil {
-		err = errors.Join(err, e)
+	for _, schedule := range schedules {
+		if _, e := s.cron.AddFunc(schedule.cronSpec, s.jobWrapper(schedule.jobName, schedule.jobFn)); e != nil {
+			err = errors.Join(err, e)
+		}
 	}
-
-	if _, e := s.cron.AddFunc("0 21 * * *", s.doPastDueUpdates); e != nil {
-		err = errors.Join(err, e)
-	}
-
 	if err != nil {
-		return nil, ungerr.Wrap(err, "error setting up cleanup job")
+		return nil, ungerr.Wrap(err, "error scheduling jobs")
 	}
 
 	return s, nil
 }
 
-func (s *Scheduler) doCleanup() {
-	logger.Info("starting daily expense bill cleanup...")
-	if err := s.billSvc.Cleanup(context.Background()); err != nil {
-		logger.Errorf("expense bill cleanup failed: %v", err)
-		return
+func (s *Scheduler) jobWrapper(jobName string, jobFn func(context.Context) error) func() {
+	return func() {
+		logger.Infof("starting %s...", jobName)
+		if err := jobFn(context.Background()); err != nil {
+			logger.Errorf("%s failed: %v", jobName, err)
+			return
+		}
+		logger.Infof("%s success", jobName)
 	}
-	logger.Info("expense bill cleanup success")
-}
-
-func (s *Scheduler) doPastDueUpdates() {
-	logger.Info("starting daily past-due subscription updates...")
-	if err := s.subscriptionSvc.UpdatePastDues(context.Background()); err != nil {
-		logger.Errorf("past-due subscription updates failed: %v", err)
-		return
-	}
-	logger.Info("past-due subscription updates success")
 }
 
 func (s *Scheduler) Start() {

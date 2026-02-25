@@ -16,7 +16,7 @@ type Repositories struct {
 	Transactor crud.Transactor
 
 	// Users
-	User               crud.Repository[users.User]
+	User               repository.UserRepository
 	Profile            repository.ProfileRepository
 	Friendship         repository.FriendshipRepository
 	RelatedProfile     crud.Repository[users.RelatedProfile]
@@ -52,7 +52,7 @@ func ProvideRepositories(db *gorm.DB) *Repositories {
 	return &Repositories{
 		Transactor: crud.NewTransactor(db),
 
-		User:               crud.NewRepository[users.User](db),
+		User:               adapters.NewUserRepository(db),
 		Profile:            adapters.NewProfileRepository(db),
 		Friendship:         adapters.NewFriendshipRepository(db),
 		RelatedProfile:     crud.NewRepository[users.RelatedProfile](db),

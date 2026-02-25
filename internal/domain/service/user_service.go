@@ -5,34 +5,43 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/base64"
+	"fmt"
 	"sort"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/service/mail"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
+	"github.com/itsLeonB/cashback/internal/domain/message"
+	"github.com/itsLeonB/cashback/internal/domain/repository"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 )
 
 type userServiceImpl struct {
 	transactor             crud.Transactor
-	userRepo               crud.Repository[users.User]
+	userRepo               repository.UserRepository
 	profileSvc             ProfileService
 	passwordResetTokenRepo crud.Repository[users.PasswordResetToken]
+	mailSvc                mail.MailService
 }
 
 func NewUserService(
 	transactor crud.Transactor,
-	userRepo crud.Repository[users.User],
+	userRepo repository.UserRepository,
 	profileSvc ProfileService,
 	passwordResetTokenRepo crud.Repository[users.PasswordResetToken],
+	mailSvc mail.MailService,
 ) UserService {
 	return &userServiceImpl{
 		transactor,
 		userRepo,
 		profileSvc,
 		passwordResetTokenRepo,
+		mailSvc,
 	}
 }
 
@@ -151,6 +160,31 @@ func (us *userServiceImpl) ResetPassword(ctx context.Context, userID uuid.UUID, 
 	}
 
 	return updatedUser, nil
+}
+
+func (us *userServiceImpl) SendSubscriptionNearingDueDateMail(ctx context.Context, msg message.SubscriptionNearingDue) error {
+	usrs, err := us.userRepo.FindByIDs(ctx, msg.UserIDs)
+	if err != nil {
+		return err
+	}
+
+	subject := fmt.Sprintf(`Your Cashus subscription is nearing its payment due date.
+Please make a payment soon to keep your benefits.
+View your current subscription: %s/subscription`, config.Global.ClientUrls[0])
+
+	mailMsg := mail.MailMessage{
+		Subject: subject,
+	}
+
+	for _, user := range usrs {
+		mailMsg.RecipientMail = user.Email
+		mailMsg.RecipientName = user.Profile.Name
+		if err := us.mailSvc.Send(ctx, mailMsg); err != nil {
+			logger.Error(err)
+		}
+	}
+
+	return nil
 }
 
 func (us *userServiceImpl) validateToken(resetTokens []users.PasswordResetToken, resetToken string) bool {

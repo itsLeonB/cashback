@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	mapper "github.com/itsLeonB/cashback/internal/domain/mapper/monetization"
@@ -37,23 +39,27 @@ type SubscriptionService interface {
 	CreateNew(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.NewPaymentRequest, error)
 	GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error)
 	UpdatePastDues(ctx context.Context) error
+	PublishSubscriptionDueNotifications(ctx context.Context) error
 }
 
 type subscriptionService struct {
 	transactor       crud.Transactor
 	subscriptionRepo repository.SubscriptionRepository
 	planVersionRepo  crud.Repository[entity.PlanVersion]
+	taskQueue        queue.TaskQueue
 }
 
 func NewSubscriptionService(
 	transactor crud.Transactor,
 	repo repository.SubscriptionRepository,
 	planVersionRepo crud.Repository[entity.PlanVersion],
+	taskQueue queue.TaskQueue,
 ) *subscriptionService {
 	return &subscriptionService{
 		transactor,
 		repo,
 		planVersionRepo,
+		taskQueue,
 	}
 }
 
@@ -304,4 +310,23 @@ func (ss *subscriptionService) GetByID(ctx context.Context, id uuid.UUID, forUpd
 
 func (ss *subscriptionService) UpdatePastDues(ctx context.Context) error {
 	return ss.subscriptionRepo.UpdatePastDues(ctx)
+}
+
+func (ss *subscriptionService) PublishSubscriptionDueNotifications(ctx context.Context) error {
+	subscriptions, err := ss.subscriptionRepo.FindNearingDueDate(ctx)
+	if err != nil {
+		return err
+	}
+
+	userIDs := ezutil.MapSlice(subscriptions, func(sub entity.Subscription) uuid.UUID {
+		return sub.Profile.UserID.UUID
+	})
+
+	logger.Infof("%d is nearing its payment due dates", len(userIDs))
+
+	msg := message.SubscriptionNearingDue{
+		UserIDs: userIDs,
+	}
+
+	return ss.taskQueue.Enqueue(ctx, msg)
 }

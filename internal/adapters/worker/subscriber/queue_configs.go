@@ -60,6 +60,11 @@ func configureQueues(providers *provider.Providers) ([]queueConfig, map[string]i
 			withLogging(message.SubscriptionStatusTransitioned{}.Type(), providers.Services.Subscription.TransitionStatus),
 			3,
 		},
+		{
+			message.SubscriptionNearingDue{}.Type(),
+			withLogging(message.SubscriptionNearingDue{}.Type(), providers.Services.User.SendSubscriptionNearingDueDateMail),
+			3,
+		},
 	}
 
 	queuePriorities := make(map[string]int, len(queues))

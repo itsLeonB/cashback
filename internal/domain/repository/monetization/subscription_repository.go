@@ -10,4 +10,5 @@ import (
 type SubscriptionRepository interface {
 	crud.Repository[entity.Subscription]
 	UpdatePastDues(ctx context.Context) error
+	FindNearingDueDate(ctx context.Context) ([]entity.Subscription, error)
 }

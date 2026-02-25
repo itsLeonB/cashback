@@ -20,6 +20,7 @@ type Services struct {
 	Session service.SessionService
 
 	// Users
+	User              service.UserService
 	Profile           service.ProfileService
 	Friendship        service.FriendshipService
 	FriendshipRequest service.FriendshipRequestService
@@ -64,13 +65,13 @@ func ProvideServices(
 		logger.Error(err)
 	}
 
-	subs := monetization.NewSubscriptionService(repos.Transactor, repos.Subscription, repos.PlanVersion)
+	subs := monetization.NewSubscriptionService(repos.Transactor, repos.Subscription, repos.PlanVersion, coreSvc.Queue)
 	payment := monetization.NewPaymentService(paymentGateway, repos.Transactor, repos.Payment, coreSvc.Queue, subs)
 	subsLimit := service.NewSubscriptionLimitService(subs, repos.ExpenseBill)
 
 	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)
 	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile, subs, subsLimit)
-	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken)
+	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken, coreSvc.Mail)
 	session := service.NewSessionService(jwt, user, repos.Transactor, repos.Session, repos.RefreshToken)
 
 	friendship := service.NewFriendshipService(repos.Transactor, repos.Friendship, profile)
@@ -88,6 +89,7 @@ func ProvideServices(
 		OAuth:   service.NewOAuthService(repos.Transactor, repos.OAuthAccount, coreSvc.State, user, http.DefaultClient, session),
 		Session: session,
 
+		User:              user,
 		Profile:           profile,
 		Friendship:        friendship,
 		FriendshipRequest: friendReq,

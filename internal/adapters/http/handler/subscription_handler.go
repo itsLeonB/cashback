@@ -12,7 +12,8 @@ import (
 )
 
 type SubscriptionHandler struct {
-	svc service.SubscriptionService
+	svc        service.SubscriptionService
+	paymentSvc service.PaymentService
 }
 
 func (sh *SubscriptionHandler) HandleCreatePurchase() gin.HandlerFunc {
@@ -38,17 +39,17 @@ func (sh *SubscriptionHandler) HandleCreatePurchase() gin.HandlerFunc {
 			PlanVersionID: planVersionID,
 		}
 
-		return sh.svc.CreatePurchase(ctx, req)
+		return sh.paymentSvc.NewPurchase(ctx, req)
 	})
 }
 
-func (sh *SubscriptionHandler) HandleGetActiveDetails() gin.HandlerFunc {
+func (sh *SubscriptionHandler) HandleGetSubscribedDetails() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return sh.svc.GetActiveDetails(ctx, profileID)
+		return sh.svc.GetSubscribedDetails(ctx, profileID)
 	})
 }

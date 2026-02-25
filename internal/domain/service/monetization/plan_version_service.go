@@ -3,6 +3,7 @@ package monetization
 import (
 	"context"
 	"database/sql"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -167,12 +168,16 @@ func (pvs *planVersionService) GetActive(ctx context.Context) ([]dto.PlanVersion
 		versionsByPlanID[planVersion.PlanID] = append(versionsByPlanID[planVersion.PlanID], planVersion)
 	}
 
-	responses := make([]dto.PlanVersionResponse, 0, len(versionsByPlanID))
+	responses := make([]entity.PlanVersion, 0, len(versionsByPlanID))
 	for _, versions := range versionsByPlanID {
-		responses = append(responses, mapper.PlanVersionToResponse(versions[0]))
+		responses = append(responses, versions[0])
 	}
 
-	return responses, nil
+	sort.Slice(responses, func(i, j int) bool {
+		return responses[i].Plan.Priority < responses[j].Plan.Priority
+	})
+
+	return ezutil.MapSlice(responses, mapper.PlanVersionToResponse), nil
 }
 
 func (pvs *planVersionService) getByID(ctx context.Context, id uuid.UUID, forUpdate bool, relations []string) (entity.PlanVersion, error) {

@@ -32,6 +32,7 @@ type SubscriptionResponse struct {
 	AutoRenew          bool      `json:"autoRenew"`
 	BillUploadsDaily   int       `json:"billUploadsDaily"`
 	BillUploadsMonthly int       `json:"billUploadsMonthly"`
+	Status             string    `json:"status"`
 }
 
 type UpdateSubscriptionRequest struct {

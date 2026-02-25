@@ -38,7 +38,7 @@ func ProvideHandlers(services *provider.Services) *Handlers {
 		&ProfileTransferMethodHandler{services.ProfileTransferMethod},
 		NewNotificationHandler(services.Notification),
 		NewPushSubscriptionHandler(services.PushNotification),
-		&SubscriptionHandler{services.Subscription},
+		&SubscriptionHandler{services.Subscription, services.Payment},
 		&PaymentHandler{services.Payment},
 		&PlanHandler{services.PlanVersion},
 	}

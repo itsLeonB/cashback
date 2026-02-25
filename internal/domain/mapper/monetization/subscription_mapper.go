@@ -18,5 +18,6 @@ func SubscriptionToResponse(s entity.Subscription) dto.SubscriptionResponse {
 		AutoRenew:          s.AutoRenew,
 		BillUploadsDaily:   int(s.PlanVersion.BillUploadsDaily),
 		BillUploadsMonthly: int(s.PlanVersion.BillUploadsMonthly),
+		Status:             string(s.Status),
 	}
 }

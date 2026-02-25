@@ -28,7 +28,7 @@ func NewSubscriptionLimitService(
 }
 
 func (sls *subscriptionLimitService) GetCurrent(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error) {
-	currentSubs, err := sls.subscriptionSvc.GetCurrentSubscription(ctx, profileID)
+	currentSubs, err := sls.subscriptionSvc.GetCurrentSubscription(ctx, profileID, true)
 	if err != nil {
 		return dto.SubscriptionResponse{}, err
 	}
@@ -59,7 +59,7 @@ func (sls *subscriptionLimitService) GetCurrent(ctx context.Context, profileID u
 }
 
 func (sls *subscriptionLimitService) CheckUploadLimit(ctx context.Context, profileID uuid.UUID) error {
-	subscription, err := sls.subscriptionSvc.GetCurrentSubscription(ctx, profileID)
+	subscription, err := sls.subscriptionSvc.GetCurrentSubscription(ctx, profileID, true)
 	if err != nil {
 		return err
 	}

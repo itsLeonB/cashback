@@ -27,11 +27,11 @@ type SubscriptionService interface {
 	Delete(ctx context.Context, id uuid.UUID) (dto.SubscriptionResponse, error)
 
 	// Public
-	GetActiveDetails(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error)
+	GetSubscribedDetails(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error)
 
 	// Internal
 	AttachDefaultSubscription(ctx context.Context, profileID uuid.UUID) error
-	GetCurrentSubscription(ctx context.Context, profileID uuid.UUID) (entity.Subscription, error)
+	GetCurrentSubscription(ctx context.Context, profileID uuid.UUID, isActive bool) (entity.Subscription, error)
 	TransitionStatus(ctx context.Context, msg message.SubscriptionStatusTransitioned) error
 	CreateNew(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.NewPaymentRequest, error)
 	GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error)
@@ -173,7 +173,7 @@ func (ss *subscriptionService) AttachDefaultSubscription(ctx context.Context, pr
 	return err
 }
 
-func (ss *subscriptionService) GetCurrentSubscription(ctx context.Context, profileID uuid.UUID) (entity.Subscription, error) {
+func (ss *subscriptionService) GetCurrentSubscription(ctx context.Context, profileID uuid.UUID, isActive bool) (entity.Subscription, error) {
 	spec := crud.Specification[entity.Subscription]{}
 	spec.Model.ProfileID = profileID
 	spec.PreloadRelations = []string{"PlanVersion", "PlanVersion.Plan"}
@@ -189,8 +189,14 @@ func (ss *subscriptionService) GetCurrentSubscription(ctx context.Context, profi
 
 	now := time.Now()
 	for _, sub := range subscriptions {
-		if sub.IsActive(now) {
-			return sub, nil
+		if isActive {
+			if sub.IsActive(now) {
+				return sub, nil
+			}
+		} else {
+			if sub.IsSubscribed(now) {
+				return sub, nil
+			}
 		}
 	}
 
@@ -270,8 +276,8 @@ func (ss *subscriptionService) TransitionStatus(ctx context.Context, msg message
 	})
 }
 
-func (ss *subscriptionService) GetActiveDetails(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error) {
-	sub, err := ss.GetCurrentSubscription(ctx, profileID)
+func (ss *subscriptionService) GetSubscribedDetails(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error) {
+	sub, err := ss.GetCurrentSubscription(ctx, profileID, false)
 	if err != nil {
 		return dto.SubscriptionResponse{}, err
 	}

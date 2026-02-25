@@ -42,5 +42,5 @@ func (s *Subscription) IsActive(t time.Time) bool {
 }
 
 func (s *Subscription) IsSubscribed(t time.Time) bool {
-	return s.PlanVersion.IsDefault || ((!s.CanceledAt.Valid || s.CanceledAt.Time.After(t)) && s.Status != CanceledPayment)
+	return s.PlanVersion.IsDefault || ((!s.CanceledAt.Valid || s.CanceledAt.Time.After(t)) && s.Status != SubscriptionCanceled)
 }

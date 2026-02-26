@@ -14,6 +14,9 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, middlewar
 	{
 		v1 := apiRoutes.Group("/v1")
 		{
+			v1.POST("/payments/midtrans/notifications", handlers.Payment.HandleNotification())
+			v1.GET("/plans", handlers.Plan.HandleGetActive())
+
 			authRoutes := v1.Group("/auth")
 			{
 				authRoutes.POST("/register", handlers.Auth.HandleRegister())
@@ -38,6 +41,7 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, middlewar
 					profileRoutes.POST("/associate", handlers.Profile.HandleAssociate())
 					profileRoutes.POST(transferMethodsRoute, handlers.ProfileTransferMethod.HandleAdd())
 					profileRoutes.GET(transferMethodsRoute, handlers.ProfileTransferMethod.HandleGetAllOwned())
+					profileRoutes.GET("/subscription", handlers.Subscription.HandleGetSubscribedDetails())
 				}
 
 				profilesRoutes := protectedRoutes.Group("/profiles")
@@ -116,6 +120,9 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, middlewar
 					pushRoutes.POST("/subscribe", handlers.PushSubscription.HandleSubscribe())
 					pushRoutes.POST("/unsubscribe", handlers.PushSubscription.HandleUnsubscribe())
 				}
+
+				protectedRoutes.POST(fmt.Sprintf("/plans/:%s/versions/:%s/subscriptions", appconstant.ContextPlanID.String(), appconstant.ContextPlanVersionID.String()), handlers.Subscription.HandleCreatePurchase())
+				protectedRoutes.POST(fmt.Sprintf("/subscriptions/:%s", appconstant.ContextSubscriptionID.String()), handlers.Payment.HandleMakePayment())
 			}
 		}
 	}

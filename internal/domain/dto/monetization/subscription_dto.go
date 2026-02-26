@@ -15,6 +15,12 @@ type NewSubscriptionRequest struct {
 	AutoRenew     bool      `json:"autoRenew"`
 }
 
+type PurchaseSubscriptionRequest struct {
+	ProfileID     uuid.UUID `json:"-"`
+	PlanID        uuid.UUID `json:"-"`
+	PlanVersionID uuid.UUID `json:"-"`
+}
+
 type SubscriptionResponse struct {
 	dto.BaseDTO
 	ProfileID          uuid.UUID `json:"profileId"`
@@ -26,6 +32,10 @@ type SubscriptionResponse struct {
 	AutoRenew          bool      `json:"autoRenew"`
 	BillUploadsDaily   int       `json:"billUploadsDaily"`
 	BillUploadsMonthly int       `json:"billUploadsMonthly"`
+	Status             string    `json:"status"`
+	PaymentDueDays     int       `json:"paymentDueDays"`
+	CurrentPeriodStart time.Time `json:"currentPeriodStart,omitzero"`
+	CurrentPeriodEnd   time.Time `json:"currentPeriodEnd,omitzero"`
 }
 
 type UpdateSubscriptionRequest struct {

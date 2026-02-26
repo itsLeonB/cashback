@@ -21,6 +21,7 @@ require (
 	github.com/itsLeonB/ungerr v0.2.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/midtrans/midtrans-go v1.3.8
 	github.com/openai/openai-go/v2 v2.7.1
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/robfig/cron/v3 v3.0.1

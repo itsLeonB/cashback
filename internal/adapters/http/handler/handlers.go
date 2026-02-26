@@ -18,6 +18,9 @@ type Handlers struct {
 	ProfileTransferMethod *ProfileTransferMethodHandler
 	Notification          *NotificationHandler
 	PushSubscription      *PushSubscriptionHandler
+	Subscription          *SubscriptionHandler
+	Payment               *PaymentHandler
+	Plan                  *PlanHandler
 }
 
 func ProvideHandlers(services *provider.Services) *Handlers {
@@ -35,5 +38,8 @@ func ProvideHandlers(services *provider.Services) *Handlers {
 		&ProfileTransferMethodHandler{services.ProfileTransferMethod},
 		NewNotificationHandler(services.Notification),
 		NewPushSubscriptionHandler(services.PushNotification),
+		&SubscriptionHandler{services.Subscription, services.Payment},
+		&PaymentHandler{services.Payment},
+		&PlanHandler{services.PlanVersion},
 	}
 }

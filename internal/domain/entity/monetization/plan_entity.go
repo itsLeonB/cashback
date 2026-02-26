@@ -13,6 +13,7 @@ type Plan struct {
 	crud.BaseEntity
 	Name     string
 	IsActive bool
+	Priority int
 }
 
 type BillingInterval string

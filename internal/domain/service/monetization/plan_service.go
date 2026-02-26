@@ -40,7 +40,8 @@ func NewPlanService(
 
 func (ps *planService) Create(ctx context.Context, req dto.NewPlanRequest) (dto.PlanResponse, error) {
 	newPlan := entity.Plan{
-		Name: req.Name,
+		Name:     req.Name,
+		Priority: req.Priority,
 	}
 
 	insertedPlan, err := ps.planRepo.Insert(ctx, newPlan)
@@ -80,6 +81,7 @@ func (ps *planService) Update(ctx context.Context, req dto.UpdatePlanRequest) (d
 
 		plan.Name = req.Name
 		plan.IsActive = req.IsActive
+		plan.Priority = req.Priority
 
 		updatedPlan, err := ps.planRepo.Update(ctx, plan)
 		if err != nil {

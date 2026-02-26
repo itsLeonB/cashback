@@ -9,19 +9,22 @@ import (
 )
 
 type NewPlanRequest struct {
-	Name string `json:"name" binding:"required,min=3"`
+	Name     string `json:"name" binding:"required,min=3"`
+	Priority int    `json:"priority" binding:"required"`
 }
 
 type PlanResponse struct {
 	dto.BaseDTO
 	Name     string `json:"name"`
 	IsActive bool   `json:"isActive"`
+	Priority int    `json:"priority"`
 }
 
 type UpdatePlanRequest struct {
 	ID       uuid.UUID `json:"-"`
 	Name     string    `json:"name" binding:"required,min=3"`
 	IsActive bool      `json:"isActive"`
+	Priority int       `json:"priority" binding:"required"`
 }
 
 type NewPlanVersionRequest struct {

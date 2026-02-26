@@ -5,9 +5,11 @@ import (
 
 	appembed "github.com/itsLeonB/cashback"
 	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/cashback/internal/domain/service/fee"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization"
+	"github.com/itsLeonB/cashback/internal/domain/service/monetization/payment"
 	"github.com/itsLeonB/sekure"
 )
 
@@ -18,6 +20,7 @@ type Services struct {
 	Session service.SessionService
 
 	// Users
+	User              service.UserService
 	Profile           service.ProfileService
 	Friendship        service.FriendshipService
 	FriendshipRequest service.FriendshipRequestService
@@ -38,6 +41,7 @@ type Services struct {
 	Plan         monetization.PlanService
 	PlanVersion  monetization.PlanVersionService
 	Subscription monetization.SubscriptionService
+	Payment      monetization.PaymentService
 
 	// Infra
 	Notification     service.NotificationService
@@ -51,16 +55,23 @@ func (s *Services) Shutdown() error {
 func ProvideServices(
 	repos *Repositories,
 	coreSvc *CoreServices,
-	authConfig config.Auth,
-	appConfig config.App,
-	pushConfig config.Push,
 ) *Services {
-	subs := monetization.NewSubscriptionService(repos.Transactor, repos.Subscription, repos.PlanVersion)
+	authConfig := config.Global.Auth
+	appConfig := config.Global.App
+	paymentConfig := config.Global.Payment
+
+	paymentGateway, err := payment.NewGateway(paymentConfig)
+	if err != nil {
+		logger.Error(err)
+	}
+
+	subs := monetization.NewSubscriptionService(repos.Transactor, repos.Subscription, repos.PlanVersion, coreSvc.Queue)
+	payment := monetization.NewPaymentService(paymentGateway, repos.Transactor, repos.Payment, coreSvc.Queue, subs)
 	subsLimit := service.NewSubscriptionLimitService(subs, repos.ExpenseBill)
 
 	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)
 	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile, subs, subsLimit)
-	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken)
+	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken, coreSvc.Mail)
 	session := service.NewSessionService(jwt, user, repos.Transactor, repos.Session, repos.RefreshToken)
 
 	friendship := service.NewFriendshipService(repos.Transactor, repos.Friendship, profile)
@@ -78,6 +89,7 @@ func ProvideServices(
 		OAuth:   service.NewOAuthService(repos.Transactor, repos.OAuthAccount, coreSvc.State, user, http.DefaultClient, session),
 		Session: session,
 
+		User:              user,
 		Profile:           profile,
 		Friendship:        friendship,
 		FriendshipRequest: friendReq,
@@ -95,6 +107,7 @@ func ProvideServices(
 		Plan:         monetization.NewPlanService(repos.Transactor, repos.Plan, repos.PlanVersion),
 		PlanVersion:  monetization.NewPlanVersionService(repos.Transactor, repos.PlanVersion),
 		Subscription: subs,
+		Payment:      payment,
 
 		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense, coreSvc.Queue),
 		PushNotification: pushNotification,

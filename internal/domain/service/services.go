@@ -20,6 +20,7 @@ type UserService interface {
 	ResetPassword(ctx context.Context, userID uuid.UUID, email, resetToken, password string) (users.User, error)
 
 	GetByID(ctx context.Context, id uuid.UUID) (users.User, error)
+	SendSubscriptionNearingDueDateMail(ctx context.Context, msg message.SubscriptionNearingDue) error
 }
 
 type AuthService interface {

@@ -2,37 +2,48 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/domain/service"
+	"github.com/itsLeonB/cashback/internal/domain/service/monetization"
 	"github.com/itsLeonB/cashback/internal/provider"
 	"github.com/itsLeonB/ungerr"
 	"github.com/robfig/cron/v3"
 )
 
 type Scheduler struct {
-	billSvc service.ExpenseBillService
-	cron    *cron.Cron
+	billSvc         service.ExpenseBillService
+	subscriptionSvc monetization.SubscriptionService
+	cron            *cron.Cron
 }
 
 func Setup(providers *provider.Providers) (*Scheduler, error) {
-	s := &Scheduler{providers.Services.ExpenseBill, cron.New()}
+	s := &Scheduler{providers.Services.ExpenseBill, providers.Services.Subscription, cron.New()}
+	schedules := s.getSchedules()
 
-	_, err := s.cron.AddFunc("0 4 * * *", s.doCleanup)
+	var err error
+	for _, schedule := range schedules {
+		if _, e := s.cron.AddFunc(schedule.cronSpec, s.jobWrapper(schedule.jobName, schedule.jobFn)); e != nil {
+			err = errors.Join(err, e)
+		}
+	}
 	if err != nil {
-		return nil, ungerr.Wrap(err, "error setting up cleanup job")
+		return nil, ungerr.Wrap(err, "error scheduling jobs")
 	}
 
 	return s, nil
 }
 
-func (s *Scheduler) doCleanup() {
-	logger.Info("starting daily expense bill cleanup...")
-	if err := s.billSvc.Cleanup(context.Background()); err != nil {
-		logger.Errorf("expense bill cleanup failed: %v", err)
-		return
+func (s *Scheduler) jobWrapper(jobName string, jobFn func(context.Context) error) func() {
+	return func() {
+		logger.Infof("starting %s...", jobName)
+		if err := jobFn(context.Background()); err != nil {
+			logger.Errorf("%s failed: %v", jobName, err)
+			return
+		}
+		logger.Infof("%s success", jobName)
 	}
-	logger.Info("expense bill cleanup success")
 }
 
 func (s *Scheduler) Start() {

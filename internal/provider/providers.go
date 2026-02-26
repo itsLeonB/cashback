@@ -3,7 +3,6 @@ package provider
 import (
 	"errors"
 
-	"github.com/itsLeonB/cashback/internal/core/config"
 	adminConfig "github.com/itsLeonB/cashback/internal/core/config/admin"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/provider/admin"
@@ -55,7 +54,7 @@ func All() (*Providers, error) {
 		DataSources:   dataSources,
 		Repositories:  repos,
 		CoreServices:  coreSvcs,
-		Services:      ProvideServices(repos, coreSvcs, config.Global.Auth, config.Global.App, config.Global.Push),
+		Services:      ProvideServices(repos, coreSvcs),
 		AdminRepos:    adminRepos,
 		AdminServices: admin.ProvideServices(adminRepos, adminConfig.Global),
 	}, nil

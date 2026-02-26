@@ -16,7 +16,7 @@ type Repositories struct {
 	Transactor crud.Transactor
 
 	// Users
-	User               crud.Repository[users.User]
+	User               repository.UserRepository
 	Profile            repository.ProfileRepository
 	Friendship         repository.FriendshipRepository
 	RelatedProfile     crud.Repository[users.RelatedProfile]
@@ -40,7 +40,8 @@ type Repositories struct {
 	// Monetization
 	Plan         crud.Repository[monetization.Plan]
 	PlanVersion  monetizationRepo.PlanVersionRepository
-	Subscription crud.Repository[monetization.Subscription]
+	Subscription monetizationRepo.SubscriptionRepository
+	Payment      crud.Repository[monetization.Payment]
 
 	// Infra
 	Notification     repository.NotificationRepository
@@ -51,7 +52,7 @@ func ProvideRepositories(db *gorm.DB) *Repositories {
 	return &Repositories{
 		Transactor: crud.NewTransactor(db),
 
-		User:               crud.NewRepository[users.User](db),
+		User:               adapters.NewUserRepository(db),
 		Profile:            adapters.NewProfileRepository(db),
 		Friendship:         adapters.NewFriendshipRepository(db),
 		RelatedProfile:     crud.NewRepository[users.RelatedProfile](db),
@@ -72,7 +73,8 @@ func ProvideRepositories(db *gorm.DB) *Repositories {
 
 		Plan:         crud.NewRepository[monetization.Plan](db),
 		PlanVersion:  monetizationAdapter.NewPlanVersionRepository(db),
-		Subscription: crud.NewRepository[monetization.Subscription](db),
+		Subscription: monetizationAdapter.NewSubscriptionRepository(db),
+		Payment:      crud.NewRepository[monetization.Payment](db),
 
 		Notification:     adapters.NewNotificationRepository(db),
 		PushSubscription: adapters.NewPushSubscriptionRepository(db),

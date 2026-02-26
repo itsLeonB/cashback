@@ -11,6 +11,7 @@ func PlanToResponse(p entity.Plan) dto.PlanResponse {
 		BaseDTO:  mapper.BaseToDTO(p.BaseEntity),
 		Name:     p.Name,
 		IsActive: p.IsActive,
+		Priority: p.Priority,
 	}
 }
 

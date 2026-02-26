@@ -15,7 +15,6 @@ import (
 	mapper "github.com/itsLeonB/cashback/internal/domain/mapper/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	repository "github.com/itsLeonB/cashback/internal/domain/repository/monetization"
-	"github.com/itsLeonB/cashback/internal/domain/service/monetization/subscription"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -35,7 +34,6 @@ type SubscriptionService interface {
 	// Internal
 	AttachDefaultSubscription(ctx context.Context, profileID uuid.UUID) error
 	GetCurrentSubscription(ctx context.Context, profileID uuid.UUID, isActive bool) (entity.Subscription, error)
-	TransitionStatus(ctx context.Context, msg message.SubscriptionStatusTransitioned) error
 	CreateNew(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.NewPaymentRequest, error)
 	GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error)
 	UpdatePastDues(ctx context.Context) error
@@ -268,30 +266,6 @@ func (ss *subscriptionService) CreateNew(ctx context.Context, req dto.PurchaseSu
 		return nil
 	})
 	return resp, err
-}
-
-func (ss *subscriptionService) TransitionStatus(ctx context.Context, msg message.SubscriptionStatusTransitioned) error {
-	return ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		spec := crud.Specification[entity.Subscription]{}
-		spec.Model.ID = msg.ID
-		spec.ForUpdate = true
-		spec.PreloadRelations = []string{"Payments", "PlanVersion"}
-		subs, err := ss.subscriptionRepo.FindFirst(ctx, spec)
-		if err != nil {
-			return err
-		}
-		if subs.IsZero() {
-			return ungerr.NotFoundError(fmt.Sprintf("subscription ID %s is not found", msg.ID))
-		}
-
-		patchedSubs, err := subscription.TransitionStatus(subs, msg.Status)
-		if err != nil {
-			return err
-		}
-
-		_, err = ss.subscriptionRepo.Update(ctx, patchedSubs)
-		return err
-	})
 }
 
 func (ss *subscriptionService) GetSubscribedDetails(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error) {

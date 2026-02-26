@@ -56,11 +56,6 @@ func configureQueues(providers *provider.Providers) ([]queueConfig, map[string]i
 			3,
 		},
 		{
-			message.SubscriptionStatusTransitioned{}.Type(),
-			withLogging(message.SubscriptionStatusTransitioned{}.Type(), providers.Services.Subscription.TransitionStatus),
-			3,
-		},
-		{
 			message.SubscriptionNearingDue{}.Type(),
 			withLogging(message.SubscriptionNearingDue{}.Type(), providers.Services.User.SendSubscriptionNearingDueDateMail),
 			3,

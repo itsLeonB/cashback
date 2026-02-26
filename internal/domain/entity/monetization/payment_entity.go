@@ -16,6 +16,7 @@ const (
 	PaidPayment       = "paid"
 	CanceledPayment   = "canceled"
 	ErrorPayment      = "error"
+	ExpiredPayment    = "expired"
 )
 
 type Payment struct {
@@ -32,6 +33,11 @@ type Payment struct {
 	EndsAt                sql.NullTime
 	GatewayEventID        sql.NullString
 	PaidAt                sql.NullTime
+	ExpiredAt             sql.NullTime
+}
+
+func (p Payment) IsSettleable() bool {
+	return p.Status == PendingPayment || p.Status == ProcessingPayment
 }
 
 func (Payment) TableName() string {

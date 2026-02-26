@@ -51,6 +51,14 @@ func RegisterAdminRoutes(router *gin.Engine, handlers *admin.Handlers, middlewar
 					subscriptionRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextSubscriptionID.String()), handlers.Subscription.HandleDelete())
 				}
 
+				paymentRoutes := protectedRoutes.Group("/payments")
+				{
+					paymentRoutes.GET("", handlers.Payment.HandleGetList())
+					paymentRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextPaymentID.String()), handlers.Payment.HandleGetOne())
+					paymentRoutes.PUT(fmt.Sprintf("/:%s", appconstant.ContextPaymentID.String()), handlers.Payment.HandleUpdate())
+					paymentRoutes.DELETE(fmt.Sprintf("/:%s", appconstant.ContextPaymentID.String()), handlers.Payment.HandleDelete())
+				}
+
 				profileRoutes := protectedRoutes.Group("/profiles")
 				{
 					profileRoutes.GET("", handlers.Profile.HandleGetList())

@@ -17,6 +17,7 @@ const (
 	ContextPlanID         ctxKey = "planID"
 	ContextPlanVersionID  ctxKey = "planVersionID"
 	ContextSubscriptionID ctxKey = "subscriptionID"
+	ContextPaymentID      ctxKey = "paymentID"
 
 	ContextSessionID ctxKey = "sessionID"
 	ContextExp       ctxKey = "exp"

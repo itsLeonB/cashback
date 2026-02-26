@@ -13,7 +13,6 @@ import (
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	mapper "github.com/itsLeonB/cashback/internal/domain/mapper/monetization"
-	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization/payment"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
@@ -21,10 +20,15 @@ import (
 )
 
 type PaymentService interface {
-	IsReady() error
 	NewPurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error)
 	HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error
 	MakePayment(ctx context.Context, subscriptionID uuid.UUID) (dto.PaymentResponse, error)
+
+	// Admin
+	GetList(ctx context.Context) ([]dto.PaymentResponse, error)
+	GetOne(ctx context.Context, id uuid.UUID) (dto.PaymentResponse, error)
+	Update(ctx context.Context, req dto.UpdatePaymentRequest) (dto.PaymentResponse, error)
+	Delete(ctx context.Context, id uuid.UUID) (dto.PaymentResponse, error)
 }
 
 func NewPaymentService(
@@ -51,7 +55,7 @@ type paymentService struct {
 	subscriptionSvc SubscriptionService
 }
 
-func (ps *paymentService) IsReady() error {
+func (ps *paymentService) isReady() error {
 	if !config.Global.SubscriptionPurchaseEnabled {
 		return ungerr.ForbiddenError("feature is disabled")
 	}
@@ -62,7 +66,7 @@ func (ps *paymentService) IsReady() error {
 }
 
 func (ps *paymentService) NewPurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error) {
-	if err := ps.IsReady(); err != nil {
+	if err := ps.isReady(); err != nil {
 		return dto.PaymentResponse{}, err
 	}
 
@@ -86,6 +90,10 @@ func (ps *paymentService) create(ctx context.Context, req dto.NewPaymentRequest)
 		Currency:       req.Currency,
 		Status:         entity.PendingPayment,
 		Gateway:        ps.gateway.Provider(),
+		ExpiredAt: sql.NullTime{
+			Time:  time.Now().Add(24 * time.Hour),
+			Valid: true,
+		},
 	}
 
 	pendingPayment, err := ps.paymentRepo.Insert(ctx, newPayment)
@@ -107,8 +115,16 @@ func (ps *paymentService) create(ctx context.Context, req dto.NewPaymentRequest)
 }
 
 func (ps *paymentService) HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error {
-	if err := ps.IsReady(); err != nil {
+	if err := ps.isReady(); err != nil {
 		return err
+	}
+
+	newStatus, statusErr := ps.gateway.CheckStatus(ctx, req)
+	if statusErr != nil {
+		if newStatus == "" {
+			return statusErr
+		}
+		logger.Error(statusErr)
 	}
 
 	return ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -117,53 +133,68 @@ func (ps *paymentService) HandleNotification(ctx context.Context, req dto.Midtra
 			return err
 		}
 
-		spec := crud.Specification[entity.Payment]{}
-		spec.Model.ID = id
-		spec.Model.Gateway = ps.gateway.Provider()
-		spec.ForUpdate = true
-		payment, err := ps.paymentRepo.FindFirst(ctx, spec)
+		// 1. Fetch payment to extract SubscriptionID (no lock)
+		specInfo := crud.Specification[entity.Payment]{}
+		specInfo.Model.ID = id
+		specInfo.Model.Gateway = ps.gateway.Provider()
+		paymentInfo, err := ps.paymentRepo.FindFirst(ctx, specInfo)
 		if err != nil {
 			return err
 		}
-		if payment.IsZero() {
+		if paymentInfo.IsZero() {
 			return ungerr.NotFoundError(fmt.Sprintf("payment with ID %s is not found", id))
 		}
-		if payment.Status == entity.PaidPayment {
-			return nil
-		}
 
-		newStatus, err := ps.gateway.CheckStatus(ctx, req)
-		if err != nil {
-			logger.Error(err)
-		}
-		if newStatus == "" || newStatus == payment.Status {
-			return nil
-		}
-
-		subs, err := ps.subscriptionSvc.GetByID(ctx, payment.SubscriptionID, false)
+		// 2. Lock Subscription FIRST to prevent deadlocks with MakePayment
+		subs, err := ps.subscriptionSvc.GetByID(ctx, paymentInfo.SubscriptionID, true)
 		if err != nil {
 			return err
 		}
 
-		startsAt := time.Now()
-		endsAt := startsAt
-		switch subs.PlanVersion.BillingInterval {
-		case entity.MonthlyInterval:
-			endsAt = endsAt.AddDate(0, 1, 0)
-		case entity.YearlyInterval:
-			endsAt = endsAt.AddDate(1, 0, 0)
+		// 3. Lock Payment
+		specUpdate := specInfo
+		specUpdate.ForUpdate = true
+		payment, err := ps.paymentRepo.FindFirst(ctx, specUpdate)
+		if err != nil {
+			return err
+		}
+		if !payment.IsSettleable() || newStatus == payment.Status {
+			return nil
 		}
 
-		if err = ps.updatePaymentStatus(ctx, payment, newStatus, err, startsAt, endsAt); err != nil {
+		startsAt, endsAt := subs.ContinuedPeriods()
+
+		if err = ps.updatePaymentStatus(ctx, payment, newStatus, statusErr, startsAt, endsAt); err != nil {
 			return err
 		}
 
-		return ps.queueSubscriptionTransitioned(ctx, newStatus, payment.SubscriptionID)
+		return ps.updateSubscriptionStatus(ctx, subs, newStatus, startsAt, endsAt)
 	})
 }
 
+func (ps *paymentService) updateSubscriptionStatus(
+	ctx context.Context,
+	subs entity.Subscription,
+	newStatus entity.PaymentStatus,
+	startsAt, endsAt time.Time,
+) error {
+	switch newStatus {
+	case entity.PaidPayment:
+		subs.Status = entity.SubscriptionActive
+		subs.CurrentPeriodStart = sql.NullTime{Time: startsAt, Valid: true}
+		subs.CurrentPeriodEnd = sql.NullTime{Time: endsAt, Valid: true}
+		return ps.subscriptionSvc.Save(ctx, subs)
+	case entity.ErrorPayment, entity.CanceledPayment, entity.ExpiredPayment:
+		if subs.Status == entity.SubscriptionIncompletePayment {
+			subs.Status = entity.SubscriptionCanceled
+			return ps.subscriptionSvc.Save(ctx, subs)
+		}
+	}
+	return nil
+}
+
 func (ps *paymentService) MakePayment(ctx context.Context, subscriptionID uuid.UUID) (dto.PaymentResponse, error) {
-	if err := ps.IsReady(); err != nil {
+	if err := ps.isReady(); err != nil {
 		return dto.PaymentResponse{}, err
 	}
 
@@ -172,6 +203,35 @@ func (ps *paymentService) MakePayment(ctx context.Context, subscriptionID uuid.U
 		subscription, err := ps.subscriptionSvc.GetByID(ctx, subscriptionID, true)
 		if err != nil {
 			return err
+		}
+
+		if subscription.Status == entity.SubscriptionCanceled {
+			return ungerr.ForbiddenError("cannot make payment for canceled subscription")
+		}
+
+		// Check for existing pending/processing payments
+		spec := crud.Specification[entity.Payment]{}
+		spec.Model.SubscriptionID = subscriptionID
+		payments, err := ps.paymentRepo.FindAll(ctx, spec)
+		if err != nil {
+			return err
+		}
+
+		for _, p := range payments {
+			if p.Status == entity.PendingPayment || p.Status == entity.ProcessingPayment {
+				// We found an incomplete payment
+				if p.ExpiredAt.Valid && p.ExpiredAt.Time.Before(time.Now()) {
+					// It's expired, mark it as such to free up the unique constraint
+					p.Status = entity.ExpiredPayment
+					if _, err := ps.paymentRepo.Update(ctx, p); err != nil {
+						return err
+					}
+				} else {
+					// It's still valid, return idempotently
+					resp = mapper.PaymentToResponse(p)
+					return nil
+				}
+			}
 		}
 
 		req := dto.NewPaymentRequest{
@@ -221,27 +281,88 @@ func (ps *paymentService) updatePaymentStatus(
 	return err
 }
 
-func (ps *paymentService) queueSubscriptionTransitioned(ctx context.Context, newStatus entity.PaymentStatus, subID uuid.UUID) error {
-	var subStatus entity.SubscriptionStatus
-	switch newStatus {
-	case entity.PaidPayment:
-		subStatus = entity.SubscriptionActive
-	case entity.CanceledPayment:
-		subStatus = entity.SubscriptionCanceled
-	case entity.ErrorPayment:
-		subStatus = entity.SubscriptionCanceled
-	case entity.PendingPayment:
-		subStatus = entity.SubscriptionIncompletePayment
-	case entity.ProcessingPayment:
-		subStatus = entity.SubscriptionIncompletePayment
-	default:
-		return ungerr.Unknownf("unhandled payment status: %s", newStatus)
+func (ps *paymentService) GetList(ctx context.Context) ([]dto.PaymentResponse, error) {
+	payments, err := ps.paymentRepo.FindAll(ctx, crud.Specification[entity.Payment]{})
+	if err != nil {
+		return nil, err
 	}
 
-	msg := message.SubscriptionStatusTransitioned{
-		ID:     subID,
-		Status: subStatus,
+	return ezutil.MapSlice(payments, mapper.PaymentToResponse), nil
+}
+
+func (ps *paymentService) GetOne(ctx context.Context, id uuid.UUID) (dto.PaymentResponse, error) {
+	payment, err := ps.getByID(ctx, id, false)
+	if err != nil {
+		return dto.PaymentResponse{}, err
 	}
 
-	return ps.taskQueue.Enqueue(ctx, msg)
+	return mapper.PaymentToResponse(payment), nil
+}
+
+func (ps *paymentService) Update(ctx context.Context, req dto.UpdatePaymentRequest) (dto.PaymentResponse, error) {
+	var resp dto.PaymentResponse
+	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		payment, err := ps.getByID(ctx, req.ID, true)
+		if err != nil {
+			return err
+		}
+
+		payment.Status = entity.PaymentStatus(req.Status)
+		payment.Amount = req.Amount
+		payment.Currency = req.Currency
+
+		payment.StartsAt = sql.NullTime{
+			Time:  req.StartsAt,
+			Valid: !req.StartsAt.IsZero(),
+		}
+		payment.EndsAt = sql.NullTime{
+			Time:  req.EndsAt,
+			Valid: !req.EndsAt.IsZero(),
+		}
+		payment.PaidAt = sql.NullTime{
+			Time:  req.PaidAt,
+			Valid: !req.PaidAt.IsZero(),
+		}
+
+		updatedPayment, err := ps.paymentRepo.Update(ctx, payment)
+		if err != nil {
+			return err
+		}
+
+		resp = mapper.PaymentToResponse(updatedPayment)
+		return nil
+	})
+	return resp, err
+}
+
+func (ps *paymentService) Delete(ctx context.Context, id uuid.UUID) (dto.PaymentResponse, error) {
+	var resp dto.PaymentResponse
+	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		payment, err := ps.getByID(ctx, id, true)
+		if err != nil {
+			return err
+		}
+
+		if err = ps.paymentRepo.Delete(ctx, payment); err != nil {
+			return err
+		}
+
+		resp = mapper.PaymentToResponse(payment)
+		return nil
+	})
+	return resp, err
+}
+
+func (ps *paymentService) getByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Payment, error) {
+	spec := crud.Specification[entity.Payment]{}
+	spec.Model.ID = id
+	spec.ForUpdate = forUpdate
+	payment, err := ps.paymentRepo.FindFirst(ctx, spec)
+	if err != nil {
+		return entity.Payment{}, err
+	}
+	if payment.IsZero() {
+		return entity.Payment{}, ungerr.NotFoundError("payment is not found")
+	}
+	return payment, nil
 }

@@ -28,6 +28,7 @@ type PaymentResponse struct {
 	EndsAt                time.Time       `json:"endsAt,omitzero"`
 	GatewayEventID        string          `json:"gatewayEventId,omitzero"`
 	PaidAt                time.Time       `json:"paidAt,omitzero"`
+	ExpiredAt             time.Time       `json:"expiredAt,omitzero"`
 }
 
 type MidtransNotificationPayload struct {
@@ -36,4 +37,14 @@ type MidtransNotificationPayload struct {
 	GrossAmount   string `json:"gross_amount" binding:"required"`
 	SignatureKey  string `json:"signature_key" binding:"required"`
 	StatusMessage string `json:"status_message"`
+}
+
+type UpdatePaymentRequest struct {
+	ID       uuid.UUID       `json:"-"`
+	Status   string          `json:"status" binding:"required,oneof=pending processing paid canceled error expired"`
+	Amount   decimal.Decimal `json:"amount" binding:"required"`
+	Currency string          `json:"currency" binding:"required"`
+	StartsAt time.Time       `json:"startsAt"`
+	EndsAt   time.Time       `json:"endsAt"`
+	PaidAt   time.Time       `json:"paidAt"`
 }

@@ -11,6 +11,7 @@ type Handlers struct {
 	PlanVersion  PlanVersionHandler
 	Subscription SubscriptionHandler
 	Profile      ProfileHandler
+	Payment      PaymentHandler
 }
 
 func ProvideHandlers(services *admin.Services, domainServices *provider.Services) *Handlers {
@@ -20,5 +21,6 @@ func ProvideHandlers(services *admin.Services, domainServices *provider.Services
 		PlanVersionHandler{domainServices.PlanVersion},
 		SubscriptionHandler{domainServices.Subscription},
 		ProfileHandler{domainServices.Profile},
+		PaymentHandler{domainServices.Payment},
 	}
 }

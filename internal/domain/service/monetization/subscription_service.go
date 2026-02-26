@@ -15,7 +15,6 @@ import (
 	mapper "github.com/itsLeonB/cashback/internal/domain/mapper/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	repository "github.com/itsLeonB/cashback/internal/domain/repository/monetization"
-	"github.com/itsLeonB/cashback/internal/domain/service/monetization/subscription"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -35,11 +34,11 @@ type SubscriptionService interface {
 	// Internal
 	AttachDefaultSubscription(ctx context.Context, profileID uuid.UUID) error
 	GetCurrentSubscription(ctx context.Context, profileID uuid.UUID, isActive bool) (entity.Subscription, error)
-	TransitionStatus(ctx context.Context, msg message.SubscriptionStatusTransitioned) error
 	CreateNew(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.NewPaymentRequest, error)
 	GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error)
 	UpdatePastDues(ctx context.Context) error
 	PublishSubscriptionDueNotifications(ctx context.Context) error
+	Save(ctx context.Context, sub entity.Subscription) error
 }
 
 type subscriptionService struct {
@@ -112,6 +111,12 @@ func (ss *subscriptionService) GetOne(ctx context.Context, id uuid.UUID) (dto.Su
 }
 
 func (ss *subscriptionService) Update(ctx context.Context, req dto.UpdateSubscriptionRequest) (dto.SubscriptionResponse, error) {
+	if !req.CurrentPeriodStart.IsZero() &&
+		!req.CurrentPeriodEnd.IsZero() &&
+		req.CurrentPeriodEnd.Before(req.CurrentPeriodStart) {
+		return dto.SubscriptionResponse{}, ungerr.BadRequestError("currentPeriodEnd must be greater than or equal to currentPeriodStart")
+	}
+
 	var resp dto.SubscriptionResponse
 	err := ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		subscription, err := ss.GetByID(ctx, req.ID, true)
@@ -123,6 +128,7 @@ func (ss *subscriptionService) Update(ctx context.Context, req dto.UpdateSubscri
 		subscription.PlanVersionID = req.PlanVersionID
 		subscription.AutoRenew = req.AutoRenew
 
+		subscription.Status = entity.SubscriptionStatus(req.Status)
 		subscription.EndsAt = sql.NullTime{
 			Time:  req.EndsAt,
 			Valid: !req.EndsAt.IsZero(),
@@ -131,6 +137,16 @@ func (ss *subscriptionService) Update(ctx context.Context, req dto.UpdateSubscri
 		subscription.CanceledAt = sql.NullTime{
 			Time:  req.CanceledAt,
 			Valid: !req.CanceledAt.IsZero(),
+		}
+
+		subscription.CurrentPeriodStart = sql.NullTime{
+			Time:  req.CurrentPeriodStart,
+			Valid: !req.CurrentPeriodStart.IsZero(),
+		}
+
+		subscription.CurrentPeriodEnd = sql.NullTime{
+			Time:  req.CurrentPeriodEnd,
+			Valid: !req.CurrentPeriodEnd.IsZero(),
 		}
 
 		updatedSubscription, err := ss.subscriptionRepo.Update(ctx, subscription)
@@ -269,30 +285,6 @@ func (ss *subscriptionService) CreateNew(ctx context.Context, req dto.PurchaseSu
 	return resp, err
 }
 
-func (ss *subscriptionService) TransitionStatus(ctx context.Context, msg message.SubscriptionStatusTransitioned) error {
-	return ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		spec := crud.Specification[entity.Subscription]{}
-		spec.Model.ID = msg.ID
-		spec.ForUpdate = true
-		spec.PreloadRelations = []string{"Payments", "PlanVersion"}
-		subs, err := ss.subscriptionRepo.FindFirst(ctx, spec)
-		if err != nil {
-			return err
-		}
-		if subs.IsZero() {
-			return ungerr.NotFoundError(fmt.Sprintf("subscription ID %s is not found", msg.ID))
-		}
-
-		patchedSubs, err := subscription.TransitionStatus(subs, msg.Status)
-		if err != nil {
-			return err
-		}
-
-		_, err = ss.subscriptionRepo.Update(ctx, patchedSubs)
-		return err
-	})
-}
-
 func (ss *subscriptionService) GetSubscribedDetails(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error) {
 	sub, err := ss.GetCurrentSubscription(ctx, profileID, false)
 	if err != nil {
@@ -343,4 +335,9 @@ func (ss *subscriptionService) PublishSubscriptionDueNotifications(ctx context.C
 	}
 
 	return ss.taskQueue.Enqueue(ctx, msg)
+}
+
+func (ss *subscriptionService) Save(ctx context.Context, sub entity.Subscription) error {
+	_, err := ss.subscriptionRepo.Update(ctx, sub)
+	return err
 }

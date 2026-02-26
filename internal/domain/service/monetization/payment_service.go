@@ -145,7 +145,7 @@ func (ps *paymentService) HandleNotification(ctx context.Context, req dto.Midtra
 		if err != nil {
 			return err
 		}
-		if payment.Status == entity.PaidPayment {
+		if !payment.IsSettleable() {
 			return nil
 		}
 

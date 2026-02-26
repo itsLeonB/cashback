@@ -36,6 +36,10 @@ type Payment struct {
 	ExpiredAt             sql.NullTime
 }
 
+func (p Payment) IsSettleable() bool {
+	return p.Status == PendingPayment || p.Status == ProcessingPayment
+}
+
 func (Payment) TableName() string {
 	return "subscription_payments"
 }

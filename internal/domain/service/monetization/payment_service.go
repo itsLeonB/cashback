@@ -291,7 +291,7 @@ func (ps *paymentService) GetList(ctx context.Context) ([]dto.PaymentResponse, e
 }
 
 func (ps *paymentService) GetOne(ctx context.Context, id uuid.UUID) (dto.PaymentResponse, error) {
-	payment, err := ps.getByID(ctx, id)
+	payment, err := ps.getByID(ctx, id, false)
 	if err != nil {
 		return dto.PaymentResponse{}, err
 	}
@@ -302,7 +302,7 @@ func (ps *paymentService) GetOne(ctx context.Context, id uuid.UUID) (dto.Payment
 func (ps *paymentService) Update(ctx context.Context, req dto.UpdatePaymentRequest) (dto.PaymentResponse, error) {
 	var resp dto.PaymentResponse
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		payment, err := ps.getByID(ctx, req.ID)
+		payment, err := ps.getByID(ctx, req.ID, true)
 		if err != nil {
 			return err
 		}
@@ -338,7 +338,7 @@ func (ps *paymentService) Update(ctx context.Context, req dto.UpdatePaymentReque
 func (ps *paymentService) Delete(ctx context.Context, id uuid.UUID) (dto.PaymentResponse, error) {
 	var resp dto.PaymentResponse
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		payment, err := ps.getByID(ctx, id)
+		payment, err := ps.getByID(ctx, id, true)
 		if err != nil {
 			return err
 		}
@@ -353,9 +353,10 @@ func (ps *paymentService) Delete(ctx context.Context, id uuid.UUID) (dto.Payment
 	return resp, err
 }
 
-func (ps *paymentService) getByID(ctx context.Context, id uuid.UUID) (entity.Payment, error) {
+func (ps *paymentService) getByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Payment, error) {
 	spec := crud.Specification[entity.Payment]{}
 	spec.Model.ID = id
+	spec.ForUpdate = forUpdate
 	payment, err := ps.paymentRepo.FindFirst(ctx, spec)
 	if err != nil {
 		return entity.Payment{}, err

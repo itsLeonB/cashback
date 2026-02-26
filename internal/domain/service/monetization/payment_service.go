@@ -13,7 +13,6 @@ import (
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	mapper "github.com/itsLeonB/cashback/internal/domain/mapper/monetization"
-	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization/payment"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
@@ -86,6 +85,10 @@ func (ps *paymentService) create(ctx context.Context, req dto.NewPaymentRequest)
 		Currency:       req.Currency,
 		Status:         entity.PendingPayment,
 		Gateway:        ps.gateway.Provider(),
+		ExpiredAt: sql.NullTime{
+			Time:  time.Now().Add(24 * time.Hour),
+			Valid: true,
+		},
 	}
 
 	pendingPayment, err := ps.paymentRepo.Insert(ctx, newPayment)
@@ -117,16 +120,30 @@ func (ps *paymentService) HandleNotification(ctx context.Context, req dto.Midtra
 			return err
 		}
 
-		spec := crud.Specification[entity.Payment]{}
-		spec.Model.ID = id
-		spec.Model.Gateway = ps.gateway.Provider()
-		spec.ForUpdate = true
-		payment, err := ps.paymentRepo.FindFirst(ctx, spec)
+		// 1. Fetch payment to extract SubscriptionID (no lock)
+		specInfo := crud.Specification[entity.Payment]{}
+		specInfo.Model.ID = id
+		specInfo.Model.Gateway = ps.gateway.Provider()
+		paymentInfo, err := ps.paymentRepo.FindFirst(ctx, specInfo)
 		if err != nil {
 			return err
 		}
-		if payment.IsZero() {
+		if paymentInfo.IsZero() {
 			return ungerr.NotFoundError(fmt.Sprintf("payment with ID %s is not found", id))
+		}
+
+		// 2. Lock Subscription FIRST to prevent deadlocks with MakePayment
+		subs, err := ps.subscriptionSvc.GetByID(ctx, paymentInfo.SubscriptionID, true)
+		if err != nil {
+			return err
+		}
+
+		// 3. Lock Payment
+		specUpdate := specInfo
+		specUpdate.ForUpdate = true
+		payment, err := ps.paymentRepo.FindFirst(ctx, specUpdate)
+		if err != nil {
+			return err
 		}
 		if payment.Status == entity.PaidPayment {
 			return nil
@@ -140,11 +157,7 @@ func (ps *paymentService) HandleNotification(ctx context.Context, req dto.Midtra
 			return nil
 		}
 
-		subs, err := ps.subscriptionSvc.GetByID(ctx, payment.SubscriptionID, false)
-		if err != nil {
-			return err
-		}
-
+		// 4. Calculate Billing Period safely from CurrentPeriodEnd
 		startsAt := time.Now()
 		if subs.Status == entity.SubscriptionActive && subs.CurrentPeriodEnd.Valid && subs.CurrentPeriodEnd.Time.After(startsAt) {
 			startsAt = subs.CurrentPeriodEnd.Time
@@ -157,11 +170,26 @@ func (ps *paymentService) HandleNotification(ctx context.Context, req dto.Midtra
 			endsAt = endsAt.AddDate(1, 0, 0)
 		}
 
+		// 5. Save Payment
 		if err = ps.updatePaymentStatus(ctx, payment, newStatus, err, startsAt, endsAt); err != nil {
 			return err
 		}
 
-		return ps.queueSubscriptionTransitioned(ctx, newStatus, payment.SubscriptionID)
+		// 6. Inline State Mutation
+		switch newStatus {
+		case entity.PaidPayment:
+			subs.Status = entity.SubscriptionActive
+			subs.CurrentPeriodStart = sql.NullTime{Time: startsAt, Valid: true}
+			subs.CurrentPeriodEnd = sql.NullTime{Time: endsAt, Valid: true}
+			return ps.subscriptionSvc.Save(ctx, subs)
+		case entity.ErrorPayment, entity.CanceledPayment, entity.ExpiredPayment:
+			if subs.Status == entity.SubscriptionIncompletePayment {
+				subs.Status = entity.SubscriptionCanceled
+				return ps.subscriptionSvc.Save(ctx, subs)
+			}
+		}
+
+		return nil
 	})
 }
 
@@ -179,6 +207,31 @@ func (ps *paymentService) MakePayment(ctx context.Context, subscriptionID uuid.U
 
 		if subscription.Status == entity.SubscriptionCanceled {
 			return ungerr.ForbiddenError("cannot make payment for canceled subscription")
+		}
+
+		// Check for existing pending/processing payments
+		spec := crud.Specification[entity.Payment]{}
+		spec.Model.SubscriptionID = subscriptionID
+		payments, err := ps.paymentRepo.FindAll(ctx, spec)
+		if err != nil {
+			return err
+		}
+
+		for _, p := range payments {
+			if p.Status == entity.PendingPayment || p.Status == entity.ProcessingPayment {
+				// We found an incomplete payment
+				if p.ExpiredAt.Valid && p.ExpiredAt.Time.Before(time.Now()) {
+					// It's expired, mark it as such to free up the unique constraint
+					p.Status = entity.ExpiredPayment
+					if _, err := ps.paymentRepo.Update(ctx, p); err != nil {
+						return err
+					}
+				} else {
+					// It's still valid, return idempotently
+					resp = mapper.PaymentToResponse(p)
+					return nil
+				}
+			}
 		}
 
 		req := dto.NewPaymentRequest{
@@ -226,29 +279,4 @@ func (ps *paymentService) updatePaymentStatus(
 
 	_, err := ps.paymentRepo.Update(ctx, payment)
 	return err
-}
-
-func (ps *paymentService) queueSubscriptionTransitioned(ctx context.Context, newStatus entity.PaymentStatus, subID uuid.UUID) error {
-	var subStatus entity.SubscriptionStatus
-	switch newStatus {
-	case entity.PaidPayment:
-		subStatus = entity.SubscriptionActive
-	case entity.CanceledPayment:
-		subStatus = entity.SubscriptionCanceled
-	case entity.ErrorPayment:
-		subStatus = entity.SubscriptionCanceled
-	case entity.PendingPayment:
-		subStatus = entity.SubscriptionIncompletePayment
-	case entity.ProcessingPayment:
-		subStatus = entity.SubscriptionIncompletePayment
-	default:
-		return ungerr.Unknownf("unhandled payment status: %s", newStatus)
-	}
-
-	msg := message.SubscriptionStatusTransitioned{
-		ID:     subID,
-		Status: subStatus,
-	}
-
-	return ps.taskQueue.Enqueue(ctx, msg)
 }

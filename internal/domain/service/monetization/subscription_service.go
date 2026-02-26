@@ -40,6 +40,7 @@ type SubscriptionService interface {
 	GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error)
 	UpdatePastDues(ctx context.Context) error
 	PublishSubscriptionDueNotifications(ctx context.Context) error
+	Save(ctx context.Context, sub entity.Subscription) error
 }
 
 type subscriptionService struct {
@@ -343,4 +344,9 @@ func (ss *subscriptionService) PublishSubscriptionDueNotifications(ctx context.C
 	}
 
 	return ss.taskQueue.Enqueue(ctx, msg)
+}
+
+func (ss *subscriptionService) Save(ctx context.Context, sub entity.Subscription) error {
+	_, err := ss.subscriptionRepo.Update(ctx, sub)
+	return err
 }

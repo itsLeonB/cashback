@@ -146,6 +146,9 @@ func (ps *paymentService) HandleNotification(ctx context.Context, req dto.Midtra
 		}
 
 		startsAt := time.Now()
+		if subs.Status == entity.SubscriptionActive && subs.CurrentPeriodEnd.Valid && subs.CurrentPeriodEnd.Time.After(startsAt) {
+			startsAt = subs.CurrentPeriodEnd.Time
+		}
 		endsAt := startsAt
 		switch subs.PlanVersion.BillingInterval {
 		case entity.MonthlyInterval:
@@ -172,6 +175,10 @@ func (ps *paymentService) MakePayment(ctx context.Context, subscriptionID uuid.U
 		subscription, err := ps.subscriptionSvc.GetByID(ctx, subscriptionID, true)
 		if err != nil {
 			return err
+		}
+
+		if subscription.Status == entity.SubscriptionCanceled {
+			return ungerr.ForbiddenError("cannot make payment for canceled subscription")
 		}
 
 		req := dto.NewPaymentRequest{

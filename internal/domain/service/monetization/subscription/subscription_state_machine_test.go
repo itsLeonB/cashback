@@ -168,4 +168,35 @@ func TestTransitionStatus(t *testing.T) {
 			assert.Error(t, err)
 		})
 	})
+
+	t.Run("from Active to Active", func(t *testing.T) {
+		t.Run("should succeed if latest payment is Paid (Renewal Extension)", func(t *testing.T) {
+			sub := entity.Subscription{
+				Status: entity.SubscriptionActive,
+				Payments: []entity.Payment{
+					{
+						BaseEntity: crud.BaseEntity{
+							ID:        uuid.New(),
+							CreatedAt: time.Now().Add(-30 * 24 * time.Hour),
+						},
+						Status: entity.PaidPayment,
+					},
+					{
+						BaseEntity: crud.BaseEntity{
+							ID:        uuid.New(),
+							CreatedAt: time.Now(),
+						},
+						Status: entity.PaidPayment,
+					},
+				},
+				PlanVersion: entity.PlanVersion{
+					BillingInterval: entity.MonthlyInterval,
+				},
+			}
+
+			updatedSub, err := subscription.TransitionStatus(sub, entity.SubscriptionActive)
+			assert.NoError(t, err)
+			assert.Equal(t, entity.SubscriptionActive, updatedSub.Status)
+		})
+	})
 }

@@ -59,6 +59,8 @@ type fromActive struct{}
 
 func (fromActive) Transition(payment entity.Payment, target entity.SubscriptionStatus) error {
 	switch target {
+	case entity.SubscriptionActive:
+		return isValidPayment(payment)
 	case entity.SubscriptionPastDuePayment:
 		return isInvalidPayment(payment)
 	case entity.SubscriptionCanceled:

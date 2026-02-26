@@ -122,6 +122,7 @@ func (ss *subscriptionService) Update(ctx context.Context, req dto.UpdateSubscri
 		subscription.PlanVersionID = req.PlanVersionID
 		subscription.AutoRenew = req.AutoRenew
 
+		subscription.Status = entity.SubscriptionStatus(req.Status)
 		subscription.EndsAt = sql.NullTime{
 			Time:  req.EndsAt,
 			Valid: !req.EndsAt.IsZero(),
@@ -130,6 +131,16 @@ func (ss *subscriptionService) Update(ctx context.Context, req dto.UpdateSubscri
 		subscription.CanceledAt = sql.NullTime{
 			Time:  req.CanceledAt,
 			Valid: !req.CanceledAt.IsZero(),
+		}
+
+		subscription.CurrentPeriodStart = sql.NullTime{
+			Time:  req.CurrentPeriodStart,
+			Valid: !req.CurrentPeriodStart.IsZero(),
+		}
+
+		subscription.CurrentPeriodEnd = sql.NullTime{
+			Time:  req.CurrentPeriodEnd,
+			Valid: !req.CurrentPeriodEnd.IsZero(),
 		}
 
 		updatedSubscription, err := ss.subscriptionRepo.Update(ctx, subscription)

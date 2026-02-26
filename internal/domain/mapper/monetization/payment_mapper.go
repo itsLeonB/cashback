@@ -21,5 +21,6 @@ func PaymentToResponse(p entity.Payment) dto.PaymentResponse {
 		EndsAt:                p.EndsAt.Time,
 		GatewayEventID:        p.GatewayEventID.String,
 		PaidAt:                p.PaidAt.Time,
+		ExpiredAt:             p.ExpiredAt.Time,
 	}
 }

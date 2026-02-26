@@ -20,10 +20,15 @@ import (
 )
 
 type PaymentService interface {
-	IsReady() error
 	NewPurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error)
 	HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error
 	MakePayment(ctx context.Context, subscriptionID uuid.UUID) (dto.PaymentResponse, error)
+
+	// Admin
+	GetList(ctx context.Context) ([]dto.PaymentResponse, error)
+	GetOne(ctx context.Context, id uuid.UUID) (dto.PaymentResponse, error)
+	Update(ctx context.Context, req dto.UpdatePaymentRequest) (dto.PaymentResponse, error)
+	Delete(ctx context.Context, id uuid.UUID) (dto.PaymentResponse, error)
 }
 
 func NewPaymentService(
@@ -50,7 +55,7 @@ type paymentService struct {
 	subscriptionSvc SubscriptionService
 }
 
-func (ps *paymentService) IsReady() error {
+func (ps *paymentService) isReady() error {
 	if !config.Global.SubscriptionPurchaseEnabled {
 		return ungerr.ForbiddenError("feature is disabled")
 	}
@@ -61,7 +66,7 @@ func (ps *paymentService) IsReady() error {
 }
 
 func (ps *paymentService) NewPurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error) {
-	if err := ps.IsReady(); err != nil {
+	if err := ps.isReady(); err != nil {
 		return dto.PaymentResponse{}, err
 	}
 
@@ -110,7 +115,7 @@ func (ps *paymentService) create(ctx context.Context, req dto.NewPaymentRequest)
 }
 
 func (ps *paymentService) HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error {
-	if err := ps.IsReady(); err != nil {
+	if err := ps.isReady(); err != nil {
 		return err
 	}
 
@@ -189,7 +194,7 @@ func (ps *paymentService) updateSubscriptionStatus(
 }
 
 func (ps *paymentService) MakePayment(ctx context.Context, subscriptionID uuid.UUID) (dto.PaymentResponse, error) {
-	if err := ps.IsReady(); err != nil {
+	if err := ps.isReady(); err != nil {
 		return dto.PaymentResponse{}, err
 	}
 
@@ -274,4 +279,89 @@ func (ps *paymentService) updatePaymentStatus(
 
 	_, err := ps.paymentRepo.Update(ctx, payment)
 	return err
+}
+
+func (ps *paymentService) GetList(ctx context.Context) ([]dto.PaymentResponse, error) {
+	payments, err := ps.paymentRepo.FindAll(ctx, crud.Specification[entity.Payment]{})
+	if err != nil {
+		return nil, err
+	}
+
+	return ezutil.MapSlice(payments, mapper.PaymentToResponse), nil
+}
+
+func (ps *paymentService) GetOne(ctx context.Context, id uuid.UUID) (dto.PaymentResponse, error) {
+	payment, err := ps.getByID(ctx, id)
+	if err != nil {
+		return dto.PaymentResponse{}, err
+	}
+
+	return mapper.PaymentToResponse(payment), nil
+}
+
+func (ps *paymentService) Update(ctx context.Context, req dto.UpdatePaymentRequest) (dto.PaymentResponse, error) {
+	var resp dto.PaymentResponse
+	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		payment, err := ps.getByID(ctx, req.ID)
+		if err != nil {
+			return err
+		}
+
+		payment.Status = entity.PaymentStatus(req.Status)
+		payment.Amount = req.Amount
+		payment.Currency = req.Currency
+
+		payment.StartsAt = sql.NullTime{
+			Time:  req.StartsAt,
+			Valid: !req.StartsAt.IsZero(),
+		}
+		payment.EndsAt = sql.NullTime{
+			Time:  req.EndsAt,
+			Valid: !req.EndsAt.IsZero(),
+		}
+		payment.PaidAt = sql.NullTime{
+			Time:  req.PaidAt,
+			Valid: !req.PaidAt.IsZero(),
+		}
+
+		updatedPayment, err := ps.paymentRepo.Update(ctx, payment)
+		if err != nil {
+			return err
+		}
+
+		resp = mapper.PaymentToResponse(updatedPayment)
+		return nil
+	})
+	return resp, err
+}
+
+func (ps *paymentService) Delete(ctx context.Context, id uuid.UUID) (dto.PaymentResponse, error) {
+	var resp dto.PaymentResponse
+	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		payment, err := ps.getByID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		if err = ps.paymentRepo.Delete(ctx, payment); err != nil {
+			return err
+		}
+
+		resp = mapper.PaymentToResponse(payment)
+		return nil
+	})
+	return resp, err
+}
+
+func (ps *paymentService) getByID(ctx context.Context, id uuid.UUID) (entity.Payment, error) {
+	spec := crud.Specification[entity.Payment]{}
+	spec.Model.ID = id
+	payment, err := ps.paymentRepo.FindFirst(ctx, spec)
+	if err != nil {
+		return entity.Payment{}, err
+	}
+	if payment.IsZero() {
+		return entity.Payment{}, ungerr.NotFoundError("payment is not found")
+	}
+	return payment, nil
 }

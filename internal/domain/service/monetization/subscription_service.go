@@ -111,6 +111,12 @@ func (ss *subscriptionService) GetOne(ctx context.Context, id uuid.UUID) (dto.Su
 }
 
 func (ss *subscriptionService) Update(ctx context.Context, req dto.UpdateSubscriptionRequest) (dto.SubscriptionResponse, error) {
+	if !req.CurrentPeriodStart.IsZero() &&
+		!req.CurrentPeriodEnd.IsZero() &&
+		req.CurrentPeriodEnd.Before(req.CurrentPeriodStart) {
+		return dto.SubscriptionResponse{}, ungerr.BadRequestError("currentPeriodEnd must be greater than or equal to currentPeriodStart")
+	}
+
 	var resp dto.SubscriptionResponse
 	err := ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		subscription, err := ss.GetByID(ctx, req.ID, true)

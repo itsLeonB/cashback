@@ -114,6 +114,14 @@ func (ps *paymentService) HandleNotification(ctx context.Context, req dto.Midtra
 		return err
 	}
 
+	newStatus, statusErr := ps.gateway.CheckStatus(ctx, req)
+	if statusErr != nil {
+		if newStatus == "" {
+			return statusErr
+		}
+		logger.Error(statusErr)
+	}
+
 	return ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		id, err := ezutil.Parse[uuid.UUID](req.OrderID)
 		if err != nil {
@@ -145,52 +153,39 @@ func (ps *paymentService) HandleNotification(ctx context.Context, req dto.Midtra
 		if err != nil {
 			return err
 		}
-		if !payment.IsSettleable() {
+		if !payment.IsSettleable() || newStatus == payment.Status {
 			return nil
 		}
 
-		newStatus, err := ps.gateway.CheckStatus(ctx, req)
-		if err != nil {
-			logger.Error(err)
-		}
-		if newStatus == "" || newStatus == payment.Status {
-			return nil
-		}
+		startsAt, endsAt := subs.ContinuedPeriods()
 
-		// 4. Calculate Billing Period safely from CurrentPeriodEnd
-		startsAt := time.Now()
-		if subs.Status == entity.SubscriptionActive && subs.CurrentPeriodEnd.Valid && subs.CurrentPeriodEnd.Time.After(startsAt) {
-			startsAt = subs.CurrentPeriodEnd.Time
-		}
-		endsAt := startsAt
-		switch subs.PlanVersion.BillingInterval {
-		case entity.MonthlyInterval:
-			endsAt = endsAt.AddDate(0, 1, 0)
-		case entity.YearlyInterval:
-			endsAt = endsAt.AddDate(1, 0, 0)
-		}
-
-		// 5. Save Payment
-		if err = ps.updatePaymentStatus(ctx, payment, newStatus, err, startsAt, endsAt); err != nil {
+		if err = ps.updatePaymentStatus(ctx, payment, newStatus, statusErr, startsAt, endsAt); err != nil {
 			return err
 		}
 
-		// 6. Inline State Mutation
-		switch newStatus {
-		case entity.PaidPayment:
-			subs.Status = entity.SubscriptionActive
-			subs.CurrentPeriodStart = sql.NullTime{Time: startsAt, Valid: true}
-			subs.CurrentPeriodEnd = sql.NullTime{Time: endsAt, Valid: true}
-			return ps.subscriptionSvc.Save(ctx, subs)
-		case entity.ErrorPayment, entity.CanceledPayment, entity.ExpiredPayment:
-			if subs.Status == entity.SubscriptionIncompletePayment {
-				subs.Status = entity.SubscriptionCanceled
-				return ps.subscriptionSvc.Save(ctx, subs)
-			}
-		}
-
-		return nil
+		return ps.updateSubscriptionStatus(ctx, subs, newStatus, startsAt, endsAt)
 	})
+}
+
+func (ps *paymentService) updateSubscriptionStatus(
+	ctx context.Context,
+	subs entity.Subscription,
+	newStatus entity.PaymentStatus,
+	startsAt, endsAt time.Time,
+) error {
+	switch newStatus {
+	case entity.PaidPayment:
+		subs.Status = entity.SubscriptionActive
+		subs.CurrentPeriodStart = sql.NullTime{Time: startsAt, Valid: true}
+		subs.CurrentPeriodEnd = sql.NullTime{Time: endsAt, Valid: true}
+		return ps.subscriptionSvc.Save(ctx, subs)
+	case entity.ErrorPayment, entity.CanceledPayment, entity.ExpiredPayment:
+		if subs.Status == entity.SubscriptionIncompletePayment {
+			subs.Status = entity.SubscriptionCanceled
+			return ps.subscriptionSvc.Save(ctx, subs)
+		}
+	}
+	return nil
 }
 
 func (ps *paymentService) MakePayment(ctx context.Context, subscriptionID uuid.UUID) (dto.PaymentResponse, error) {

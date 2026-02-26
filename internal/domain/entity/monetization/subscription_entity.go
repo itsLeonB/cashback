@@ -44,3 +44,19 @@ func (s *Subscription) IsActive(t time.Time) bool {
 func (s *Subscription) IsSubscribed(t time.Time) bool {
 	return s.PlanVersion.IsDefault || ((!s.CanceledAt.Valid || s.CanceledAt.Time.After(t)) && s.Status != SubscriptionCanceled)
 }
+
+func (s *Subscription) ContinuedPeriods() (time.Time, time.Time) {
+	startsAt := time.Now()
+	if s.Status == SubscriptionActive && s.CurrentPeriodEnd.Valid && s.CurrentPeriodEnd.Time.After(startsAt) {
+		startsAt = s.CurrentPeriodEnd.Time
+	}
+	endsAt := startsAt
+	switch s.PlanVersion.BillingInterval {
+	case MonthlyInterval:
+		endsAt = endsAt.AddDate(0, 1, 0)
+	case YearlyInterval:
+		endsAt = endsAt.AddDate(1, 0, 0)
+	}
+
+	return startsAt, endsAt
+}

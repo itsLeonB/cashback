@@ -7,6 +7,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/provider"
+	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/ungerr"
 )
 
@@ -29,7 +30,7 @@ func Setup(providers *provider.Providers) (*Subscriber, error) {
 					logger.Errorf("error processing message: %v", err)
 				}
 			}),
-			Logger: logger.Global,
+			Logger: ezutil.NewSimpleLogger(config.Global.ServiceName, true, 0),
 		},
 	)
 

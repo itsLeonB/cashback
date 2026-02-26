@@ -25,6 +25,7 @@ type Config struct {
 	GoogleCreds *google.Credentials
 	Payment
 	Flag
+	OTel
 }
 
 var Global *Config
@@ -95,6 +96,11 @@ func Load() error {
 		errs = errors.Join(errs, err)
 	}
 
+	var otel OTel
+	if err = envconfig.Process(otel.Prefix(), &otel); err != nil {
+		errs = errors.Join(errs, err)
+	}
+
 	if errs != nil {
 		return ungerr.Wrap(errs, "error loading config")
 	}
@@ -111,6 +117,7 @@ func Load() error {
 		googleCreds,
 		payment,
 		flag,
+		otel,
 	}
 
 	return nil

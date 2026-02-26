@@ -2,38 +2,50 @@ package http
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/provider"
-	"github.com/itsLeonB/ginkgo/pkg/server"
+	"github.com/kroma-labs/sentinel-go/httpserver"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
-func Setup(configs config.Config) (*server.Http, error) {
+func Setup(configs config.Config) (*httpserver.Server, func(), error) {
 	providers, err := provider.All()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	shutdownFunc := func() {
+		if err := providers.Shutdown(); err != nil {
+			logger.Error(err)
+		}
 	}
 
 	gin.SetMode(configs.App.Env)
 	r := gin.New()
-	registerRoutes(r, configs, providers.Services, providers.AdminServices)
-
-	srv := &http.Server{
-		Addr:              fmt.Sprintf(":%s", configs.App.Port),
-		Handler:           r,
-		ReadTimeout:       configs.Timeout,
-		ReadHeaderTimeout: configs.Timeout,
-		WriteTimeout:      configs.Timeout,
-		IdleTimeout:       configs.Timeout,
+	if configs.Enabled {
+		r.Use(otelgin.Middleware(configs.ServiceName))
 	}
 
-	return server.New(
-		srv,
-		configs.Timeout,
-		logger.Global,
-		providers.Shutdown,
-	), nil
+	skipPaths := []string{"/ping", "/livez", "/readyz", "/metrics"}
+	setupSentinel(r, skipPaths)
+	RegisterRoutes(r, configs, providers.Services, providers.AdminServices)
+
+	httpCfg := httpserver.ProductionConfig()
+	httpCfg.LoggerConfig = &httpserver.LoggerConfig{
+		Logger:    logger.Global,
+		SkipPaths: skipPaths,
+	}
+	httpCfg.Addr = fmt.Sprintf(":%s", configs.App.Port)
+
+	srv := httpserver.New(
+		httpserver.WithConfig(httpCfg),
+		httpserver.WithServiceName(configs.ServiceName),
+		httpserver.WithHandler(r),
+		httpserver.WithLogger(logger.Global),
+	)
+
+	return srv, shutdownFunc, nil
 }

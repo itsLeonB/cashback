@@ -1,49 +1,69 @@
 package logger
 
-import "github.com/itsLeonB/ezutil/v2"
+import (
+	"context"
+	"fmt"
+	"os"
+	"time"
 
-var Global ezutil.Logger
+	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel/log"
+	"go.opentelemetry.io/otel/log/global"
+)
+
+var Global zerolog.Logger
 
 func Init(appNamespace string) {
-	Global = ezutil.NewSimpleLogger(appNamespace, true, 0)
+	otelLogger := global.Logger(appNamespace)
+
+	Global = zerolog.New(os.Stdout).With().Timestamp().Logger().Hook(
+		zerolog.HookFunc(func(e *zerolog.Event, level zerolog.Level, msg string) {
+			record := log.Record{}
+			record.SetTimestamp(time.Now())
+			record.SetSeverity(log.Severity(level))
+			record.SetSeverityText(level.String())
+			record.SetBody(log.StringValue(msg))
+			otelLogger.Emit(context.Background(), record)
+		}),
+	)
 }
 
 func Debug(args ...any) {
-	Global.Debug(args...)
+	Global.Debug().Str("", "").Msg(fmt.Sprint(args...))
 }
 
 func Info(args ...any) {
-	Global.Info(args...)
+	Global.Info().Str("", "").Msg(fmt.Sprint(args...))
 }
 
 func Warn(args ...any) {
-	Global.Warn(args...)
+	Global.Warn().Str("", "").Msg(fmt.Sprint(args...))
 }
 
 func Error(args ...any) {
-	Global.Error(args...)
+	Global.Error().Str("", "").Msg(fmt.Sprint(args...))
 }
 
 func Fatal(args ...any) {
-	Global.Fatal(args...)
+	Global.Fatal().Str("", "").Msg(fmt.Sprint(args...))
 }
 
 func Debugf(format string, args ...any) {
-	Global.Debugf(format, args...)
+	Global.Debug().Str("", "").Msg(fmt.Sprintf(format, args...))
 }
 
 func Infof(format string, args ...any) {
-	Global.Infof(format, args...)
+	Global.Info().Str("", "").Msg(fmt.Sprintf(format, args...))
 }
 
 func Warnf(format string, args ...any) {
-	Global.Warnf(format, args...)
+	Global.Warn().Str("", "").Msg(fmt.Sprintf(format, args...))
 }
 
 func Errorf(format string, args ...any) {
-	Global.Errorf(format, args...)
+	Global.Error().Str("", "").Msg(fmt.Sprintf(format, args...))
 }
 
 func Fatalf(format string, args ...any) {
-	Global.Fatalf(format, args...)
+	Global.Fatal().Str("", "").Msg(fmt.Sprintf(format, args...))
 }

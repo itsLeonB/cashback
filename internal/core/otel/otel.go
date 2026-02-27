@@ -92,18 +92,19 @@ func InitSDK(ctx context.Context, cfg config.OTel) (func(context.Context) error,
 	global.SetLoggerProvider(loggerProvider)
 
 	// Tracer
-	traceExporter, err := otlptrace.New(context.Background(), otlptracehttp.NewClient())
+	traceExporter, err := otlptrace.New(ctx, otlptracehttp.NewClient())
 	if err != nil {
 		handleErr()
 		return nil, ungerr.Wrap(err, "failed to create trace exporter")
 	}
 
-	tp := sdktrace.NewTracerProvider(
+	tracerProvider := sdktrace.NewTracerProvider(
 		sdktrace.WithResource(res),
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithBatcher(traceExporter),
 	)
-	otel.SetTracerProvider(tp)
+	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
+	otel.SetTracerProvider(tracerProvider)
 
 	return shutdown, nil
 }

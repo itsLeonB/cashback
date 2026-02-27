@@ -22,7 +22,6 @@ func setupSentinel(router *gin.Engine, skipPaths []string) error {
 			"Content-Length",
 			"Accept-Encoding",
 			"X-CSRF-Token",
-			"Origin",
 			"Cache-Control",
 			"Referer",
 			"User-Agent",

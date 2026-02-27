@@ -6,8 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler/admin"
 	"github.com/itsLeonB/cashback/internal/appconstant"
-	"github.com/kroma-labs/sentinel-go/httpserver"
-	sentinelGin "github.com/kroma-labs/sentinel-go/httpserver/adapters/gin"
 )
 
 func RegisterAdminRoutes(router *gin.Engine, handlers *admin.Handlers, authMiddleware gin.HandlerFunc) {
@@ -23,8 +21,6 @@ func RegisterAdminRoutes(router *gin.Engine, handlers *admin.Handlers, authMiddl
 
 			protectedRoutes := v1.Group("/", authMiddleware)
 			{
-				sentinelGin.RegisterPprof(router, httpserver.DefaultPprofConfig())
-
 				protectedRoutes.GET("/auth/me", handlers.Auth.HandleMe())
 
 				planRoutes := protectedRoutes.Group("/plans")

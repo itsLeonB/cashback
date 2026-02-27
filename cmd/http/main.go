@@ -36,6 +36,6 @@ func main() {
 	defer shutdownFunc()
 
 	if err := srv.ListenAndServe(ctx); err != nil {
-		logger.Fatal(err)
+		logger.Error(err)
 	}
 }

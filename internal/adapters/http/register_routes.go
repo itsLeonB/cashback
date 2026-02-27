@@ -22,6 +22,10 @@ func RegisterRoutes(router *gin.Engine, configs config.Config, services *provide
 
 	sentinelGin.RegisterHealth(router, httpserver.NewHealthHandler())
 
+	if configs.App.Env != "release" {
+		sentinelGin.RegisterPprof(router, httpserver.DefaultPprofConfig())
+	}
+
 	routes.RegisterAPIRoutes(router, handlers, middlewares.Auth)
 	routes.RegisterAdminRoutes(router, adminHandlers, middlewares.AdminAuth)
 }

@@ -1,13 +1,10 @@
 package logger
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/rs/zerolog"
-	"go.opentelemetry.io/otel/log"
 	"go.opentelemetry.io/otel/log/global"
 )
 
@@ -16,16 +13,12 @@ var Global zerolog.Logger
 func Init(appNamespace string) {
 	otelLogger := global.Logger(appNamespace)
 
-	Global = zerolog.New(os.Stdout).With().Timestamp().Logger().Hook(
-		zerolog.HookFunc(func(e *zerolog.Event, level zerolog.Level, msg string) {
-			record := log.Record{}
-			record.SetTimestamp(time.Now())
-			record.SetSeverity(mapSeverity(level))
-			record.SetSeverityText(level.String())
-			record.SetBody(log.StringValue(msg))
-			otelLogger.Emit(context.Background(), record)
-		}),
+	writer := zerolog.MultiLevelWriter(
+		os.Stdout,
+		&otelWriter{logger: otelLogger},
 	)
+
+	Global = zerolog.New(writer).With().Timestamp().Logger()
 }
 
 func Debug(args ...any) {
@@ -66,23 +59,4 @@ func Errorf(format string, args ...any) {
 
 func Fatalf(format string, args ...any) {
 	Global.Fatal().Str("", "").Msg(fmt.Sprintf(format, args...))
-}
-
-func mapSeverity(level zerolog.Level) log.Severity {
-	switch level {
-	case zerolog.TraceLevel:
-		return log.SeverityTrace
-	case zerolog.DebugLevel:
-		return log.SeverityDebug
-	case zerolog.InfoLevel:
-		return log.SeverityInfo
-	case zerolog.WarnLevel:
-		return log.SeverityWarn
-	case zerolog.ErrorLevel:
-		return log.SeverityError
-	case zerolog.FatalLevel, zerolog.PanicLevel:
-		return log.SeverityFatal
-	default:
-		return log.SeverityUndefined
-	}
 }

@@ -20,7 +20,7 @@ func Init(appNamespace string) {
 		zerolog.HookFunc(func(e *zerolog.Event, level zerolog.Level, msg string) {
 			record := log.Record{}
 			record.SetTimestamp(time.Now())
-			record.SetSeverity(log.Severity(level))
+			record.SetSeverity(mapSeverity(level))
 			record.SetSeverityText(level.String())
 			record.SetBody(log.StringValue(msg))
 			otelLogger.Emit(context.Background(), record)
@@ -66,4 +66,23 @@ func Errorf(format string, args ...any) {
 
 func Fatalf(format string, args ...any) {
 	Global.Fatal().Str("", "").Msg(fmt.Sprintf(format, args...))
+}
+
+func mapSeverity(level zerolog.Level) log.Severity {
+	switch level {
+	case zerolog.TraceLevel:
+		return log.SeverityTrace
+	case zerolog.DebugLevel:
+		return log.SeverityDebug
+	case zerolog.InfoLevel:
+		return log.SeverityInfo
+	case zerolog.WarnLevel:
+		return log.SeverityWarn
+	case zerolog.ErrorLevel:
+		return log.SeverityError
+	case zerolog.FatalLevel, zerolog.PanicLevel:
+		return log.SeverityFatal
+	default:
+		return log.SeverityUndefined
+	}
 }

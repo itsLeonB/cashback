@@ -3,9 +3,9 @@ package middlewares
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/cashback/internal/domain/service/admin"
-	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/ginkgo/pkg/middleware"
 )
 
@@ -24,7 +24,7 @@ func Provide(configs config.App, authSvc service.AuthService, adminAuthSvc admin
 		return adminAuthSvc.VerifyToken(ctx, token)
 	}
 
-	middlewareProvider := middleware.NewMiddlewareProvider(ezutil.NewSimpleLogger(config.Global.ServiceName, true, 0))
+	middlewareProvider := middleware.NewMiddlewareProvider(logger.Global)
 	authMiddleware := middlewareProvider.NewAuthMiddleware("Bearer", tokenCheckFunc)
 	adminAuthMiddleware := middlewareProvider.NewAuthMiddleware("Bearer", adminTokenCheckFunc)
 	errorMiddleware := middlewareProvider.NewErrorMiddleware()

@@ -24,8 +24,10 @@ func RegisterRoutes(router *gin.Engine, configs config.Config, services *provide
 
 	if configs.App.Env != "release" {
 		sentinelGin.RegisterPprof(router, httpserver.DefaultPprofConfig())
+		routes.RegisterTestRoutes(router)
 	}
 
+	routes.RegisterBaseRoutes(router)
 	routes.RegisterAPIRoutes(router, handlers, middlewares.Auth)
 	routes.RegisterAdminRoutes(router, adminHandlers, middlewares.AdminAuth)
 }

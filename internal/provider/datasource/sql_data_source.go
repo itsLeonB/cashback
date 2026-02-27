@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/logger"
+	ezgorm "github.com/itsLeonB/ezutil/v2/gorm"
 	"github.com/itsLeonB/ungerr"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -24,7 +26,9 @@ type sqlConnection struct {
 func ProvideAndConfigureSQL(cfg config.DB) (*gorm.DB, *sql.DB, error) {
 	var err error
 	sqlOnce.Do(func() {
-		gormDB, e := gorm.Open(postgres.Open(dsn(cfg)), &gorm.Config{})
+		gormDB, e := gorm.Open(postgres.Open(dsn(cfg)), &gorm.Config{
+			Logger: ezgorm.NewGormLogger(logger.Global),
+		})
 		if e != nil {
 			err = ungerr.Wrap(e, "error opening gorm connection")
 			return

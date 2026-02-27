@@ -3,13 +3,13 @@ package http
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/core/config"
-	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/ungerr"
 	"github.com/kroma-labs/sentinel-go/httpserver"
 	sentinelGin "github.com/kroma-labs/sentinel-go/httpserver/adapters/gin"
+	"github.com/rs/zerolog"
 )
 
-func setupSentinel(router *gin.Engine, skipPaths []string) error {
+func setupSentinel(router *gin.Engine, skipPaths []string, logger zerolog.Logger) error {
 	corsCfg := httpserver.CORSConfig{
 		AllowedOrigins: config.Global.ClientUrls,
 		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -47,11 +47,11 @@ func setupSentinel(router *gin.Engine, skipPaths []string) error {
 	tracingCfg.SkipPaths = skipPaths
 
 	router.Use(
-		sentinelGin.Recovery(logger.Global),
+		sentinelGin.Recovery(logger),
 		sentinelGin.Tracing(tracingCfg),
 		sentinelGin.RequestID(),
 		sentinelGin.Logger(httpserver.LoggerConfig{
-			Logger:    logger.Global,
+			Logger:    logger,
 			SkipPaths: []string{"/ping", "/livez", "/readyz", "/metrics"},
 		}),
 		sentinelGin.Timeout(config.Global.Timeout),

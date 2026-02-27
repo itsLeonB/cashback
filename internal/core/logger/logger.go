@@ -1,62 +1,52 @@
 package logger
 
 import (
-	"fmt"
-	"os"
-
-	"github.com/rs/zerolog"
-	"go.opentelemetry.io/otel/log/global"
+	"github.com/itsLeonB/ezutil/v2"
+	"github.com/itsLeonB/ezutil/v2/otel"
 )
 
-var Global zerolog.Logger
+var Global ezutil.Logger
 
 func Init(appNamespace string) {
-	otelLogger := global.Logger(appNamespace)
-
-	writer := zerolog.MultiLevelWriter(
-		os.Stdout,
-		&otelWriter{logger: otelLogger},
-	)
-
-	Global = zerolog.New(writer).With().Timestamp().Logger()
+	Global = otel.Init(appNamespace)
 }
 
 func Debug(args ...any) {
-	Global.Debug().Str("", "").Msg(fmt.Sprint(args...))
+	Global.Debug(args...)
 }
 
 func Info(args ...any) {
-	Global.Info().Str("", "").Msg(fmt.Sprint(args...))
+	Global.Info(args)
 }
 
 func Warn(args ...any) {
-	Global.Warn().Str("", "").Msg(fmt.Sprint(args...))
+	Global.Warn(args)
 }
 
 func Error(args ...any) {
-	Global.Error().Str("", "").Msg(fmt.Sprint(args...))
+	Global.Error(args)
 }
 
 func Fatal(args ...any) {
-	Global.Fatal().Str("", "").Msg(fmt.Sprint(args...))
+	Global.Fatal(args)
 }
 
 func Debugf(format string, args ...any) {
-	Global.Debug().Str("", "").Msg(fmt.Sprintf(format, args...))
+	Global.Debugf(format, args)
 }
 
 func Infof(format string, args ...any) {
-	Global.Info().Str("", "").Msg(fmt.Sprintf(format, args...))
+	Global.Infof(format, args)
 }
 
 func Warnf(format string, args ...any) {
-	Global.Warn().Str("", "").Msg(fmt.Sprintf(format, args...))
+	Global.Warnf(format, args)
 }
 
 func Errorf(format string, args ...any) {
-	Global.Error().Str("", "").Msg(fmt.Sprintf(format, args...))
+	Global.Errorf(format, args)
 }
 
 func Fatalf(format string, args ...any) {
-	Global.Fatal().Str("", "").Msg(fmt.Sprintf(format, args...))
+	Global.Fatalf(format, args)
 }

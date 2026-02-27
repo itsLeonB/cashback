@@ -4,9 +4,8 @@ import (
 	"database/sql"
 
 	appembed "github.com/itsLeonB/cashback"
-	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/provider"
-	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/ungerr"
 	"github.com/pressly/goose/v3"
 )
@@ -17,7 +16,7 @@ type Migrate struct {
 
 func Setup(providers *provider.Providers) (*Migrate, error) {
 	goose.SetBaseFS(appembed.Migrations)
-	goose.SetLogger(ezutil.NewSimpleLogger(config.Global.ServiceName, true, 0))
+	goose.SetLogger(logger.Global)
 
 	if err := goose.SetDialect("postgres"); err != nil {
 		return nil, ungerr.Wrap(err, "error setting migrator dialect to postgres")

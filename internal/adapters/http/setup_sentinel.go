@@ -47,16 +47,16 @@ func setupSentinel(router *gin.Engine, skipPaths []string) {
 	tracingCfg.SkipPaths = skipPaths
 
 	router.Use(
+		sentinelGin.Recovery(logger.Global),
+		sentinelGin.Tracing(tracingCfg),
 		sentinelGin.RequestID(),
-		sentinelGin.Timeout(config.Global.Timeout),
-		sentinelGin.CORS(corsCfg),
 		sentinelGin.Logger(httpserver.LoggerConfig{
 			Logger:    logger.Global,
 			SkipPaths: []string{"/ping", "/livez", "/readyz", "/metrics"},
 		}),
+		sentinelGin.Timeout(config.Global.Timeout),
+		sentinelGin.CORS(corsCfg),
 		sentinelGin.Metrics(metrics),
 		sentinelGin.RateLimit(httpserver.DefaultRateLimitConfig()),
-		sentinelGin.Recovery(logger.Global),
-		sentinelGin.Tracing(tracingCfg),
 	)
 }

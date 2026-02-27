@@ -8,7 +8,6 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/provider"
 	"github.com/kroma-labs/sentinel-go/httpserver"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 func Setup(configs config.Config) (*httpserver.Server, func(), error) {
@@ -25,12 +24,12 @@ func Setup(configs config.Config) (*httpserver.Server, func(), error) {
 
 	gin.SetMode(configs.App.Env)
 	r := gin.New()
-	if configs.Enabled {
-		r.Use(otelgin.Middleware(configs.ServiceName))
-	}
 
 	skipPaths := []string{"/ping", "/livez", "/readyz", "/metrics"}
-	setupSentinel(r, skipPaths)
+	if err = setupSentinel(r, skipPaths); err != nil {
+		return nil, nil, err
+	}
+
 	RegisterRoutes(r, configs, providers.Services, providers.AdminServices)
 
 	httpCfg := httpserver.ProductionConfig()

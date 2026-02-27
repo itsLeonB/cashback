@@ -34,7 +34,10 @@ func InitSDK(ctx context.Context, cfg config.OTel) (func(context.Context) error,
 		for _, fn := range shutdownFuncs {
 			err = errors.Join(err, fn(ctx))
 		}
-		return ungerr.Wrap(err, "error shutting down otel resources")
+		if err != nil {
+			return ungerr.Wrap(err, "error shutting down otel resources")
+		}
+		return nil
 	}
 
 	handleErr := func() {

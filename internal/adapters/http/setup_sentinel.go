@@ -4,11 +4,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/ungerr"
 	"github.com/kroma-labs/sentinel-go/httpserver"
 	sentinelGin "github.com/kroma-labs/sentinel-go/httpserver/adapters/gin"
 )
 
-func setupSentinel(router *gin.Engine, skipPaths []string) {
+func setupSentinel(router *gin.Engine, skipPaths []string) error {
 	corsCfg := httpserver.CORSConfig{
 		AllowedOrigins: config.Global.ClientUrls,
 		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -40,7 +41,7 @@ func setupSentinel(router *gin.Engine, skipPaths []string) {
 
 	metrics, err := httpserver.NewMetrics(metricsCfg)
 	if err != nil {
-		logger.Error(err)
+		return ungerr.Wrap(err, "error setting up metrics config")
 	}
 
 	tracingCfg := httpserver.DefaultTracingConfig()
@@ -59,4 +60,6 @@ func setupSentinel(router *gin.Engine, skipPaths []string) {
 		sentinelGin.Metrics(metrics),
 		sentinelGin.RateLimit(httpserver.DefaultRateLimitConfig()),
 	)
+
+	return nil
 }

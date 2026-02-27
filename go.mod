@@ -13,7 +13,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/google/uuid v1.6.0
 	github.com/hibiken/asynq v0.25.1
-	github.com/itsLeonB/ezutil/v2 v2.4.0-pre4
+	github.com/itsLeonB/ezutil/v2 v2.4.0-pre5
 	github.com/itsLeonB/ginkgo v0.5.0-pre4
 	github.com/itsLeonB/go-crud v1.3.0
 	github.com/itsLeonB/sekure v0.1.1

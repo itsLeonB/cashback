@@ -9,11 +9,19 @@ import (
 )
 
 func RegisterBaseRoutes(r *gin.Engine) {
-	r.NoMethod(server.Handler(http.StatusMethodNotAllowed, func(ctx *gin.Context) (any, error) {
+	r.NoMethod(server.Handler(http.StatusNoContent, func(ctx *gin.Context) (any, error) {
+		if ctx.Request.Method == http.MethodOptions {
+			ctx.AbortWithStatus(http.StatusNoContent)
+			return nil, nil
+		}
 		return nil, ungerr.MethodNotAllowedError("method not allowed")
 	}))
 
-	r.NoRoute(server.Handler(http.StatusNotFound, func(ctx *gin.Context) (any, error) {
+	r.NoRoute(server.Handler(http.StatusNoContent, func(ctx *gin.Context) (any, error) {
+		if ctx.Request.Method == http.MethodOptions {
+			ctx.AbortWithStatus(http.StatusNoContent)
+			return nil, nil
+		}
 		return nil, ungerr.NotFoundError("route not found")
 	}))
 }

@@ -5,11 +5,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler/admin"
-	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 )
 
-func RegisterAdminRoutes(router *gin.Engine, handlers *admin.Handlers, middlewares *middlewares.Middlewares) {
+func RegisterAdminRoutes(router *gin.Engine, handlers *admin.Handlers, authMiddleware gin.HandlerFunc) {
 	adminRoutes := router.Group("/admin")
 	{
 		v1 := adminRoutes.Group("/v1")
@@ -20,7 +19,7 @@ func RegisterAdminRoutes(router *gin.Engine, handlers *admin.Handlers, middlewar
 				authRoutes.POST("/login", handlers.Auth.HandleLogin())
 			}
 
-			protectedRoutes := v1.Group("/", middlewares.AdminAuth)
+			protectedRoutes := v1.Group("/", authMiddleware)
 			{
 				protectedRoutes.GET("/auth/me", handlers.Auth.HandleMe())
 

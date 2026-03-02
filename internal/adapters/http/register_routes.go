@@ -9,15 +9,25 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/provider"
 	"github.com/itsLeonB/cashback/internal/provider/admin"
+	"github.com/kroma-labs/sentinel-go/httpserver"
+	sentinelGin "github.com/kroma-labs/sentinel-go/httpserver/adapters/gin"
 )
 
-func registerRoutes(router *gin.Engine, configs config.Config, services *provider.Services, adminServices *admin.Services) {
+func RegisterRoutes(router *gin.Engine, configs config.Config, services *provider.Services, adminServices *admin.Services) {
 	handlers := handler.ProvideHandlers(services)
 	adminHandlers := adminHandler.ProvideHandlers(adminServices, services)
 	middlewares := middlewares.Provide(configs.App, services.Auth, adminServices.Auth)
 
-	router.Use(middlewares.Logger, middlewares.CORS, middlewares.RateLimit, middlewares.Err)
+	router.Use(middlewares.Err)
 
-	routes.RegisterAPIRoutes(router, handlers, middlewares)
-	routes.RegisterAdminRoutes(router, adminHandlers, middlewares)
+	sentinelGin.RegisterHealth(router, httpserver.NewHealthHandler())
+
+	if configs.App.Env != "release" {
+		sentinelGin.RegisterPprof(router, httpserver.DefaultPprofConfig())
+		routes.RegisterTestRoutes(router)
+	}
+
+	routes.RegisterBaseRoutes(router)
+	routes.RegisterAPIRoutes(router, handlers, middlewares.Auth)
+	routes.RegisterAdminRoutes(router, adminHandlers, middlewares.AdminAuth)
 }

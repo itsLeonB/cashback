@@ -1,11 +1,14 @@
 package logger
 
-import "github.com/itsLeonB/ezutil/v2"
+import (
+	"github.com/itsLeonB/ezutil/v2"
+	"github.com/itsLeonB/ezutil/v2/otel"
+)
 
 var Global ezutil.Logger
 
 func Init(appNamespace string) {
-	Global = ezutil.NewSimpleLogger(appNamespace, true, 0)
+	Global = otel.Init(appNamespace)
 }
 
 func Debug(args ...any) {
@@ -13,37 +16,37 @@ func Debug(args ...any) {
 }
 
 func Info(args ...any) {
-	Global.Info(args...)
+	Global.Info(args)
 }
 
 func Warn(args ...any) {
-	Global.Warn(args...)
+	Global.Warn(args)
 }
 
 func Error(args ...any) {
-	Global.Error(args...)
+	Global.Error(args)
 }
 
 func Fatal(args ...any) {
-	Global.Fatal(args...)
+	Global.Fatal(args)
 }
 
 func Debugf(format string, args ...any) {
-	Global.Debugf(format, args...)
+	Global.Debugf(format, args)
 }
 
 func Infof(format string, args ...any) {
-	Global.Infof(format, args...)
+	Global.Infof(format, args)
 }
 
 func Warnf(format string, args ...any) {
-	Global.Warnf(format, args...)
+	Global.Warnf(format, args)
 }
 
 func Errorf(format string, args ...any) {
-	Global.Errorf(format, args...)
+	Global.Errorf(format, args)
 }
 
 func Fatalf(format string, args ...any) {
-	Global.Fatalf(format, args...)
+	Global.Fatalf(format, args)
 }

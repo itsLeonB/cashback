@@ -28,6 +28,7 @@ func RegisterTestRoutes(r *gin.Engine) {
 		group.GET("/app-error", handleAppError())
 		group.GET("/known-error", handleKnownError())
 		group.GET("/panic", handlePanic())
+		group.GET("/json", handleJsonError())
 	}
 }
 
@@ -71,4 +72,14 @@ func handlePanic() gin.HandlerFunc {
 	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
 		panic("panicking")
 	})
+}
+
+func handleJsonError() gin.HandlerFunc {
+	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+		return server.BindJSON[TestRequest](ctx)
+	})
+}
+
+type TestRequest struct {
+	Test string `json:"test" binding:"required"`
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -20,6 +21,9 @@ func NewUserRepository(db *gorm.DB) *userRepository {
 }
 
 func (ur *userRepository) FindByIDs(ctx context.Context, ids []uuid.UUID) ([]users.User, error) {
+	ctx, span := otel.Tracer.Start(ctx, "UserRepository.FindByIDs")
+	defer span.End()
+
 	db, err := ur.GetGormInstance(ctx)
 	if err != nil {
 		return nil, err

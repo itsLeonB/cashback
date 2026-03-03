@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	mapper "github.com/itsLeonB/cashback/internal/domain/mapper/monetization"
@@ -44,6 +45,9 @@ func NewPlanVersionService(
 }
 
 func (pvs *planVersionService) Create(ctx context.Context, req dto.NewPlanVersionRequest) (dto.PlanVersionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PlanVersionService.Create")
+	defer span.End()
+
 	newPlanVersion := entity.PlanVersion{
 		PlanID:             req.PlanID,
 		PriceAmount:        req.PriceAmount,
@@ -71,6 +75,9 @@ func (pvs *planVersionService) Create(ctx context.Context, req dto.NewPlanVersio
 }
 
 func (pvs *planVersionService) GetList(ctx context.Context) ([]dto.PlanVersionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PlanVersionService.GetList")
+	defer span.End()
+
 	spec := crud.Specification[entity.PlanVersion]{}
 	spec.PreloadRelations = []string{"Plan"}
 	planVersions, err := pvs.planVersionRepo.FindAll(ctx, spec)
@@ -82,6 +89,9 @@ func (pvs *planVersionService) GetList(ctx context.Context) ([]dto.PlanVersionRe
 }
 
 func (pvs *planVersionService) GetOne(ctx context.Context, id uuid.UUID) (dto.PlanVersionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PlanVersionService.GetOne")
+	defer span.End()
+
 	planVersion, err := pvs.getByID(ctx, id, false, []string{"Plan"})
 	if err != nil {
 		return dto.PlanVersionResponse{}, err
@@ -91,6 +101,9 @@ func (pvs *planVersionService) GetOne(ctx context.Context, id uuid.UUID) (dto.Pl
 }
 
 func (pvs *planVersionService) Update(ctx context.Context, req dto.UpdatePlanVersionRequest) (dto.PlanVersionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PlanVersionService.Update")
+	defer span.End()
+
 	var resp dto.PlanVersionResponse
 	err := pvs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		planVersion, err := pvs.getByID(ctx, req.ID, true, nil)
@@ -130,6 +143,9 @@ func (pvs *planVersionService) Update(ctx context.Context, req dto.UpdatePlanVer
 }
 
 func (pvs *planVersionService) Delete(ctx context.Context, id uuid.UUID) (dto.PlanVersionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PlanVersionService.Delete")
+	defer span.End()
+
 	var resp dto.PlanVersionResponse
 	err := pvs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		planVersion, err := pvs.getByID(ctx, id, true, nil)
@@ -148,6 +164,9 @@ func (pvs *planVersionService) Delete(ctx context.Context, id uuid.UUID) (dto.Pl
 }
 
 func (pvs *planVersionService) GetActive(ctx context.Context) ([]dto.PlanVersionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PlanVersionService.GetActive")
+	defer span.End()
+
 	spec := crud.Specification[entity.PlanVersion]{}
 	spec.PreloadRelations = []string{"Plan"}
 	planVersions, err := pvs.planVersionRepo.FindAll(ctx, spec)

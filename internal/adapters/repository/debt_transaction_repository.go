@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -23,6 +24,9 @@ func NewDebtTransactionRepository(db *gorm.DB) *debtTransactionRepositoryGorm {
 }
 
 func (dtr *debtTransactionRepositoryGorm) FindAllByMultipleProfileIDs(ctx context.Context, userProfileIDs, friendProfileIDs []uuid.UUID) ([]debts.DebtTransaction, error) {
+	ctx, span := otel.Tracer.Start(ctx, "DebtTransactionRepository.FindAllByMultipleProfileIDs")
+	defer span.End()
+
 	if len(userProfileIDs) == 0 || len(friendProfileIDs) == 0 {
 		logger.Warn("DebtTransactionRepository.FindAllByMultipleProfileIDs input is empty slice")
 		return []debts.DebtTransaction{}, nil
@@ -55,6 +59,9 @@ func (dtr *debtTransactionRepositoryGorm) FindAllByProfileIDs(
 	limit int,
 	debtsOnly bool,
 ) ([]debts.DebtTransaction, error) {
+	ctx, span := otel.Tracer.Start(ctx, "DebtTransactionRepository.FindAllByProfileIDs")
+	defer span.End()
+
 	if len(profileIDs) < 1 {
 		return []debts.DebtTransaction{}, nil
 	}

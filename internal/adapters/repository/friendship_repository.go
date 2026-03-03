@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -22,6 +23,9 @@ func NewFriendshipRepository(db *gorm.DB) *friendshipRepositoryGorm {
 }
 
 func (fr *friendshipRepositoryGorm) Insert(ctx context.Context, friendship users.Friendship) (users.Friendship, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRepository.Insert")
+	defer span.End()
+
 	db, err := fr.GetGormInstance(ctx)
 	if err != nil {
 		return users.Friendship{}, err
@@ -35,6 +39,9 @@ func (fr *friendshipRepositoryGorm) Insert(ctx context.Context, friendship users
 }
 
 func (fr *friendshipRepositoryGorm) FindFirstBySpec(ctx context.Context, spec users.FriendshipSpecification) (users.Friendship, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRepository.FindFirstBySpec")
+	defer span.End()
+
 	var friendship users.Friendship
 
 	db, err := fr.GetGormInstance(ctx)
@@ -69,6 +76,9 @@ func (fr *friendshipRepositoryGorm) FindFirstBySpec(ctx context.Context, spec us
 }
 
 func (fr *friendshipRepositoryGorm) FindAllBySpec(ctx context.Context, spec users.FriendshipSpecification) ([]users.Friendship, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRepository.FindAllBySpec")
+	defer span.End()
+
 	var friendships []users.Friendship
 
 	db, err := fr.GetGormInstance(ctx)
@@ -94,6 +104,9 @@ func (fr *friendshipRepositoryGorm) FindAllBySpec(ctx context.Context, spec user
 }
 
 func (fr *friendshipRepositoryGorm) FindByProfileIDs(ctx context.Context, profileID1, profileID2 uuid.UUID) (users.Friendship, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRepository.FindByProfileIDs")
+	defer span.End()
+
 	db, err := fr.GetGormInstance(ctx)
 	if err != nil {
 		return users.Friendship{}, err

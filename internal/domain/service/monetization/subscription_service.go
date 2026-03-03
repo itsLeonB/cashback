@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
@@ -63,6 +64,9 @@ func NewSubscriptionService(
 }
 
 func (ss *subscriptionService) Create(ctx context.Context, req dto.NewSubscriptionRequest) (dto.SubscriptionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.Create")
+	defer span.End()
+
 	newSubscription := entity.Subscription{
 		ProfileID:     req.ProfileID,
 		PlanVersionID: req.PlanVersionID,
@@ -91,6 +95,9 @@ func (ss *subscriptionService) Create(ctx context.Context, req dto.NewSubscripti
 }
 
 func (ss *subscriptionService) GetList(ctx context.Context) ([]dto.SubscriptionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.GetList")
+	defer span.End()
+
 	spec := crud.Specification[entity.Subscription]{}
 	spec.PreloadRelations = []string{"Profile", "PlanVersion.Plan"}
 	subscriptions, err := ss.subscriptionRepo.FindAll(ctx, spec)
@@ -102,6 +109,9 @@ func (ss *subscriptionService) GetList(ctx context.Context) ([]dto.SubscriptionR
 }
 
 func (ss *subscriptionService) GetOne(ctx context.Context, id uuid.UUID) (dto.SubscriptionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.GetOne")
+	defer span.End()
+
 	subscription, err := ss.GetByID(ctx, id, false)
 	if err != nil {
 		return dto.SubscriptionResponse{}, err
@@ -111,6 +121,9 @@ func (ss *subscriptionService) GetOne(ctx context.Context, id uuid.UUID) (dto.Su
 }
 
 func (ss *subscriptionService) Update(ctx context.Context, req dto.UpdateSubscriptionRequest) (dto.SubscriptionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.Update")
+	defer span.End()
+
 	if !req.CurrentPeriodStart.IsZero() &&
 		!req.CurrentPeriodEnd.IsZero() &&
 		req.CurrentPeriodEnd.Before(req.CurrentPeriodStart) {
@@ -161,6 +174,9 @@ func (ss *subscriptionService) Update(ctx context.Context, req dto.UpdateSubscri
 }
 
 func (ss *subscriptionService) Delete(ctx context.Context, id uuid.UUID) (dto.SubscriptionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.Delete")
+	defer span.End()
+
 	var resp dto.SubscriptionResponse
 	err := ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		subscription, err := ss.GetByID(ctx, id, true)
@@ -179,6 +195,9 @@ func (ss *subscriptionService) Delete(ctx context.Context, id uuid.UUID) (dto.Su
 }
 
 func (ss *subscriptionService) AttachDefaultSubscription(ctx context.Context, profileID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.AttachDefaultSubscription")
+	defer span.End()
+
 	planVerSpec := crud.Specification[entity.PlanVersion]{}
 	planVerSpec.Model.IsDefault = true
 	planVersion, err := ss.planVersionRepo.FindFirst(ctx, planVerSpec)
@@ -198,6 +217,9 @@ func (ss *subscriptionService) AttachDefaultSubscription(ctx context.Context, pr
 }
 
 func (ss *subscriptionService) GetCurrentSubscription(ctx context.Context, profileID uuid.UUID, isActive bool) (entity.Subscription, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.GetCurrentSubscription")
+	defer span.End()
+
 	spec := crud.Specification[entity.Subscription]{}
 	spec.Model.ProfileID = profileID
 	spec.PreloadRelations = []string{"PlanVersion", "PlanVersion.Plan"}
@@ -228,6 +250,9 @@ func (ss *subscriptionService) GetCurrentSubscription(ctx context.Context, profi
 }
 
 func (ss *subscriptionService) CreateNew(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.NewPaymentRequest, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.CreateNew")
+	defer span.End()
+
 	var resp dto.NewPaymentRequest
 	err := ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		planVerSpec := crud.Specification[entity.PlanVersion]{}
@@ -286,6 +311,9 @@ func (ss *subscriptionService) CreateNew(ctx context.Context, req dto.PurchaseSu
 }
 
 func (ss *subscriptionService) GetSubscribedDetails(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.GetSubscribedDetails")
+	defer span.End()
+
 	sub, err := ss.GetCurrentSubscription(ctx, profileID, false)
 	if err != nil {
 		return dto.SubscriptionResponse{}, err
@@ -295,6 +323,9 @@ func (ss *subscriptionService) GetSubscribedDetails(ctx context.Context, profile
 }
 
 func (ss *subscriptionService) GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.GetByID")
+	defer span.End()
+
 	spec := crud.Specification[entity.Subscription]{}
 	spec.Model.ID = id
 	spec.ForUpdate = forUpdate
@@ -310,10 +341,16 @@ func (ss *subscriptionService) GetByID(ctx context.Context, id uuid.UUID, forUpd
 }
 
 func (ss *subscriptionService) UpdatePastDues(ctx context.Context) error {
+	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.UpdatePastDues")
+	defer span.End()
+
 	return ss.subscriptionRepo.UpdatePastDues(ctx)
 }
 
 func (ss *subscriptionService) PublishSubscriptionDueNotifications(ctx context.Context) error {
+	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.PublishSubscriptionDueNotifications")
+	defer span.End()
+
 	subscriptions, err := ss.subscriptionRepo.FindNearingDueDate(ctx)
 	if err != nil {
 		return err
@@ -338,6 +375,9 @@ func (ss *subscriptionService) PublishSubscriptionDueNotifications(ctx context.C
 }
 
 func (ss *subscriptionService) Save(ctx context.Context, sub entity.Subscription) error {
+	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.Save")
+	defer span.End()
+
 	_, err := ss.subscriptionRepo.Update(ctx, sub)
 	return err
 }

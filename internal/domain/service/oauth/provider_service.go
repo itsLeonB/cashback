@@ -9,7 +9,7 @@ import (
 
 type ProviderService interface {
 	IsTrusted() bool
-	GetAuthCodeURL(ctx context.Context, state string) (string, error)
+	GetAuthCodeURL(state string) (string, error)
 	HandleCallback(ctx context.Context, code string) (UserInfo, error)
 }
 

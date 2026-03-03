@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/ocr"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/core/service/storage"
@@ -53,6 +54,9 @@ func NewExpenseBillService(
 }
 
 func (ebs *expenseBillServiceImpl) Save(ctx context.Context, req *dto.NewExpenseBillRequest) error {
+	ctx, span := otel.Tracer.Start(ctx, "ExpenseBillService.Save")
+	defer span.End()
+
 	return ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		if err := ebs.checkIfUploadAllowed(ctx, req.ProfileID, req.GroupExpenseID); err != nil {
 			return err
@@ -116,6 +120,9 @@ func (ebs *expenseBillServiceImpl) ensureSingleBill(ctx context.Context, profile
 }
 
 func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg message.ExpenseBillUploaded) error {
+	ctx, span := otel.Tracer.Start(ctx, "ExpenseBillService.ExtractBillText")
+	defer span.End()
+
 	err := ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[expenses.ExpenseBill]{}
 		spec.Model.ID = msg.ID
@@ -154,6 +161,9 @@ func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg mess
 }
 
 func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "ExpenseBillService.TriggerParsing")
+	defer span.End()
+
 	return ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[expenses.ExpenseBill]{}
 		spec.Model.ID = billID
@@ -196,6 +206,9 @@ func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID
 }
 
 func (ebs *expenseBillServiceImpl) Cleanup(ctx context.Context) error {
+	ctx, span := otel.Tracer.Start(ctx, "ExpenseBillService.Cleanup")
+	defer span.End()
+
 	spec := crud.Specification[expenses.ExpenseBill]{}
 	bills, err := ebs.billRepo.FindAll(ctx, spec)
 	if err != nil {

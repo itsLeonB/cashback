@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -23,6 +24,9 @@ func NewOtherFeeRepository(db *gorm.DB) *otherFeeRepositoryGorm {
 }
 
 func (ger *otherFeeRepositoryGorm) SyncParticipants(ctx context.Context, feeID uuid.UUID, participants []expenses.FeeParticipant) error {
+	ctx, span := otel.Tracer.Start(ctx, "OtherFeeRepository.SyncParticipants")
+	defer span.End()
+
 	db, err := ger.GetGormInstance(ctx)
 	if err != nil {
 		return err

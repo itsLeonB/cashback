@@ -18,7 +18,7 @@ func NewDebtHandler(debtService service.DebtService) *DebtHandler {
 }
 
 func (dh *DebtHandler) HandleCreate() gin.HandlerFunc {
-	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
+	return server.Handler("DebtHandler.HandleCreate", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -31,39 +31,39 @@ func (dh *DebtHandler) HandleCreate() gin.HandlerFunc {
 
 		request.UserProfileID = profileID
 
-		return dh.debtService.RecordNewTransaction(ctx, request)
+		return dh.debtService.RecordNewTransaction(ctx.Request.Context(), request)
 	})
 }
 
 func (dh *DebtHandler) HandleGetAll() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("DebtHandler.HandleGetAll", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return dh.debtService.GetTransactions(ctx, profileID)
+		return dh.debtService.GetTransactions(ctx.Request.Context(), profileID)
 	})
 }
 
 func (dh *DebtHandler) HandleGetTransactionSummary() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("DebtHandler.HandleGetTransactionSummary", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return dh.debtService.GetTransactionSummary(ctx, profileID)
+		return dh.debtService.GetTransactionSummary(ctx.Request.Context(), profileID)
 	})
 }
 
 func (dh *DebtHandler) HandleGetRecent() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("DebtHandler.HandleGetRecent", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return dh.debtService.GetRecent(ctx, profileID)
+		return dh.debtService.GetRecent(ctx.Request.Context(), profileID)
 	})
 }

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
@@ -43,6 +44,9 @@ func NewSessionService(
 
 // RefreshToken validates and rotates a refresh token, issuing new access and refresh tokens
 func (ss *sessionService) RefreshToken(ctx context.Context, request dto.RefreshTokenRequest) (dto.TokenResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SessionService.RefreshToken")
+	defer span.End()
+
 	var response dto.TokenResponse
 
 	err := ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -82,6 +86,9 @@ func (ss *sessionService) RefreshToken(ctx context.Context, request dto.RefreshT
 }
 
 func (ss *sessionService) CreateTokenAndSession(ctx context.Context, user users.User) (dto.TokenResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SessionService.CreateTokenAndSession")
+	defer span.End()
+
 	// Create session with refresh token
 	session, refreshToken, err := ss.createSession(ctx, user.ID, "", 30*24*time.Hour) // 30 day refresh token
 	if err != nil {
@@ -100,6 +107,9 @@ func (ss *sessionService) CreateTokenAndSession(ctx context.Context, user users.
 
 // revokeSession deletes the session and all associated refresh tokens
 func (ss *sessionService) RevokeSession(ctx context.Context, sessionID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "SessionService.RevokeSession")
+	defer span.End()
+
 	return ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		// Delete all refresh tokens for this session
 		spec := crud.Specification[users.RefreshToken]{}
@@ -197,6 +207,9 @@ func (ss *sessionService) generateRefreshToken() (string, string, error) {
 }
 
 func (ss *sessionService) GetByID(ctx context.Context, id uuid.UUID) (users.Session, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SessionService.GetByID")
+	defer span.End()
+
 	session, err := ss.findSessionByID(ctx, id)
 	if err != nil {
 		return users.Session{}, err

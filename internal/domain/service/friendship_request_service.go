@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity"
@@ -42,7 +43,11 @@ func NewFriendshipRequestService(
 }
 
 func (frs *friendshipRequestServiceImpl) Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID) error {
-	return frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRequestService.Send")
+	defer span.End()
+	var msg message.FriendRequestSent
+
+	err := frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[users.FriendshipRequest]{}
 		spec.Model.SenderProfileID = userProfileID
 		spec.Model.RecipientProfileID = friendProfileID
@@ -69,9 +74,16 @@ func (frs *friendshipRequestServiceImpl) Send(ctx context.Context, userProfileID
 			return err
 		}
 
-		go frs.taskQueue.AsyncEnqueue(message.FriendRequestSent{ID: insertedRequest.ID})
+		msg.ID = insertedRequest.ID
+
 		return nil
 	})
+
+	if err == nil {
+		go frs.taskQueue.AsyncEnqueue(ctx, msg)
+	}
+
+	return err
 }
 
 func (frs *friendshipRequestServiceImpl) validateFriendProfile(ctx context.Context, userProfileID, friendProfileID uuid.UUID) error {
@@ -93,6 +105,9 @@ func (frs *friendshipRequestServiceImpl) validateFriendProfile(ctx context.Conte
 }
 
 func (frs *friendshipRequestServiceImpl) GetAllSent(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRequestService.GetAllSent")
+	defer span.End()
+
 	spec := crud.Specification[users.FriendshipRequest]{}
 	spec.Model.SenderProfileID = userProfileID
 	spec.PreloadRelations = []string{"SenderProfile", "RecipientProfile"}
@@ -113,6 +128,9 @@ func (frs *friendshipRequestServiceImpl) GetAllSent(ctx context.Context, userPro
 }
 
 func (frs *friendshipRequestServiceImpl) Cancel(ctx context.Context, userProfileID, reqID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRequestService.Cancel")
+	defer span.End()
+
 	return frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[users.FriendshipRequest]{}
 		spec.Model.ID = reqID
@@ -149,6 +167,9 @@ func (frs *friendshipRequestServiceImpl) getRequest(ctx context.Context, spec cr
 }
 
 func (frs *friendshipRequestServiceImpl) GetAllReceived(ctx context.Context, userProfileID uuid.UUID) ([]dto.FriendshipRequestResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRequestService.GetAllReceived")
+	defer span.End()
+
 	spec := crud.Specification[users.FriendshipRequest]{}
 	spec.Model.RecipientProfileID = userProfileID
 	spec.PreloadRelations = []string{"SenderProfile", "RecipientProfile"}
@@ -161,6 +182,9 @@ func (frs *friendshipRequestServiceImpl) GetAllReceived(ctx context.Context, use
 }
 
 func (frs *friendshipRequestServiceImpl) Ignore(ctx context.Context, userProfileID, reqID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRequestService.Ignore")
+	defer span.End()
+
 	return frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[users.FriendshipRequest]{}
 		spec.Model.ID = reqID
@@ -175,6 +199,9 @@ func (frs *friendshipRequestServiceImpl) Ignore(ctx context.Context, userProfile
 }
 
 func (frs *friendshipRequestServiceImpl) Block(ctx context.Context, userProfileID, reqID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRequestService.Block")
+	defer span.End()
+
 	return frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[users.FriendshipRequest]{}
 		spec.Model.ID = reqID
@@ -198,6 +225,9 @@ func (frs *friendshipRequestServiceImpl) Block(ctx context.Context, userProfileI
 }
 
 func (frs *friendshipRequestServiceImpl) Unblock(ctx context.Context, userProfileID, reqID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRequestService.Unblock")
+	defer span.End()
+
 	return frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[users.FriendshipRequest]{}
 		spec.Model.ID = reqID
@@ -218,6 +248,9 @@ func (frs *friendshipRequestServiceImpl) Unblock(ctx context.Context, userProfil
 }
 
 func (frs *friendshipRequestServiceImpl) Accept(ctx context.Context, userProfileID, reqID uuid.UUID) (dto.FriendshipResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRequestService.Accept")
+	defer span.End()
+
 	var response dto.FriendshipResponse
 	var senderProfileID uuid.UUID
 	err := frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -243,7 +276,7 @@ func (frs *friendshipRequestServiceImpl) Accept(ctx context.Context, userProfile
 		return dto.FriendshipResponse{}, err
 	}
 
-	go frs.taskQueue.AsyncEnqueue(message.FriendRequestAccepted{
+	go frs.taskQueue.AsyncEnqueue(ctx, message.FriendRequestAccepted{
 		FriendshipID:    response.ID,
 		SenderProfileID: senderProfileID,
 	})
@@ -252,6 +285,9 @@ func (frs *friendshipRequestServiceImpl) Accept(ctx context.Context, userProfile
 }
 
 func (frs *friendshipRequestServiceImpl) ConstructNotification(ctx context.Context, msg message.FriendRequestSent) (entity.Notification, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRequestService.ConstructNotification")
+	defer span.End()
+
 	var notification entity.Notification
 	err := frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[users.FriendshipRequest]{}

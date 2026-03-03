@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/webpush"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity"
@@ -43,6 +44,9 @@ func NewPushNotificationService(
 }
 
 func (s *pushNotificationService) Subscribe(ctx context.Context, req dto.PushSubscriptionRequest) error {
+	ctx, span := otel.Tracer.Start(ctx, "PushNotificationService.Subscribe")
+	defer span.End()
+	
 	keysJSON, err := json.Marshal(entity.PushSubscriptionKeys{
 		P256dh: req.Keys.P256dh,
 		Auth:   req.Keys.Auth,
@@ -64,6 +68,9 @@ func (s *pushNotificationService) Subscribe(ctx context.Context, req dto.PushSub
 }
 
 func (s *pushNotificationService) Unsubscribe(ctx context.Context, req dto.PushUnsubscribeRequest) error {
+	ctx, span := otel.Tracer.Start(ctx, "PushNotificationService.Unsubscribe")
+	defer span.End()
+	
 	spec := crud.Specification[entity.PushSubscription]{}
 	spec.Model.ProfileID = req.ProfileID
 	spec.Model.Endpoint = req.Endpoint
@@ -79,6 +86,9 @@ func (s *pushNotificationService) Unsubscribe(ctx context.Context, req dto.PushU
 }
 
 func (s *pushNotificationService) UnsubscribeBySession(ctx context.Context, sessionID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "PushNotificationService.UnsubscribeBySession")
+	defer span.End()
+	
 	spec := crud.Specification[entity.PushSubscription]{}
 	spec.Model.SessionID = uuid.NullUUID{UUID: sessionID, Valid: true}
 	subscriptions, err := s.repo.FindAll(ctx, spec)
@@ -94,6 +104,9 @@ func (s *pushNotificationService) UnsubscribeBySession(ctx context.Context, sess
 }
 
 func (s *pushNotificationService) Deliver(ctx context.Context, msg message.NotificationCreated) error {
+	ctx, span := otel.Tracer.Start(ctx, "PushNotificationService.Deliver")
+	defer span.End()
+	
 	return s.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		notif, err := s.getPushableNotification(ctx, msg.ID)
 		if err != nil {

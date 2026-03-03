@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/store"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
@@ -44,6 +45,9 @@ func NewOAuthService(
 }
 
 func (as *oauthServiceImpl) GetOAuthURL(ctx context.Context, provider string) (string, error) {
+	ctx, span := otel.Tracer.Start(ctx, "OAuthService.GetOAuthURL")
+	defer span.End()
+
 	oauthProvider, ok := as.oauthProviders[provider]
 	if !ok {
 		return "", ungerr.Unknownf("unsupported oauth provider: %s", provider)
@@ -54,7 +58,7 @@ func (as *oauthServiceImpl) GetOAuthURL(ctx context.Context, provider string) (s
 		return "", err
 	}
 
-	url, err := oauthProvider.GetAuthCodeURL(ctx, state)
+	url, err := oauthProvider.GetAuthCodeURL(state)
 	if err != nil {
 		return "", err
 	}
@@ -67,6 +71,9 @@ func (as *oauthServiceImpl) GetOAuthURL(ctx context.Context, provider string) (s
 }
 
 func (as *oauthServiceImpl) HandleOAuthCallback(ctx context.Context, data dto.OAuthCallbackData) (dto.TokenResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "OAuthService.HandleOAuthCallback")
+	defer span.End()
+
 	var response dto.TokenResponse
 	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		oauthProvider, ok := as.oauthProviders[data.Provider]

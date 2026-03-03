@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/ungerr"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
@@ -20,7 +21,7 @@ import (
 type StorageRepository interface {
 	Upload(ctx context.Context, req *StorageUploadRequest) error
 	Delete(ctx context.Context, fileID FileIdentifier) error
-	GetSignedURL(ctx context.Context, fileID FileIdentifier, expiration time.Duration) (string, error)
+	GetSignedURL(fileID FileIdentifier, expiration time.Duration) (string, error)
 	GetAllObjectKeys(ctx context.Context, bucketName string) ([]string, error)
 	Exists(ctx context.Context, fileID FileIdentifier) (bool, error)
 	ToURI(fi FileIdentifier) string
@@ -41,6 +42,9 @@ func NewGCSStorageRepository() (StorageRepository, error) {
 }
 
 func (r *gcsStorageRepository) Upload(ctx context.Context, req *StorageUploadRequest) error {
+	ctx, span := otel.Tracer.Start(ctx, "gcsStorageRepository.Upload")
+	defer span.End()
+
 	bucket := r.client.Bucket(req.BucketName)
 	obj := bucket.Object(req.ObjectKey)
 
@@ -87,6 +91,9 @@ func (r *gcsStorageRepository) Upload(ctx context.Context, req *StorageUploadReq
 }
 
 func (r *gcsStorageRepository) Delete(ctx context.Context, fileID FileIdentifier) error {
+	ctx, span := otel.Tracer.Start(ctx, "gcsStorageRepository.Delete")
+	defer span.End()
+
 	if err := r.toObject(fileID).Delete(ctx); err != nil {
 		if err == storage.ErrObjectNotExist {
 			// Object doesn't exist, consider it already deleted
@@ -98,7 +105,7 @@ func (r *gcsStorageRepository) Delete(ctx context.Context, fileID FileIdentifier
 	return nil
 }
 
-func (r *gcsStorageRepository) GetSignedURL(ctx context.Context, fileID FileIdentifier, expiration time.Duration) (string, error) {
+func (r *gcsStorageRepository) GetSignedURL(fileID FileIdentifier, expiration time.Duration) (string, error) {
 	url, err := r.toBucket(fileID).SignedURL(fileID.ObjectKey, &storage.SignedURLOptions{
 		Scheme:  storage.SigningSchemeV4,
 		Method:  http.MethodGet,
@@ -112,6 +119,9 @@ func (r *gcsStorageRepository) GetSignedURL(ctx context.Context, fileID FileIden
 }
 
 func (r *gcsStorageRepository) GetAllObjectKeys(ctx context.Context, bucketName string) ([]string, error) {
+	ctx, span := otel.Tracer.Start(ctx, "gcsStorageRepository.GetAllObjectKeys")
+	defer span.End()
+
 	bucket := r.client.Bucket(bucketName)
 	it := bucket.Objects(ctx, nil)
 	objectKeys := make([]string, 0)
@@ -131,6 +141,9 @@ func (r *gcsStorageRepository) GetAllObjectKeys(ctx context.Context, bucketName 
 }
 
 func (r *gcsStorageRepository) Exists(ctx context.Context, fileID FileIdentifier) (bool, error) {
+	ctx, span := otel.Tracer.Start(ctx, "gcsStorageRepository.Exists")
+	defer span.End()
+
 	attrs, err := r.toObject(fileID).Attrs(ctx)
 	if err == nil {
 		return attrs.Size > 0, nil

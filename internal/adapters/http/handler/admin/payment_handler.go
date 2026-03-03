@@ -17,8 +17,8 @@ type PaymentHandler struct {
 }
 
 func (ph *PaymentHandler) HandleGetList() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		payments, err := ph.svc.GetList(ctx)
+	return server.Handler("PaymentHandler.HandleGetList", http.StatusOK, func(ctx *gin.Context) (any, error) {
+		payments, err := ph.svc.GetList(ctx.Request.Context())
 		if err != nil {
 			return nil, err
 		}
@@ -30,18 +30,18 @@ func (ph *PaymentHandler) HandleGetList() gin.HandlerFunc {
 }
 
 func (ph *PaymentHandler) HandleGetOne() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("PaymentHandler.HandleGetOne", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextPaymentID.String())
 		if err != nil {
 			return nil, err
 		}
 
-		return ph.svc.GetOne(ctx, id)
+		return ph.svc.GetOne(ctx.Request.Context(), id)
 	})
 }
 
 func (ph *PaymentHandler) HandleUpdate() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("PaymentHandler.HandleUpdate", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextPaymentID.String())
 		if err != nil {
 			return nil, err
@@ -54,17 +54,17 @@ func (ph *PaymentHandler) HandleUpdate() gin.HandlerFunc {
 
 		req.ID = id
 
-		return ph.svc.Update(ctx, req)
+		return ph.svc.Update(ctx.Request.Context(), req)
 	})
 }
 
 func (ph *PaymentHandler) HandleDelete() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("PaymentHandler.HandleDelete", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextPaymentID.String())
 		if err != nil {
 			return nil, err
 		}
 
-		return ph.svc.Delete(ctx, id)
+		return ph.svc.Delete(ctx.Request.Context(), id)
 	})
 }

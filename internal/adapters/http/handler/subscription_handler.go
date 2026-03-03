@@ -17,7 +17,7 @@ type SubscriptionHandler struct {
 }
 
 func (sh *SubscriptionHandler) HandleCreatePurchase() gin.HandlerFunc {
-	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
+	return server.Handler("SubscriptionHandler.HandleCreatePurchase", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -39,17 +39,17 @@ func (sh *SubscriptionHandler) HandleCreatePurchase() gin.HandlerFunc {
 			PlanVersionID: planVersionID,
 		}
 
-		return sh.paymentSvc.NewPurchase(ctx, req)
+		return sh.paymentSvc.NewPurchase(ctx.Request.Context(), req)
 	})
 }
 
 func (sh *SubscriptionHandler) HandleGetSubscribedDetails() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("SubscriptionHandler.HandleGetSubscribedDetails", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return sh.svc.GetSubscribedDetails(ctx, profileID)
+		return sh.svc.GetSubscribedDetails(ctx.Request.Context(), profileID)
 	})
 }

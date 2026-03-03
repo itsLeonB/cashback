@@ -3,11 +3,16 @@ package queue
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"syscall"
 
 	"github.com/hibiken/asynq"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/ungerr"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type asynqClient struct {
@@ -24,6 +29,9 @@ func NewTaskQueue(opts asynq.RedisConnOpt) (*asynqClient, error) {
 }
 
 func (ac *asynqClient) Enqueue(ctx context.Context, message queue.TaskMessage) error {
+	ctx, span := otel.Tracer.Start(ctx, "asynqClient.Enqueue")
+	defer span.End()
+
 	payload, err := json.Marshal(message)
 	if err != nil {
 		return ungerr.Wrap(err, "error marshaling message to JSON")
@@ -42,13 +50,25 @@ func (ac *asynqClient) Enqueue(ctx context.Context, message queue.TaskMessage) e
 
 func (ac *asynqClient) Shutdown() error {
 	if err := ac.client.Close(); err != nil {
+		if errors.Is(err, syscall.EPIPE) {
+			logger.Warnf("asynq client connection closed: %v", err)
+			return nil
+		}
 		return ungerr.Wrap(err, "error closing asynq client")
 	}
 	return nil
 }
 
-func (ac *asynqClient) AsyncEnqueue(msg queue.TaskMessage) {
-	if err := ac.Enqueue(context.Background(), msg); err != nil {
+func (ac *asynqClient) AsyncEnqueue(ctx context.Context, msg queue.TaskMessage) {
+	detached := context.Background()
+	if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
+		detached = trace.ContextWithSpan(detached, span)
+	}
+
+	if err := ac.Enqueue(detached, msg); err != nil {
+		span := trace.SpanFromContext(detached)
+		span.SetStatus(codes.Error, "asynchronous error")
+		span.RecordError(err)
 		logger.Error(err)
 	}
 }

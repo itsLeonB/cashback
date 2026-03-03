@@ -6,6 +6,7 @@ import (
 
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -21,6 +22,9 @@ func NewSubscriptionRepository(db *gorm.DB) *subscriptionRepository {
 }
 
 func (sr *subscriptionRepository) UpdatePastDues(ctx context.Context) error {
+	ctx, span := otel.Tracer.Start(ctx, "SubscriptionRepository.UpdatePastDues")
+	defer span.End()
+
 	db, err := sr.GetGormInstance(ctx)
 	if err != nil {
 		return err
@@ -40,6 +44,9 @@ func (sr *subscriptionRepository) UpdatePastDues(ctx context.Context) error {
 }
 
 func (sr *subscriptionRepository) FindNearingDueDate(ctx context.Context) ([]entity.Subscription, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SubscriptionRepository.FindNearingDueDate")
+	defer span.End()
+
 	db, err := sr.GetGormInstance(ctx)
 	if err != nil {
 		return nil, err

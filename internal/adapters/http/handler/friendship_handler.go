@@ -27,7 +27,7 @@ func NewFriendshipHandler(
 }
 
 func (fh *FriendshipHandler) HandleCreateAnonymousFriendship() gin.HandlerFunc {
-	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
+	return server.Handler("FriendshipHandler.HandleCreateAnonymousFriendship", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -40,23 +40,23 @@ func (fh *FriendshipHandler) HandleCreateAnonymousFriendship() gin.HandlerFunc {
 
 		request.ProfileID = profileID
 
-		return fh.friendshipService.CreateAnonymous(ctx, request)
+		return fh.friendshipService.CreateAnonymous(ctx.Request.Context(), request)
 	})
 }
 
 func (fh *FriendshipHandler) HandleGetAll() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("FriendshipHandler.HandleGetAll", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return fh.friendshipService.GetAll(ctx, profileID)
+		return fh.friendshipService.GetAll(ctx.Request.Context(), profileID)
 	})
 }
 
 func (fh *FriendshipHandler) HandleGetDetails() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("FriendshipHandler.HandleGetDetails", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -67,6 +67,6 @@ func (fh *FriendshipHandler) HandleGetDetails() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return fh.friendDetailsSvc.GetDetails(ctx, profileID, friendshipID)
+		return fh.friendDetailsSvc.GetDetails(ctx.Request.Context(), profileID, friendshipID)
 	})
 }

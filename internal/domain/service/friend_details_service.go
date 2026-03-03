@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/ezutil/v2"
@@ -30,6 +31,9 @@ func NewFriendDetailsService(
 }
 
 func (fds *friendDetailsServiceImpl) GetDetails(ctx context.Context, profileID, friendshipID uuid.UUID) (dto.FriendDetailsResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendDetailsService.GetDetails")
+	defer span.End()
+	
 	response, err := fds.friendshipSvc.GetDetails(ctx, profileID, friendshipID)
 	if err != nil {
 		return dto.FriendDetailsResponse{}, err

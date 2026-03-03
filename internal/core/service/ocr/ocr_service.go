@@ -6,6 +6,7 @@ import (
 	vision "cloud.google.com/go/vision/apiv1"
 	"cloud.google.com/go/vision/v2/apiv1/visionpb"
 	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/ungerr"
 	"google.golang.org/api/option"
 )
@@ -29,6 +30,9 @@ func NewOCRClient() (*cloudVisionClient, error) {
 }
 
 func (cvc *cloudVisionClient) ExtractFromURI(ctx context.Context, uri string) (string, error) {
+	ctx, span := otel.Tracer.Start(ctx, "cloudVisionClient.ExtractFromURI")
+	defer span.End()
+
 	img := &visionpb.Image{
 		Source: &visionpb.ImageSource{
 			GcsImageUri: uri,

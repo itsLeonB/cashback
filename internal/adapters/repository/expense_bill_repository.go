@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -23,6 +24,9 @@ func NewExpenseBillRepository(db *gorm.DB) *expenseBillRepo {
 }
 
 func (sr *expenseBillRepo) CountUploadedByDateRange(ctx context.Context, profileID uuid.UUID, start, end time.Time) (int, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ExpenseBillRepository.CountUploadedByDateRange")
+	defer span.End()
+
 	db, err := sr.GetGormInstance(ctx)
 	if err != nil {
 		return 0, err

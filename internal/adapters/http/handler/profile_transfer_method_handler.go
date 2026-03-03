@@ -16,7 +16,7 @@ type ProfileTransferMethodHandler struct {
 }
 
 func (ptmh *ProfileTransferMethodHandler) HandleAdd() gin.HandlerFunc {
-	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
+	return server.Handler("ProfileTransferMethodHandler.HandleAdd", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -29,23 +29,23 @@ func (ptmh *ProfileTransferMethodHandler) HandleAdd() gin.HandlerFunc {
 
 		req.ProfileID = profileID
 
-		return nil, ptmh.svc.Add(ctx, req)
+		return nil, ptmh.svc.Add(ctx.Request.Context(), req)
 	})
 }
 
 func (ptmh *ProfileTransferMethodHandler) HandleGetAllOwned() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("ProfileTransferMethodHandler.HandleGetAllOwned", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return ptmh.svc.GetAllByProfileID(ctx, profileID)
+		return ptmh.svc.GetAllByProfileID(ctx.Request.Context(), profileID)
 	})
 }
 
 func (ptmh *ProfileTransferMethodHandler) HandleGetAllByFriendProfileID() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("ProfileTransferMethodHandler.HandleGetAllByFriendProfileID", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -56,6 +56,6 @@ func (ptmh *ProfileTransferMethodHandler) HandleGetAllByFriendProfileID() gin.Ha
 			return nil, err
 		}
 
-		return ptmh.svc.GetAllByFriendProfileID(ctx, userProfileID, friendProfileID)
+		return ptmh.svc.GetAllByFriendProfileID(ctx.Request.Context(), userProfileID, friendProfileID)
 	})
 }

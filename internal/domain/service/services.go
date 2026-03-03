@@ -104,7 +104,7 @@ type TransferMethodService interface {
 	GetByID(ctx context.Context, id uuid.UUID) (debts.TransferMethod, error)
 	GetByName(ctx context.Context, name string) (debts.TransferMethod, error)
 	SyncMethods(ctx context.Context) error
-	SignedURLPopulator(ctx context.Context) func(debts.TransferMethod) dto.TransferMethodResponse
+	PopulateSignedURL(debts.TransferMethod) dto.TransferMethodResponse
 	Shutdown() error
 }
 
@@ -136,7 +136,7 @@ type OtherFeeService interface {
 	Add(ctx context.Context, request dto.NewOtherFeeRequest) (dto.OtherFeeResponse, error)
 	Update(ctx context.Context, request dto.UpdateOtherFeeRequest) (dto.OtherFeeResponse, error)
 	Remove(ctx context.Context, groupExpenseID, otherFeeID, userProfileID uuid.UUID) error
-	GetCalculationMethods(ctx context.Context) []dto.FeeCalculationMethodInfo
+	GetCalculationMethods() []dto.FeeCalculationMethodInfo
 }
 
 type ExpenseBillService interface {

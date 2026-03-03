@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -22,6 +23,9 @@ func NewProfileRepository(db *gorm.DB) *profileRepositoryGorm {
 }
 
 func (pr *profileRepositoryGorm) FindByIDs(ctx context.Context, ids []uuid.UUID) ([]users.UserProfile, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileRepository.FindByIDs")
+	defer span.End()
+
 	var profiles []users.UserProfile
 
 	db, err := pr.GetGormInstance(ctx)
@@ -44,6 +48,9 @@ func (pr *profileRepositoryGorm) FindByIDs(ctx context.Context, ids []uuid.UUID)
 }
 
 func (pr *profileRepositoryGorm) FindRealProfiles(ctx context.Context) ([]users.UserProfile, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileRepository.FindRealProfiles")
+	defer span.End()
+
 	db, err := pr.GetGormInstance(ctx)
 	if err != nil {
 		return nil, err
@@ -60,6 +67,9 @@ func (pr *profileRepositoryGorm) FindRealProfiles(ctx context.Context) ([]users.
 }
 
 func (pr *profileRepositoryGorm) SearchByName(ctx context.Context, query string, limit int) ([]users.UserProfile, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileRepository.SearchByName")
+	defer span.End()
+
 	db, err := pr.GetGormInstance(ctx)
 	if err != nil {
 		return nil, err

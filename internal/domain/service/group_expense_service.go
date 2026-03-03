@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/llm"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/core/service/storage"
@@ -67,6 +68,9 @@ func NewGroupExpenseService(
 }
 
 func (ges *groupExpenseServiceImpl) CreateDraft(ctx context.Context, userProfileID uuid.UUID, description string) (dto.GroupExpenseResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.CreateDraft")
+	defer span.End()
+
 	newDraftExpense := expenses.GroupExpense{
 		CreatorProfileID: userProfileID,
 		Description:      description,
@@ -82,6 +86,9 @@ func (ges *groupExpenseServiceImpl) CreateDraft(ctx context.Context, userProfile
 }
 
 func (ges *groupExpenseServiceImpl) GetAll(ctx context.Context, userProfileID uuid.UUID, ownership expenses.ExpenseOwnership, status expenses.ExpenseStatus) ([]dto.GroupExpenseResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.GetAll")
+	defer span.End()
+
 	groupExpenses, err := ges.expenseRepo.FindAllByOwnership(ctx, userProfileID, ownership, status, -1)
 	if err != nil {
 		return nil, err
@@ -91,6 +98,9 @@ func (ges *groupExpenseServiceImpl) GetAll(ctx context.Context, userProfileID uu
 }
 
 func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProfileID uuid.UUID) (dto.GroupExpenseResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.GetDetails")
+	defer span.End()
+
 	spec := crud.Specification[expenses.GroupExpense]{}
 	spec.Model.ID = id
 	spec.PreloadRelations = []string{
@@ -126,7 +136,7 @@ func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProf
 
 	var billURL string
 	if !groupExpense.Bill.IsZero() {
-		billURL, err = ges.imageSvc.GetURL(ctx, ObjectKeyToFileID(groupExpense.Bill.ImageName))
+		billURL, err = ges.imageSvc.GetURL(ObjectKeyToFileID(groupExpense.Bill.ImageName))
 		if err != nil {
 			logger.Errorf("error retrieving bill image URL: %v", err)
 		}
@@ -136,6 +146,9 @@ func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProf
 }
 
 func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, profileID uuid.UUID, dryRun bool) (dto.ExpenseConfirmationResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.ConfirmDraft")
+	defer span.End()
+
 	var response dto.ExpenseConfirmationResponse
 	err := ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[expenses.GroupExpense]{}
@@ -293,6 +306,9 @@ func (ges *groupExpenseServiceImpl) calculateOtherFeeSplits(ctx context.Context,
 }
 
 func (ges *groupExpenseServiceImpl) Delete(ctx context.Context, userProfileID, id uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.Delete")
+	defer span.End()
+
 	return ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		expense, err := ges.GetUnconfirmedGroupExpenseForUpdate(ctx, userProfileID, id)
 		if err != nil {
@@ -303,6 +319,9 @@ func (ges *groupExpenseServiceImpl) Delete(ctx context.Context, userProfileID, i
 }
 
 func (ges *groupExpenseServiceImpl) SyncParticipants(ctx context.Context, req dto.ExpenseParticipantsRequest) error {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.SyncParticipants")
+	defer span.End()
+
 	participants, profileIDs, err := ges.validateAndGetParticipants(ctx, req)
 	if err != nil {
 		return err
@@ -380,6 +399,9 @@ func (ges *groupExpenseServiceImpl) getGroupExpense(ctx context.Context, spec cr
 }
 
 func (ges *groupExpenseServiceImpl) GetUnconfirmedGroupExpenseForUpdate(ctx context.Context, profileID, id uuid.UUID) (expenses.GroupExpense, error) {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.GetUnconfirmedGroupExpenseForUpdate")
+	defer span.End()
+
 	spec := crud.Specification[expenses.GroupExpense]{}
 	spec.Model.ID = id
 	if profileID != uuid.Nil {
@@ -399,6 +421,9 @@ func (ges *groupExpenseServiceImpl) GetUnconfirmedGroupExpenseForUpdate(ctx cont
 }
 
 func (ges *groupExpenseServiceImpl) ParseFromBillText(ctx context.Context, msg message.ExpenseBillTextExtracted) error {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.ParseFromBillText")
+	defer span.End()
+
 	return ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		expenseBill, err := ges.getPendingForProcessingExpenseBill(ctx, msg.ID)
 		if err != nil {
@@ -447,6 +472,9 @@ func (ges *groupExpenseServiceImpl) processAndGetStatus(ctx context.Context, exp
 }
 
 func (ges *groupExpenseServiceImpl) UpdateDraft(ctx context.Context, expense expenses.GroupExpense, request dto.NewGroupExpenseRequest) error {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.UpdateDraft")
+	defer span.End()
+
 	if err := ges.validate(request); err != nil {
 		return err
 	}
@@ -467,6 +495,9 @@ func (ges *groupExpenseServiceImpl) UpdateDraft(ctx context.Context, expense exp
 }
 
 func (ges *groupExpenseServiceImpl) Recalculate(ctx context.Context, userProfileID, groupExpenseID uuid.UUID, amountChanged bool) error {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.Recalculate")
+	defer span.End()
+
 	groupExpense, err := ges.GetUnconfirmedGroupExpenseForUpdate(ctx, userProfileID, groupExpenseID)
 	if err != nil {
 		return err
@@ -485,6 +516,9 @@ func (ges *groupExpenseServiceImpl) Recalculate(ctx context.Context, userProfile
 }
 
 func (ges *groupExpenseServiceImpl) GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.GroupExpenseResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.GetRecent")
+	defer span.End()
+
 	// Get recent expenses (both owned and participating) with DB-level limit
 	expenses, err := ges.expenseRepo.FindRecentByProfileID(ctx, profileID, 5)
 	if err != nil {
@@ -602,6 +636,9 @@ func (ges *groupExpenseServiceImpl) getPendingForProcessingExpenseBill(ctx conte
 }
 
 func (ges *groupExpenseServiceImpl) GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (expenses.GroupExpense, error) {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.GetByID")
+	defer span.End()
+
 	spec := crud.Specification[expenses.GroupExpense]{}
 	spec.Model.ID = id
 	spec.ForUpdate = forUpdate
@@ -622,6 +659,9 @@ func (ges *groupExpenseServiceImpl) GetByID(ctx context.Context, id uuid.UUID, f
 }
 
 func (ges *groupExpenseServiceImpl) ConstructNotifications(ctx context.Context, msg message.ExpenseConfirmed) ([]entity.Notification, error) {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.ConstructNotifications")
+	defer span.End()
+
 	expense, err := ges.GetByID(ctx, msg.ID, false)
 	if err != nil {
 		return nil, err
@@ -649,6 +689,9 @@ func (ges *groupExpenseServiceImpl) ConstructNotifications(ctx context.Context, 
 }
 
 func (ges *groupExpenseServiceImpl) ProcessCallback(ctx context.Context, id uuid.UUID, callbackFn func(context.Context, expenses.GroupExpense) error) error {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.ProcessCallback")
+	defer span.End()
+
 	return ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		expense, err := ges.GetByID(ctx, id, true)
 		if err != nil {

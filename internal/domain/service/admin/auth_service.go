@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/admin"
@@ -40,6 +41,9 @@ func NewAuthService(
 }
 
 func (as *authService) Register(ctx context.Context, req dto.RegisterRequest) error {
+	ctx, span := otel.Tracer.Start(ctx, "authService.Register")
+	defer span.End()
+
 	users, err := as.userRepo.FindAll(ctx, crud.Specification[admin.User]{})
 	if err != nil {
 		return err
@@ -63,6 +67,9 @@ func (as *authService) Register(ctx context.Context, req dto.RegisterRequest) er
 }
 
 func (as *authService) Login(ctx context.Context, req dto.InternalLoginRequest) (dto.TokenResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "authService.Login")
+	defer span.End()
+
 	spec := crud.Specification[admin.User]{}
 	spec.Model.Email = req.Email
 	user, err := as.userRepo.FindFirst(ctx, spec)
@@ -92,6 +99,9 @@ func (as *authService) Login(ctx context.Context, req dto.InternalLoginRequest) 
 }
 
 func (as *authService) VerifyToken(ctx context.Context, token string) (bool, map[string]any, error) {
+	ctx, span := otel.Tracer.Start(ctx, "authService.VerifyToken")
+	defer span.End()
+
 	claims, err := as.jwtService.VerifyToken(token)
 	if err != nil {
 		return false, nil, err
@@ -121,6 +131,9 @@ func (as *authService) VerifyToken(ctx context.Context, token string) (bool, map
 }
 
 func (as *authService) Me(ctx context.Context, id uuid.UUID) (dto.AdminMe, error) {
+	ctx, span := otel.Tracer.Start(ctx, "authService.Me")
+	defer span.End()
+
 	user, err := as.getUser(ctx, id)
 	if err != nil {
 		return dto.AdminMe{}, err
@@ -133,6 +146,9 @@ func (as *authService) Me(ctx context.Context, id uuid.UUID) (dto.AdminMe, error
 }
 
 func (as *authService) getUser(ctx context.Context, id uuid.UUID) (admin.User, error) {
+	ctx, span := otel.Tracer.Start(ctx, "authService.getUser")
+	defer span.End()
+
 	spec := crud.Specification[admin.User]{}
 	spec.Model.ID = id
 	user, err := as.userRepo.FindFirst(ctx, spec)

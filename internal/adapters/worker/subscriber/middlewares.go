@@ -5,12 +5,17 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/ezutil/v2"
 )
 
 func withLogging[T queue.TaskMessage](taskType string, handler func(context.Context, T) error) asynq.Handler {
 	return asynq.HandlerFunc(func(ctx context.Context, t *asynq.Task) error {
+		var tmsg T
+		ctx, span := otel.Tracer.Start(ctx, tmsg.Type())
+		defer span.End()
+
 		logger.Infof("received new task %s", taskType)
 
 		msg, err := ezutil.Unmarshal[T](t.Payload())

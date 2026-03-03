@@ -16,8 +16,8 @@ type ProfileHandler struct {
 }
 
 func (ph *ProfileHandler) HandleGetList() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profiles, err := ph.svc.GetAllReal(ctx)
+	return server.Handler("ProfileHandler.HandleGetList", http.StatusOK, func(ctx *gin.Context) (any, error) {
+		profiles, err := ph.svc.GetAllReal(ctx.Request.Context())
 		if err != nil {
 			return nil, err
 		}
@@ -29,12 +29,12 @@ func (ph *ProfileHandler) HandleGetList() gin.HandlerFunc {
 }
 
 func (ph *ProfileHandler) HandleGetOne() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("ProfileHandler.HandleGetOne", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextProfileID.String())
 		if err != nil {
 			return nil, err
 		}
 
-		return ph.svc.GetByID(ctx, id)
+		return ph.svc.GetByID(ctx.Request.Context(), id)
 	})
 }

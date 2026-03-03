@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
@@ -66,6 +67,9 @@ func (ps *paymentService) isReady() error {
 }
 
 func (ps *paymentService) NewPurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PaymentService.NewPurchase")
+	defer span.End()
+
 	if err := ps.isReady(); err != nil {
 		return dto.PaymentResponse{}, err
 	}
@@ -115,6 +119,9 @@ func (ps *paymentService) create(ctx context.Context, req dto.NewPaymentRequest)
 }
 
 func (ps *paymentService) HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error {
+	ctx, span := otel.Tracer.Start(ctx, "PaymentService.HandleNotification")
+	defer span.End()
+
 	if err := ps.isReady(); err != nil {
 		return err
 	}
@@ -194,6 +201,9 @@ func (ps *paymentService) updateSubscriptionStatus(
 }
 
 func (ps *paymentService) MakePayment(ctx context.Context, subscriptionID uuid.UUID) (dto.PaymentResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PaymentService.MakePayment")
+	defer span.End()
+
 	if err := ps.isReady(); err != nil {
 		return dto.PaymentResponse{}, err
 	}
@@ -282,6 +292,9 @@ func (ps *paymentService) updatePaymentStatus(
 }
 
 func (ps *paymentService) GetList(ctx context.Context) ([]dto.PaymentResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PaymentService.GetList")
+	defer span.End()
+
 	payments, err := ps.paymentRepo.FindAll(ctx, crud.Specification[entity.Payment]{})
 	if err != nil {
 		return nil, err
@@ -291,6 +304,9 @@ func (ps *paymentService) GetList(ctx context.Context) ([]dto.PaymentResponse, e
 }
 
 func (ps *paymentService) GetOne(ctx context.Context, id uuid.UUID) (dto.PaymentResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PaymentService.GetOne")
+	defer span.End()
+
 	payment, err := ps.getByID(ctx, id, false)
 	if err != nil {
 		return dto.PaymentResponse{}, err
@@ -300,6 +316,9 @@ func (ps *paymentService) GetOne(ctx context.Context, id uuid.UUID) (dto.Payment
 }
 
 func (ps *paymentService) Update(ctx context.Context, req dto.UpdatePaymentRequest) (dto.PaymentResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PaymentService.Update")
+	defer span.End()
+
 	var resp dto.PaymentResponse
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		payment, err := ps.getByID(ctx, req.ID, true)
@@ -336,6 +355,9 @@ func (ps *paymentService) Update(ctx context.Context, req dto.UpdatePaymentReque
 }
 
 func (ps *paymentService) Delete(ctx context.Context, id uuid.UUID) (dto.PaymentResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PaymentService.Delete")
+	defer span.End()
+
 	var resp dto.PaymentResponse
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		payment, err := ps.getByID(ctx, id, true)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/ungerr"
 	"golang.org/x/oauth2"
@@ -50,7 +51,7 @@ func (*googleProviderService) IsTrusted() bool {
 	return true
 }
 
-func (gps *googleProviderService) GetAuthCodeURL(ctx context.Context, state string) (string, error) {
+func (gps *googleProviderService) GetAuthCodeURL(state string) (string, error) {
 	url := gps.cfg.AuthCodeURL(state, oauth2.AccessTypeOffline)
 	if url == "" {
 		return "", ungerr.Unknownf("OAuth2 google provider returns empty string for auth code URL")
@@ -59,6 +60,9 @@ func (gps *googleProviderService) GetAuthCodeURL(ctx context.Context, state stri
 }
 
 func (gps *googleProviderService) HandleCallback(ctx context.Context, code string) (UserInfo, error) {
+	ctx, span := otel.Tracer.Start(ctx, "googleProviderService.HandleCallback")
+	defer span.End()
+
 	token, err := gps.cfg.Exchange(ctx, code)
 	if err != nil {
 		return UserInfo{}, ungerr.Wrap(err, "error exchange OAuth2 token at callback")

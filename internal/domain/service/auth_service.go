@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/mail"
 	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
@@ -55,6 +56,9 @@ func NewAuthService(
 }
 
 func (as *authServiceImpl) Register(ctx context.Context, req dto.RegisterRequest) (dto.RegisterResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "AuthService.Register")
+	defer span.End()
+
 	isVerified, err := as.executeRegistration(ctx, req)
 	if err != nil {
 		return dto.RegisterResponse{}, err
@@ -131,6 +135,9 @@ func (as *authServiceImpl) sendVerificationMail(ctx context.Context, user users.
 }
 
 func (as *authServiceImpl) InternalLogin(ctx context.Context, req dto.InternalLoginRequest) (dto.TokenResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "AuthService.InternalLogin")
+	defer span.End()
+
 	user, err := as.userSvc.FindByEmail(ctx, req.Email)
 	if err != nil {
 		return dto.TokenResponse{}, err
@@ -154,6 +161,9 @@ func (as *authServiceImpl) InternalLogin(ctx context.Context, req dto.InternalLo
 }
 
 func (as *authServiceImpl) VerifyToken(ctx context.Context, token string) (bool, map[string]any, error) {
+	ctx, span := otel.Tracer.Start(ctx, "AuthService.VerifyToken")
+	defer span.End()
+
 	claims, err := as.jwtService.VerifyToken(token)
 	if err != nil {
 		return false, nil, err
@@ -202,6 +212,9 @@ func (as *authServiceImpl) VerifyToken(ctx context.Context, token string) (bool,
 }
 
 func (as *authServiceImpl) VerifyRegistration(ctx context.Context, token string) (dto.TokenResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "AuthService.VerifyRegistration")
+	defer span.End()
+
 	var response dto.TokenResponse
 	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		claims, err := as.jwtService.VerifyToken(token)
@@ -241,6 +254,9 @@ func (as *authServiceImpl) VerifyRegistration(ctx context.Context, token string)
 }
 
 func (as *authServiceImpl) SendPasswordReset(ctx context.Context, email string) error {
+	ctx, span := otel.Tracer.Start(ctx, "AuthService.SendPasswordReset")
+	defer span.End()
+
 	return as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		user, err := as.userSvc.FindByEmail(ctx, email)
 		if err != nil {
@@ -284,6 +300,9 @@ func (as *authServiceImpl) sendResetPasswordMail(ctx context.Context, user users
 }
 
 func (as *authServiceImpl) ResetPassword(ctx context.Context, token, newPassword string) (dto.TokenResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "AuthService.ResetPassword")
+	defer span.End()
+
 	var response dto.TokenResponse
 	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		claims, err := as.jwtService.VerifyToken(token)
@@ -325,6 +344,9 @@ func (as *authServiceImpl) ResetPassword(ctx context.Context, token, newPassword
 
 // Logout revokes the current session and all its refresh tokens
 func (as *authServiceImpl) Logout(ctx context.Context, sessionID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "AuthService.Logout")
+	defer span.End()
+
 	// Clean up push subscriptions for this session (failure must not block logout)
 	if err := as.pushSvc.UnsubscribeBySession(ctx, sessionID); err != nil {
 		logger.Error(err)

@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/cache"
 	"github.com/itsLeonB/cashback/internal/core/service/storage"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
@@ -52,32 +53,32 @@ var spaceRegex = regexp.MustCompile(`\s+`)
 var iconURLExpiry = 7 * 24 * time.Hour // 7 days
 
 func (tms *transferMethodServiceImpl) GetAll(ctx context.Context, filter debts.ParentFilter, profileID uuid.UUID) ([]dto.TransferMethodResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "TransferMethodService.GetAll")
+	defer span.End()
+
 	methods, err := tms.transferMethodRepo.GetAllByParentFilter(ctx, filter, profileID)
 	if err != nil {
 		return nil, err
 	}
 
-	return ezutil.MapSlice(methods, tms.SignedURLPopulator(ctx)), nil
+	return ezutil.MapSlice(methods, tms.PopulateSignedURL), nil
 }
 
-func (tms *transferMethodServiceImpl) SignedURLPopulator(ctx context.Context) func(debts.TransferMethod) dto.TransferMethodResponse {
-	return func(tm debts.TransferMethod) dto.TransferMethodResponse {
-		if !tm.IconURL.Valid {
-			return mapper.TransferMethodToResponse(tm, "")
-		}
-
-		url, ok := tms.urlCache.Get(ctx, tm.IconURL.String, tms.getIconURL)
-		if !ok {
-			return mapper.TransferMethodToResponse(tm, "")
-		}
-
-		return mapper.TransferMethodToResponse(tm, url)
+func (tms *transferMethodServiceImpl) PopulateSignedURL(tm debts.TransferMethod) dto.TransferMethodResponse {
+	if !tm.IconURL.Valid {
+		return mapper.TransferMethodToResponse(tm, "")
 	}
+
+	url, ok := tms.urlCache.Get(tm.IconURL.String, tms.getIconURL)
+	if !ok {
+		return mapper.TransferMethodToResponse(tm, "")
+	}
+
+	return mapper.TransferMethodToResponse(tm, url)
 }
 
-func (tms *transferMethodServiceImpl) getIconURL(ctx context.Context, objectKey string) (string, bool) {
+func (tms *transferMethodServiceImpl) getIconURL(objectKey string) (string, bool) {
 	url, err := tms.storageRepo.GetSignedURL(
-		ctx,
 		storage.FileIdentifier{
 			BucketName: tms.bucketName,
 			ObjectKey:  objectKey,
@@ -92,6 +93,9 @@ func (tms *transferMethodServiceImpl) getIconURL(ctx context.Context, objectKey 
 }
 
 func (tms *transferMethodServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (debts.TransferMethod, error) {
+	ctx, span := otel.Tracer.Start(ctx, "TransferMethodService.GetByID")
+	defer span.End()
+
 	spec := crud.Specification[debts.TransferMethod]{}
 	spec.Model.ID = id
 
@@ -107,6 +111,9 @@ func (tms *transferMethodServiceImpl) GetByID(ctx context.Context, id uuid.UUID)
 }
 
 func (tms *transferMethodServiceImpl) GetByName(ctx context.Context, name string) (debts.TransferMethod, error) {
+	ctx, span := otel.Tracer.Start(ctx, "TransferMethodService.GetByName")
+	defer span.End()
+
 	spec := crud.Specification[debts.TransferMethod]{}
 	spec.Model.Name = name
 
@@ -122,6 +129,9 @@ func (tms *transferMethodServiceImpl) GetByName(ctx context.Context, name string
 }
 
 func (tms *transferMethodServiceImpl) SyncMethods(ctx context.Context) error {
+	ctx, span := otel.Tracer.Start(ctx, "TransferMethodService.SyncMethods")
+	defer span.End()
+
 	newMethods := []debts.TransferMethod{}
 	parents, existingChildren, err := tms.prepareForMethodSync(ctx)
 	if err != nil {
@@ -182,6 +192,9 @@ func (tms *transferMethodServiceImpl) SyncMethods(ctx context.Context) error {
 }
 
 func (tms *transferMethodServiceImpl) Shutdown() error {
+	_, span := otel.Tracer.Start(context.Background(), "TransferMethodService.Shutdown")
+	defer span.End()
+
 	return tms.urlCache.Shutdown()
 }
 

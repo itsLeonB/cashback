@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -21,6 +22,9 @@ func NewPushSubscriptionRepository(db *gorm.DB) *pushSubscriptionRepositoryGorm 
 }
 
 func (r *pushSubscriptionRepositoryGorm) Upsert(ctx context.Context, subscription entity.PushSubscription) error {
+	ctx, span := otel.Tracer.Start(ctx, "PushSubscriptionRepository.Upsert")
+	defer span.End()
+
 	db, err := r.GetGormInstance(ctx)
 	if err != nil {
 		return err

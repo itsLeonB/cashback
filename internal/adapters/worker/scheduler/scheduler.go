@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization"
 	"github.com/itsLeonB/cashback/internal/provider"
@@ -37,11 +38,15 @@ func Setup(providers *provider.Providers) (*Scheduler, error) {
 
 func (s *Scheduler) jobWrapper(jobName string, jobFn func(context.Context) error) func() {
 	return func() {
+		ctx, span := otel.Tracer.Start(context.Background(), jobName)
+		defer span.End()
+
 		logger.Infof("starting %s...", jobName)
-		if err := jobFn(context.Background()); err != nil {
+		if err := jobFn(ctx); err != nil {
 			logger.Errorf("%s failed: %v", jobName, err)
 			return
 		}
+
 		logger.Infof("%s success", jobName)
 	}
 }

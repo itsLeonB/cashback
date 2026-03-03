@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -24,6 +25,9 @@ func NewPlanVersionRepository(db *gorm.DB) *planVersionRepository {
 }
 
 func (pvr *planVersionRepository) SetAsDefault(ctx context.Context, id uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "PlanVersionRepository.SetAsDefault")
+	defer span.End()
+
 	db, err := pvr.GetGormInstance(ctx)
 	if err != nil {
 		return err

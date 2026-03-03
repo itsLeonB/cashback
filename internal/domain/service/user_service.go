@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/mail"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
@@ -46,6 +47,9 @@ func NewUserService(
 }
 
 func (us *userServiceImpl) CreateNew(ctx context.Context, request dto.NewUserRequest) (users.User, error) {
+	ctx, span := otel.Tracer.Start(ctx, "UserService.CreateNew")
+	defer span.End()
+
 	var response users.User
 	err := us.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		newUser := users.User{
@@ -85,6 +89,9 @@ func (us *userServiceImpl) CreateNew(ctx context.Context, request dto.NewUserReq
 }
 
 func (us *userServiceImpl) FindByEmail(ctx context.Context, email string) (users.User, error) {
+	ctx, span := otel.Tracer.Start(ctx, "UserService.FindByEmail")
+	defer span.End()
+
 	userSpec := crud.Specification[users.User]{}
 	userSpec.Model.Email = email
 	userSpec.PreloadRelations = []string{"Profile"}
@@ -92,6 +99,9 @@ func (us *userServiceImpl) FindByEmail(ctx context.Context, email string) (users
 }
 
 func (us *userServiceImpl) Verify(ctx context.Context, id uuid.UUID, email string, name string, avatar string) (users.User, error) {
+	ctx, span := otel.Tracer.Start(ctx, "UserService.Verify")
+	defer span.End()
+
 	user, err := us.GetByID(ctx, id)
 	if err != nil {
 		return users.User{}, err
@@ -120,6 +130,9 @@ func (us *userServiceImpl) Verify(ctx context.Context, id uuid.UUID, email strin
 }
 
 func (us *userServiceImpl) GeneratePasswordResetToken(ctx context.Context, userID uuid.UUID) (string, error) {
+	ctx, span := otel.Tracer.Start(ctx, "UserService.GeneratePasswordResetToken")
+	defer span.End()
+
 	token, err := us.generateRandomToken(255)
 	if err != nil {
 		return "", err
@@ -136,6 +149,9 @@ func (us *userServiceImpl) GeneratePasswordResetToken(ctx context.Context, userI
 }
 
 func (us *userServiceImpl) ResetPassword(ctx context.Context, userID uuid.UUID, email, resetToken, password string) (users.User, error) {
+	ctx, span := otel.Tracer.Start(ctx, "UserService.ResetPassword")
+	defer span.End()
+
 	spec := crud.Specification[users.User]{}
 	spec.Model.ID = userID
 	spec.Model.Email = email
@@ -163,6 +179,9 @@ func (us *userServiceImpl) ResetPassword(ctx context.Context, userID uuid.UUID, 
 }
 
 func (us *userServiceImpl) SendSubscriptionNearingDueDateMail(ctx context.Context, msg message.SubscriptionNearingDue) error {
+	ctx, span := otel.Tracer.Start(ctx, "UserService.SendSubscriptionNearingDueDateMail")
+	defer span.End()
+
 	usrs, err := us.userRepo.FindByIDs(ctx, msg.UserIDs)
 	if err != nil {
 		return err
@@ -208,6 +227,9 @@ func (us *userServiceImpl) generateRandomToken(length int) (string, error) {
 }
 
 func (us *userServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (users.User, error) {
+	ctx, span := otel.Tracer.Start(ctx, "UserService.GetByID")
+	defer span.End()
+
 	spec := crud.Specification[users.User]{}
 	spec.Model.ID = id
 	spec.PreloadRelations = []string{"Profile"}

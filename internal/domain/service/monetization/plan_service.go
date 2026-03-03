@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	mapper "github.com/itsLeonB/cashback/internal/domain/mapper/monetization"
@@ -39,6 +40,9 @@ func NewPlanService(
 }
 
 func (ps *planService) Create(ctx context.Context, req dto.NewPlanRequest) (dto.PlanResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PlanService.Create")
+	defer span.End()
+
 	newPlan := entity.Plan{
 		Name:     req.Name,
 		Priority: req.Priority,
@@ -53,6 +57,9 @@ func (ps *planService) Create(ctx context.Context, req dto.NewPlanRequest) (dto.
 }
 
 func (ps *planService) GetList(ctx context.Context) ([]dto.PlanResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PlanService.GetList")
+	defer span.End()
+
 	spec := crud.Specification[entity.Plan]{}
 	plans, err := ps.planRepo.FindAll(ctx, spec)
 	if err != nil {
@@ -63,6 +70,9 @@ func (ps *planService) GetList(ctx context.Context) ([]dto.PlanResponse, error) 
 }
 
 func (ps *planService) GetOne(ctx context.Context, id uuid.UUID) (dto.PlanResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PlanService.GetOne")
+	defer span.End()
+
 	plan, err := ps.getByID(ctx, id, false)
 	if err != nil {
 		return dto.PlanResponse{}, err
@@ -72,6 +82,9 @@ func (ps *planService) GetOne(ctx context.Context, id uuid.UUID) (dto.PlanRespon
 }
 
 func (ps *planService) Update(ctx context.Context, req dto.UpdatePlanRequest) (dto.PlanResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PlanService.Update")
+	defer span.End()
+
 	var resp dto.PlanResponse
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		plan, err := ps.getByID(ctx, req.ID, true)
@@ -95,6 +108,9 @@ func (ps *planService) Update(ctx context.Context, req dto.UpdatePlanRequest) (d
 }
 
 func (ps *planService) Delete(ctx context.Context, id uuid.UUID) (dto.PlanResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PlanService.Delete")
+	defer span.End()
+
 	var resp dto.PlanResponse
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		plan, err := ps.getByID(ctx, id, true)

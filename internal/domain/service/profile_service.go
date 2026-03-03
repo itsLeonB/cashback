@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
@@ -48,6 +49,9 @@ func NewProfileService(
 }
 
 func (ps *profileServiceImpl) Create(ctx context.Context, request dto.NewProfileRequest) (dto.ProfileResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileService.Create")
+	defer span.End()
+
 	var response dto.ProfileResponse
 
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -93,6 +97,9 @@ func (ps *profileServiceImpl) Create(ctx context.Context, request dto.NewProfile
 }
 
 func (ps *profileServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (dto.ProfileResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileService.GetByID")
+	defer span.End()
+
 	profile, err := ps.GetEntityByID(ctx, id)
 	if err != nil {
 		return dto.ProfileResponse{}, err
@@ -123,6 +130,9 @@ func (ps *profileServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (dto.Pr
 }
 
 func (ps *profileServiceImpl) GetAll(ctx context.Context) ([]dto.ProfileResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileService.GetAll")
+	defer span.End()
+
 	spec := crud.Specification[users.UserProfile]{}
 	profiles, err := ps.profileRepo.FindAll(ctx, spec)
 	if err != nil {
@@ -156,6 +166,9 @@ func (ps *profileServiceImpl) GetAll(ctx context.Context) ([]dto.ProfileResponse
 }
 
 func (ps *profileServiceImpl) GetAllReal(ctx context.Context) ([]dto.ProfileResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileService.GetAllReal")
+	defer span.End()
+
 	profiles, err := ps.profileRepo.FindRealProfiles(ctx)
 	if err != nil {
 		return nil, err
@@ -184,6 +197,9 @@ func (ps *profileServiceImpl) GetAllReal(ctx context.Context) ([]dto.ProfileResp
 }
 
 func (ps *profileServiceImpl) GetAssociatedIDs(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileService.GetAssociatedIDs")
+	defer span.End()
+
 	profile, err := ps.GetEntityByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -233,6 +249,9 @@ func (ps *profileServiceImpl) getAssociatedProfileIDs(ctx context.Context, realP
 }
 
 func (ps *profileServiceImpl) GetRealProfileID(ctx context.Context, anonProfileID uuid.UUID) (uuid.UUID, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileService.GetRealProfileID")
+	defer span.End()
+
 	spec := crud.Specification[users.RelatedProfile]{}
 	spec.Model.AnonProfileID = anonProfileID
 	relation, err := ps.relatedProfileRepo.FindFirst(ctx, spec)
@@ -240,6 +259,9 @@ func (ps *profileServiceImpl) GetRealProfileID(ctx context.Context, anonProfileI
 }
 
 func (ps *profileServiceImpl) GetEntityByID(ctx context.Context, id uuid.UUID) (users.UserProfile, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileService.GetEntityByID")
+	defer span.End()
+
 	spec := crud.Specification[users.UserProfile]{}
 	spec.Model.ID = id
 	profile, err := ps.profileRepo.FindFirst(ctx, spec)
@@ -253,6 +275,9 @@ func (ps *profileServiceImpl) GetEntityByID(ctx context.Context, id uuid.UUID) (
 }
 
 func (ps *profileServiceImpl) Update(ctx context.Context, id uuid.UUID, name string) (dto.ProfileResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileService.Update")
+	defer span.End()
+
 	var response dto.ProfileResponse
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[users.UserProfile]{}
@@ -282,6 +307,9 @@ func (ps *profileServiceImpl) Update(ctx context.Context, id uuid.UUID, name str
 }
 
 func (ps *profileServiceImpl) Search(ctx context.Context, profileID uuid.UUID, input string) ([]dto.ProfileResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileService.Search")
+	defer span.End()
+
 	if util.IsValidEmail(input) {
 		profile, err := ps.GetByEmail(ctx, input)
 		if err != nil {
@@ -309,6 +337,9 @@ func (ps *profileServiceImpl) Search(ctx context.Context, profileID uuid.UUID, i
 }
 
 func (ps *profileServiceImpl) GetByEmail(ctx context.Context, email string) (dto.ProfileResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileService.GetByEmail")
+	defer span.End()
+
 	userSpec := crud.Specification[users.User]{}
 	userSpec.Model.Email = email
 	userSpec.PreloadRelations = []string{"Profile"}
@@ -329,6 +360,9 @@ func (ps *profileServiceImpl) GetByEmail(ctx context.Context, email string) (dto
 }
 
 func (ps *profileServiceImpl) Associate(ctx context.Context, userProfileID, realProfileID, anonProfileID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileService.Associate")
+	defer span.End()
+
 	return ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		if realProfileID == uuid.Nil || anonProfileID == uuid.Nil || userProfileID == uuid.Nil {
 			return ungerr.BadRequestError("userProfileID / realProfileID / anonProfileID cannot be nil")
@@ -386,6 +420,9 @@ func (ps *profileServiceImpl) checkFriendship(ctx context.Context, userProfileID
 }
 
 func (ps *profileServiceImpl) GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]dto.ProfileResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileService.GetByIDs")
+	defer span.End()
+
 	profiles, err := ps.profileRepo.FindByIDs(ctx, ids)
 	if err != nil {
 		return nil, err

@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"context"
 	"sync"
 	"time"
 
@@ -9,7 +8,7 @@ import (
 )
 
 type Cache[T any] interface {
-	Get(ctx context.Context, key string, fallbackFunc func(context.Context, string) (T, bool)) (T, bool)
+	Get(key string, fallbackFunc func(string) (T, bool)) (T, bool)
 	Shutdown() error
 }
 
@@ -35,7 +34,7 @@ func NewInMemoryCache[T any](expiry time.Duration) Cache[T] {
 	return cache
 }
 
-func (c *inmemoryCache[T]) Get(ctx context.Context, key string, fallbackFunc func(context.Context, string) (T, bool)) (T, bool) {
+func (c *inmemoryCache[T]) Get(key string, fallbackFunc func(string) (T, bool)) (T, bool) {
 	var zero T
 	val, exists := c.getValue(key)
 	if exists {
@@ -44,7 +43,7 @@ func (c *inmemoryCache[T]) Get(ctx context.Context, key string, fallbackFunc fun
 	if fallbackFunc == nil {
 		return zero, false
 	}
-	fallbackVal, ok := fallbackFunc(ctx, key)
+	fallbackVal, ok := fallbackFunc(key)
 	if !ok {
 		return zero, false
 	}

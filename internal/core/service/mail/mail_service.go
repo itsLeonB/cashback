@@ -5,6 +5,7 @@ import (
 
 	brevo "github.com/getbrevo/brevo-go/lib"
 	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/ungerr"
 )
 
@@ -34,6 +35,9 @@ func NewMailService() MailService {
 }
 
 func (ms *brevoMailService) Send(ctx context.Context, msg MailMessage) error {
+	ctx, span := otel.Tracer.Start(ctx, "brevoMailService.Send")
+	defer span.End()
+
 	mail := brevo.SendSmtpEmail{
 		Sender: &brevo.SendSmtpEmailSender{
 			Name:  ms.senderName,

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
@@ -34,6 +35,9 @@ func NewProfileTransferMethodService(
 }
 
 func (ptm *profileTransferMethodService) Add(ctx context.Context, req dto.NewProfileTransferMethodRequest) error {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileTransferMethodService.Add")
+	defer span.End()
+
 	if _, err := ptm.profileSvc.GetEntityByID(ctx, req.ProfileID); err != nil {
 		return err
 	}
@@ -61,6 +65,9 @@ func (ptm *profileTransferMethodService) Add(ctx context.Context, req dto.NewPro
 }
 
 func (ptm *profileTransferMethodService) GetAllByProfileID(ctx context.Context, profileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileTransferMethodService.GetAllByProfileID")
+	defer span.End()
+
 	if _, err := ptm.profileSvc.GetEntityByID(ctx, profileID); err != nil {
 		return nil, err
 	}
@@ -69,6 +76,9 @@ func (ptm *profileTransferMethodService) GetAllByProfileID(ctx context.Context, 
 }
 
 func (ptm *profileTransferMethodService) GetAllByFriendProfileID(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]dto.ProfileTransferMethodResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileTransferMethodService.GetAllByFriendProfileID")
+	defer span.End()
+
 	if _, err := ptm.profileSvc.GetByIDs(ctx, []uuid.UUID{userProfileID, friendProfileID}); err != nil {
 		return nil, err
 	}
@@ -93,5 +103,5 @@ func (ptm *profileTransferMethodService) getByProfileID(ctx context.Context, pro
 		return nil, err
 	}
 
-	return ezutil.MapSlice(methods, mapper.ProfileTransferMethodPopulator(ptm.transferMethodSvc.SignedURLPopulator(ctx))), nil
+	return ezutil.MapSlice(methods, mapper.ProfileTransferMethodPopulator(ptm.transferMethodSvc.PopulateSignedURL)), nil
 }

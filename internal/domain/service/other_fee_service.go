@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
@@ -40,6 +41,9 @@ func NewOtherFeeService(
 }
 
 func (ofs *otherFeeServiceImpl) Add(ctx context.Context, req dto.NewOtherFeeRequest) (dto.OtherFeeResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "OtherFeeService.Add")
+	defer span.End()
+
 	var response dto.OtherFeeResponse
 
 	if !req.Amount.IsPositive() {
@@ -73,6 +77,9 @@ func (ofs *otherFeeServiceImpl) Add(ctx context.Context, req dto.NewOtherFeeRequ
 }
 
 func (ofs *otherFeeServiceImpl) Update(ctx context.Context, req dto.UpdateOtherFeeRequest) (dto.OtherFeeResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "OtherFeeService.Update")
+	defer span.End()
+
 	var response dto.OtherFeeResponse
 
 	if req.Amount.Cmp(decimal.Zero) <= 0 {
@@ -120,6 +127,9 @@ func (ofs *otherFeeServiceImpl) Update(ctx context.Context, req dto.UpdateOtherF
 }
 
 func (ofs *otherFeeServiceImpl) Remove(ctx context.Context, groupExpenseID, otherFeeID, userProfileID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "OtherFeeService.Remove")
+	defer span.End()
+
 	return ofs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		groupExpense, err := ofs.groupExpenseSvc.GetUnconfirmedGroupExpenseForUpdate(ctx, userProfileID, groupExpenseID)
 		if err != nil {
@@ -152,7 +162,7 @@ func (ofs *otherFeeServiceImpl) Remove(ctx context.Context, groupExpenseID, othe
 	})
 }
 
-func (ofs *otherFeeServiceImpl) GetCalculationMethods(ctx context.Context) []dto.FeeCalculationMethodInfo {
+func (ofs *otherFeeServiceImpl) GetCalculationMethods() []dto.FeeCalculationMethodInfo {
 	feeCalculationMethodInfos := make([]dto.FeeCalculationMethodInfo, 0, len(ofs.feeCalculatorRegistry))
 	for _, feeCalculator := range ofs.feeCalculatorRegistry {
 		feeCalculationMethodInfos = append(feeCalculationMethodInfos, feeCalculator.GetInfo())

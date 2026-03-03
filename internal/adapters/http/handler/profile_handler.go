@@ -25,18 +25,18 @@ func NewProfileHandler(
 }
 
 func (ph *ProfileHandler) HandleProfile() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("ProfileHandler.HandleProfile", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := server.GetFromContext[uuid.UUID](ctx, appconstant.ContextProfileID.String())
 		if err != nil {
 			return nil, err
 		}
 
-		return ph.profileService.GetByID(ctx, profileID)
+		return ph.profileService.GetByID(ctx.Request.Context(), profileID)
 	})
 }
 
 func (ph *ProfileHandler) HandleUpdate() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("ProfileHandler.HandleUpdate", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := server.GetFromContext[uuid.UUID](ctx, appconstant.ContextProfileID.String())
 		if err != nil {
 			return nil, err
@@ -47,12 +47,12 @@ func (ph *ProfileHandler) HandleUpdate() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return ph.profileService.Update(ctx, profileID, request.Name)
+		return ph.profileService.Update(ctx.Request.Context(), profileID, request.Name)
 	})
 }
 
 func (ph *ProfileHandler) HandleSearch() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("ProfileHandler.HandleSearch", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -62,12 +62,12 @@ func (ph *ProfileHandler) HandleSearch() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return ph.profileService.Search(ctx, profileID, request.Query)
+		return ph.profileService.Search(ctx.Request.Context(), profileID, request.Query)
 	})
 }
 
 func (ph *ProfileHandler) HandleAssociate() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("ProfileHandler.HandleAssociate", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -78,6 +78,6 @@ func (ph *ProfileHandler) HandleAssociate() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return nil, ph.profileService.Associate(ctx, profileID, request.RealProfileID, request.AnonProfileID)
+		return nil, ph.profileService.Associate(ctx.Request.Context(), profileID, request.RealProfileID, request.AnonProfileID)
 	})
 }

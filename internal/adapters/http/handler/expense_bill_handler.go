@@ -26,7 +26,7 @@ func NewExpenseBillHandler(expenseBillService service.ExpenseBillService) *Expen
 }
 
 func (geh *ExpenseBillHandler) HandleSave() gin.HandlerFunc {
-	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
+	return server.Handler("ExpenseBillHandler.HandleSave", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -74,12 +74,12 @@ func (geh *ExpenseBillHandler) HandleSave() gin.HandlerFunc {
 			FileSize:       fileHeader.Size,
 		}
 
-		return nil, geh.expenseBillService.Save(ctx, request)
+		return nil, geh.expenseBillService.Save(ctx.Request.Context(), request)
 	})
 }
 
 func (geh *ExpenseBillHandler) HandleTriggerParsing() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("ExpenseBillHandler.HandleTriggerParsing", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		expenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
 		if err != nil {
 			return nil, err
@@ -90,6 +90,6 @@ func (geh *ExpenseBillHandler) HandleTriggerParsing() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return nil, geh.expenseBillService.TriggerParsing(ctx, expenseID, billID)
+		return nil, geh.expenseBillService.TriggerParsing(ctx.Request.Context(), expenseID, billID)
 	})
 }

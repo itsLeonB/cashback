@@ -6,6 +6,7 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/ungerr"
 )
@@ -24,6 +25,9 @@ func NewTaskQueue(opts asynq.RedisConnOpt) (*asynqClient, error) {
 }
 
 func (ac *asynqClient) Enqueue(ctx context.Context, message queue.TaskMessage) error {
+	ctx, span := otel.Tracer.Start(ctx, "asynqClient.Enqueue")
+	defer span.End()
+
 	payload, err := json.Marshal(message)
 	if err != nil {
 		return ungerr.Wrap(err, "error marshaling message to JSON")

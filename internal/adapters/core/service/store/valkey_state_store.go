@@ -9,6 +9,7 @@ import (
 
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/ungerr"
 	"github.com/valkey-io/valkey-go"
 )
@@ -43,6 +44,9 @@ func NewValkeyStateStore(cfg config.Valkey) (*valkeyStateStore, error) {
 }
 
 func (vss *valkeyStateStore) Store(ctx context.Context, state string, expiry time.Duration) error {
+	ctx, span := otel.Tracer.Start(ctx, "valkeyStateStore.Store")
+	defer span.End()
+
 	key := vss.constructKey(state)
 
 	cmd := vss.client.
@@ -61,6 +65,9 @@ func (vss *valkeyStateStore) Store(ctx context.Context, state string, expiry tim
 }
 
 func (vss *valkeyStateStore) VerifyAndDelete(ctx context.Context, state string) error {
+	ctx, span := otel.Tracer.Start(ctx, "valkeyStateStore.VerifyAndDelete")
+	defer span.End()
+
 	vss.mu.Lock()
 	defer vss.mu.Unlock()
 

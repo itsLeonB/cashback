@@ -4,24 +4,27 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/itsLeonB/ginkgo/pkg/server"
 	"github.com/itsLeonB/ungerr"
 )
 
 func RegisterBaseRoutes(r *gin.Engine) {
-	r.NoMethod(server.Handler(http.StatusNoContent, func(ctx *gin.Context) (any, error) {
+	r.NoMethod(func(ctx *gin.Context) {
 		if ctx.Request.Method == http.MethodOptions {
 			ctx.AbortWithStatus(http.StatusNoContent)
-			return nil, nil
+			return
 		}
-		return nil, ungerr.MethodNotAllowedError("method not allowed")
-	}))
+		_ = ctx.Error(ungerr.MethodNotAllowedError("method not allowed"))
+	})
 
-	r.NoRoute(server.Handler(http.StatusNoContent, func(ctx *gin.Context) (any, error) {
+	r.NoRoute(func(ctx *gin.Context) {
 		if ctx.Request.Method == http.MethodOptions {
 			ctx.AbortWithStatus(http.StatusNoContent)
-			return nil, nil
+			return
 		}
-		return nil, ungerr.NotFoundError("route not found")
-	}))
+		if ctx.Request.URL.Path == "/favicon.ico" {
+			ctx.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+		_ = ctx.Error(ungerr.NotFoundError("route not found"))
+	})
 }

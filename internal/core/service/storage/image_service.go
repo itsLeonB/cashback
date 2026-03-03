@@ -6,12 +6,13 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/ungerr"
 )
 
 type ImageService interface {
 	Upload(ctx context.Context, req *ImageUploadRequest) (string, error)
-	GetURL(ctx context.Context, fileID FileIdentifier) (string, error)
+	GetURL(fileID FileIdentifier) (string, error)
 	GetURI(fileID FileIdentifier) string
 	Delete(ctx context.Context, fileID FileIdentifier) error
 	DeleteAllInvalid(ctx context.Context, bucketName string, validObjectKeys []string) error
@@ -33,6 +34,9 @@ func NewImageService(
 }
 
 func (ubs *imageServiceImpl) Upload(ctx context.Context, req *ImageUploadRequest) (string, error) {
+	ctx, span := otel.Tracer.Start(ctx, "imageService.Upload")
+	defer span.End()
+
 	if err := ubs.validateUploadRequest(req); err != nil {
 		return "", err
 	}
@@ -50,8 +54,8 @@ func (ubs *imageServiceImpl) Upload(ctx context.Context, req *ImageUploadRequest
 	return ubs.storageRepo.ToURI(storageReq.FileIdentifier), nil
 }
 
-func (ubs *imageServiceImpl) GetURL(ctx context.Context, fileID FileIdentifier) (string, error) {
-	return ubs.storageRepo.GetSignedURL(ctx, fileID, SignedURLDuration)
+func (ubs *imageServiceImpl) GetURL(fileID FileIdentifier) (string, error) {
+	return ubs.storageRepo.GetSignedURL(fileID, SignedURLDuration)
 }
 
 func (ubs *imageServiceImpl) GetURI(fileID FileIdentifier) string {
@@ -59,6 +63,8 @@ func (ubs *imageServiceImpl) GetURI(fileID FileIdentifier) string {
 }
 
 func (ubs *imageServiceImpl) Delete(ctx context.Context, fileID FileIdentifier) error {
+	ctx, span := otel.Tracer.Start(ctx, "imageService.Delete")
+	defer span.End()
 	return ubs.storageRepo.Delete(ctx, fileID)
 }
 
@@ -79,6 +85,9 @@ func (ubs *imageServiceImpl) validateUploadRequest(req *ImageUploadRequest) erro
 }
 
 func (ubs *imageServiceImpl) DeleteAllInvalid(ctx context.Context, bucketName string, validObjectKeys []string) error {
+	ctx, span := otel.Tracer.Start(ctx, "imageService.DeleteAllInvalid")
+	defer span.End()
+
 	validKeys := make(map[string]struct{}, len(validObjectKeys))
 	for _, key := range validObjectKeys {
 		validKeys[key] = struct{}{}

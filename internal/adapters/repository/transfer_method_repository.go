@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -21,6 +22,9 @@ func NewTransferMethodRepository(db *gorm.DB) *transferMethodRepositoryGorm {
 }
 
 func (tmr *transferMethodRepositoryGorm) GetAllByParentFilter(ctx context.Context, filter debts.ParentFilter, profileID uuid.UUID) ([]debts.TransferMethod, error) {
+	ctx, span := otel.Tracer.Start(ctx, "TransferMethodRepository.GetAllByParentFilter")
+	defer span.End()
+
 	db, err := tmr.GetGormInstance(ctx)
 	if err != nil {
 		return nil, err

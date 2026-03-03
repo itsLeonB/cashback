@@ -20,7 +20,11 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
+
+var Tracer trace.Tracer = noop.NewTracerProvider().Tracer("")
 
 // InitSDK initializes the OpenTelemetry SDK for metrics and logs.
 func InitSDK(ctx context.Context, cfg config.OTel) (func(context.Context) error, error) {
@@ -105,6 +109,8 @@ func InitSDK(ctx context.Context, cfg config.OTel) (func(context.Context) error,
 	)
 	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
 	otel.SetTracerProvider(tracerProvider)
+
+	Tracer = tracerProvider.Tracer(cfg.ServiceName)
 
 	return shutdown, nil
 }

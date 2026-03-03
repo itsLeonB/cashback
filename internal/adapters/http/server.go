@@ -29,7 +29,7 @@ func Setup(configs config.Config) (*httpserver.Server, func(), error) {
 
 	zerologger := zerolog.Instance(logger.Global)
 
-	skipPaths := []string{"/ping", "/livez", "/readyz", "/metrics"}
+	skipPaths := []string{"/ping", "/livez", "/readyz", "/metrics", "/favicon.ico"}
 	if err = setupSentinel(r, skipPaths, zerologger); err != nil {
 		return nil, nil, err
 	}

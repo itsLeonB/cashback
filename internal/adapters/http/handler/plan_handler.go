@@ -13,7 +13,7 @@ type PlanHandler struct {
 }
 
 func (ph *PlanHandler) HandleGetActive() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		return ph.svc.GetActive(ctx)
+	return server.Handler("PlanHandler.HandleGetActive", http.StatusOK, func(ctx *gin.Context) (any, error) {
+		return ph.svc.GetActive(ctx.Request.Context())
 	})
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -24,6 +25,9 @@ func NewNotificationRepository(db *gorm.DB) *notificationRepositoryGorm {
 }
 
 func (nr *notificationRepositoryGorm) New(ctx context.Context, notification entity.Notification) (entity.Notification, error) {
+	ctx, span := otel.Tracer.Start(ctx, "NotificationRepository.New")
+	defer span.End()
+
 	db, err := nr.GetGormInstance(ctx)
 	if err != nil {
 		return entity.Notification{}, err
@@ -41,6 +45,9 @@ func (nr *notificationRepositoryGorm) New(ctx context.Context, notification enti
 }
 
 func (nr *notificationRepositoryGorm) CreateMany(ctx context.Context, notifications []entity.Notification) ([]entity.Notification, error) {
+	ctx, span := otel.Tracer.Start(ctx, "NotificationRepository.CreateMany")
+	defer span.End()
+
 	if len(notifications) == 0 {
 		return []entity.Notification{}, nil
 	}
@@ -62,6 +69,9 @@ func (nr *notificationRepositoryGorm) CreateMany(ctx context.Context, notificati
 }
 
 func (nr *notificationRepositoryGorm) GetByProfileID(ctx context.Context, profileID uuid.UUID, unreadOnly bool) ([]entity.Notification, error) {
+	ctx, span := otel.Tracer.Start(ctx, "NotificationRepository.GetByProfileID")
+	defer span.End()
+
 	db, err := nr.GetGormInstance(ctx)
 	if err != nil {
 		return nil, err
@@ -82,6 +92,9 @@ func (nr *notificationRepositoryGorm) GetByProfileID(ctx context.Context, profil
 }
 
 func (nr *notificationRepositoryGorm) MarkAsRead(ctx context.Context, profileID, notificationID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "NotificationRepository.MarkAsRead")
+	defer span.End()
+
 	db, err := nr.GetGormInstance(ctx)
 	if err != nil {
 		return err
@@ -98,6 +111,9 @@ func (nr *notificationRepositoryGorm) MarkAsRead(ctx context.Context, profileID,
 }
 
 func (nr *notificationRepositoryGorm) MarkAllAsRead(ctx context.Context, profileID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "NotificationRepository.MarkAllAsRead")
+	defer span.End()
+
 	db, err := nr.GetGormInstance(ctx)
 	if err != nil {
 		return err

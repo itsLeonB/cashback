@@ -20,7 +20,7 @@ func NewPushSubscriptionHandler(pushSubscriptionService service.PushNotification
 }
 
 func (h *PushSubscriptionHandler) HandleSubscribe() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("PushSubscriptionHandler.HandleSubscribe", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -39,12 +39,12 @@ func (h *PushSubscriptionHandler) HandleSubscribe() gin.HandlerFunc {
 		req.ProfileID = profileID
 		req.SessionID = sessionID
 
-		return nil, h.pushNotificationSvc.Subscribe(ctx, req)
+		return nil, h.pushNotificationSvc.Subscribe(ctx.Request.Context(), req)
 	})
 }
 
 func (h *PushSubscriptionHandler) HandleUnsubscribe() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("PushSubscriptionHandler.HandleUnsubscribe", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -57,6 +57,6 @@ func (h *PushSubscriptionHandler) HandleUnsubscribe() gin.HandlerFunc {
 
 		req.ProfileID = profileID
 
-		return nil, h.pushNotificationSvc.Unsubscribe(ctx, req)
+		return nil, h.pushNotificationSvc.Unsubscribe(ctx.Request.Context(), req)
 	})
 }

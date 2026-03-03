@@ -16,23 +16,23 @@ type PaymentHandler struct {
 }
 
 func (ph *PaymentHandler) HandleNotification() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("PaymentHandler.HandleNotification", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		req, err := server.BindJSON[dto.MidtransNotificationPayload](ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return nil, ph.svc.HandleNotification(ctx, req)
+		return nil, ph.svc.HandleNotification(ctx.Request.Context(), req)
 	})
 }
 
 func (ph *PaymentHandler) HandleMakePayment() gin.HandlerFunc {
-	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
+	return server.Handler("PaymentHandler.HandleMakePayment", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		subscriptionID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextSubscriptionID.String())
 		if err != nil {
 			return nil, err
 		}
 
-		return ph.svc.MakePayment(ctx, subscriptionID)
+		return ph.svc.MakePayment(ctx.Request.Context(), subscriptionID)
 	})
 }

@@ -17,19 +17,19 @@ type SubscriptionHandler struct {
 }
 
 func (sh *SubscriptionHandler) HandleCreate() gin.HandlerFunc {
-	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
+	return server.Handler("SubscriptionHandler.HandleCreate", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		req, err := server.BindJSON[dto.NewSubscriptionRequest](ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return sh.svc.Create(ctx, req)
+		return sh.svc.Create(ctx.Request.Context(), req)
 	})
 }
 
 func (sh *SubscriptionHandler) HandleGetList() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		subscriptions, err := sh.svc.GetList(ctx)
+	return server.Handler("SubscriptionHandler.HandleGetList", http.StatusOK, func(ctx *gin.Context) (any, error) {
+		subscriptions, err := sh.svc.GetList(ctx.Request.Context())
 		if err != nil {
 			return nil, err
 		}
@@ -41,18 +41,18 @@ func (sh *SubscriptionHandler) HandleGetList() gin.HandlerFunc {
 }
 
 func (sh *SubscriptionHandler) HandleGetOne() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("SubscriptionHandler.HandleGetOne", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextSubscriptionID.String())
 		if err != nil {
 			return nil, err
 		}
 
-		return sh.svc.GetOne(ctx, id)
+		return sh.svc.GetOne(ctx.Request.Context(), id)
 	})
 }
 
 func (sh *SubscriptionHandler) HandleUpdate() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("SubscriptionHandler.HandleUpdate", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextSubscriptionID.String())
 		if err != nil {
 			return nil, err
@@ -65,17 +65,17 @@ func (sh *SubscriptionHandler) HandleUpdate() gin.HandlerFunc {
 
 		req.ID = id
 
-		return sh.svc.Update(ctx, req)
+		return sh.svc.Update(ctx.Request.Context(), req)
 	})
 }
 
 func (sh *SubscriptionHandler) HandleDelete() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("SubscriptionHandler.HandleDelete", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextSubscriptionID.String())
 		if err != nil {
 			return nil, err
 		}
 
-		return sh.svc.Delete(ctx, id)
+		return sh.svc.Delete(ctx.Request.Context(), id)
 	})
 }

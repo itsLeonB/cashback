@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -23,6 +24,9 @@ func NewGroupExpenseRepository(db *gorm.DB) *groupExpenseRepositoryGorm {
 }
 
 func (ger *groupExpenseRepositoryGorm) SyncParticipants(ctx context.Context, groupExpenseID uuid.UUID, participants []expenses.ExpenseParticipant) error {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseRepository.SyncParticipants")
+	defer span.End()
+
 	db, err := ger.GetGormInstance(ctx)
 	if err != nil {
 		return err
@@ -62,6 +66,9 @@ func (ger *groupExpenseRepositoryGorm) SyncParticipants(ctx context.Context, gro
 }
 
 func (ger *groupExpenseRepositoryGorm) DeleteItemParticipants(ctx context.Context, expenseID uuid.UUID, newParticipantProfileIDs []uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseRepository.DeleteItemParticipants")
+	defer span.End()
+
 	db, err := ger.GetGormInstance(ctx)
 	if err != nil {
 		return err
@@ -86,6 +93,9 @@ func (ger *groupExpenseRepositoryGorm) DeleteItemParticipants(ctx context.Contex
 }
 
 func (ger *groupExpenseRepositoryGorm) FindAllByOwnership(ctx context.Context, profileID uuid.UUID, ownership expenses.ExpenseOwnership, status expenses.ExpenseStatus, limit int) ([]expenses.GroupExpense, error) {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseRepository.FindAllByOwnership")
+	defer span.End()
+
 	db, err := ger.GetGormInstance(ctx)
 	if err != nil {
 		return nil, err
@@ -128,6 +138,9 @@ func (ger *groupExpenseRepositoryGorm) FindAllByOwnership(ctx context.Context, p
 }
 
 func (ger *groupExpenseRepositoryGorm) FindRecentByProfileID(ctx context.Context, profileID uuid.UUID, limit int) ([]expenses.GroupExpense, error) {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseRepository.FindRecentByProfileID")
+	defer span.End()
+
 	db, err := ger.GetGormInstance(ctx)
 	if err != nil {
 		return nil, err

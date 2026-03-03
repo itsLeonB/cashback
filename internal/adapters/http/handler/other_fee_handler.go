@@ -24,7 +24,7 @@ func NewOtherFeeHandler(
 }
 
 func (geh *OtherFeeHandler) HandleAdd() gin.HandlerFunc {
-	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
+	return server.Handler("OtherFeeHandler.HandleAdd", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -43,12 +43,12 @@ func (geh *OtherFeeHandler) HandleAdd() gin.HandlerFunc {
 		request.UserProfileID = userProfileID
 		request.GroupExpenseID = groupExpenseID
 
-		return geh.otherFeeSvc.Add(ctx, request)
+		return geh.otherFeeSvc.Add(ctx.Request.Context(), request)
 	})
 }
 
 func (geh *OtherFeeHandler) HandleUpdate() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("OtherFeeHandler.HandleUpdate", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -73,12 +73,12 @@ func (geh *OtherFeeHandler) HandleUpdate() gin.HandlerFunc {
 		request.GroupExpenseID = groupExpenseID
 		request.ID = otherFeeID
 
-		return geh.otherFeeSvc.Update(ctx, request)
+		return geh.otherFeeSvc.Update(ctx.Request.Context(), request)
 	})
 }
 
 func (geh *OtherFeeHandler) HandleRemove() gin.HandlerFunc {
-	return server.Handler(http.StatusNoContent, func(ctx *gin.Context) (any, error) {
+	return server.Handler("OtherFeeHandler.HandleRemove", http.StatusNoContent, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -94,12 +94,12 @@ func (geh *OtherFeeHandler) HandleRemove() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return nil, geh.otherFeeSvc.Remove(ctx, groupExpenseID, feeID, userProfileID)
+		return nil, geh.otherFeeSvc.Remove(ctx.Request.Context(), groupExpenseID, feeID, userProfileID)
 	})
 }
 
 func (geh *OtherFeeHandler) HandleGetFeeCalculationMethods() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		return geh.otherFeeSvc.GetCalculationMethods(ctx), nil
+	return server.Handler("OtherFeeHandler.HandleGetFeeCalculationMethods", http.StatusOK, func(ctx *gin.Context) (any, error) {
+		return geh.otherFeeSvc.GetCalculationMethods(), nil
 	})
 }

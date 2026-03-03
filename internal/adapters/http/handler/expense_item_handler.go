@@ -24,7 +24,7 @@ func NewExpenseItemHandler(
 }
 
 func (geh *ExpenseItemHandler) HandleAdd() gin.HandlerFunc {
-	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
+	return server.Handler("ExpenseItemHandler.HandleAdd", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -43,12 +43,12 @@ func (geh *ExpenseItemHandler) HandleAdd() gin.HandlerFunc {
 		request.UserProfileID = userProfileID
 		request.GroupExpenseID = groupExpenseID
 
-		return nil, geh.expenseItemSvc.Add(ctx, request)
+		return nil, geh.expenseItemSvc.Add(ctx.Request.Context(), request)
 	})
 }
 
 func (geh *ExpenseItemHandler) HandleUpdate() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("ExpenseItemHandler.HandleUpdate", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -73,12 +73,12 @@ func (geh *ExpenseItemHandler) HandleUpdate() gin.HandlerFunc {
 		request.GroupExpenseID = groupExpenseID
 		request.ID = expenseItemID
 
-		return nil, geh.expenseItemSvc.Update(ctx, request)
+		return nil, geh.expenseItemSvc.Update(ctx.Request.Context(), request)
 	})
 }
 
 func (geh *ExpenseItemHandler) HandleRemove() gin.HandlerFunc {
-	return server.Handler(http.StatusNoContent, func(ctx *gin.Context) (any, error) {
+	return server.Handler("ExpenseItemHandler.HandleRemove", http.StatusNoContent, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -94,12 +94,12 @@ func (geh *ExpenseItemHandler) HandleRemove() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return nil, geh.expenseItemSvc.Remove(ctx, groupExpenseID, expenseItemID, userProfileID)
+		return nil, geh.expenseItemSvc.Remove(ctx.Request.Context(), groupExpenseID, expenseItemID, userProfileID)
 	})
 }
 
 func (geh *ExpenseItemHandler) HandleSyncParticipants() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("ExpenseItemHandler.HandleSyncParticipants", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -124,6 +124,6 @@ func (geh *ExpenseItemHandler) HandleSyncParticipants() gin.HandlerFunc {
 		request.ID = expenseItemID
 		request.GroupExpenseID = groupExpenseID
 
-		return nil, geh.expenseItemSvc.SyncParticipants(ctx, request)
+		return nil, geh.expenseItemSvc.SyncParticipants(ctx.Request.Context(), request)
 	})
 }

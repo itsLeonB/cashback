@@ -9,6 +9,7 @@ import (
 
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	"github.com/itsLeonB/ungerr"
@@ -54,6 +55,9 @@ func (mg *midtransGateway) Provider() string {
 }
 
 func (mg *midtransGateway) CreateTransaction(ctx context.Context, payment entity.Payment) (entity.Payment, error) {
+	ctx, span := otel.Tracer.Start(ctx, "midtransGateway.CreateTransaction")
+	defer span.End()
+
 	req := &snap.Request{
 		TransactionDetails: midtrans.TransactionDetails{
 			OrderID:  payment.ID.String(),
@@ -78,6 +82,9 @@ func (mg *midtransGateway) CreateTransaction(ctx context.Context, payment entity
 }
 
 func (mg *midtransGateway) CheckStatus(ctx context.Context, req dto.MidtransNotificationPayload) (entity.PaymentStatus, error) {
+	ctx, span := otel.Tracer.Start(ctx, "midtransGateway.CheckStatus")
+	defer span.End()
+
 	if err := mg.validate(req); err != nil {
 		return entity.ErrorPayment, err
 	}

@@ -25,7 +25,7 @@ func newGroupExpenseHandler(
 }
 
 func (geh *groupExpenseHandler) HandleCreateDraft() gin.HandlerFunc {
-	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
+	return server.Handler("GroupExpenseHandler.HandleCreateDraft", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -36,12 +36,12 @@ func (geh *groupExpenseHandler) HandleCreateDraft() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return geh.groupExpenseService.CreateDraft(ctx, userProfileID, req.Description)
+		return geh.groupExpenseService.CreateDraft(ctx.Request.Context(), userProfileID, req.Description)
 	})
 }
 
 func (geh *groupExpenseHandler) HandleGetAll() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("GroupExpenseHandler.HandleGetAll", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -55,7 +55,7 @@ func (geh *groupExpenseHandler) HandleGetAll() gin.HandlerFunc {
 			ownership = expenses.OwnedExpense
 		}
 
-		groupExpenses, err := geh.groupExpenseService.GetAll(ctx, userProfileID, ownership, status)
+		groupExpenses, err := geh.groupExpenseService.GetAll(ctx.Request.Context(), userProfileID, ownership, status)
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +65,7 @@ func (geh *groupExpenseHandler) HandleGetAll() gin.HandlerFunc {
 }
 
 func (geh *groupExpenseHandler) HandleGetDetails() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("GroupExpenseHandler.HandleGetDetails", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -76,12 +76,12 @@ func (geh *groupExpenseHandler) HandleGetDetails() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return geh.groupExpenseService.GetDetails(ctx, groupExpenseID, userProfileID)
+		return geh.groupExpenseService.GetDetails(ctx.Request.Context(), groupExpenseID, userProfileID)
 	})
 }
 
 func (geh *groupExpenseHandler) HandleConfirmDraft() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("GroupExpenseHandler.HandleConfirmDraft", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -97,12 +97,12 @@ func (geh *groupExpenseHandler) HandleConfirmDraft() gin.HandlerFunc {
 			dryRun = true
 		}
 
-		return geh.groupExpenseService.ConfirmDraft(ctx, groupExpenseID, userProfileID, dryRun)
+		return geh.groupExpenseService.ConfirmDraft(ctx.Request.Context(), groupExpenseID, userProfileID, dryRun)
 	})
 }
 
 func (geh *groupExpenseHandler) HandleDelete() gin.HandlerFunc {
-	return server.Handler(http.StatusNoContent, func(ctx *gin.Context) (any, error) {
+	return server.Handler("GroupExpenseHandler.HandleDelete", http.StatusNoContent, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -113,12 +113,12 @@ func (geh *groupExpenseHandler) HandleDelete() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return nil, geh.groupExpenseService.Delete(ctx, userProfileID, expenseID)
+		return nil, geh.groupExpenseService.Delete(ctx.Request.Context(), userProfileID, expenseID)
 	})
 }
 
 func (geh *groupExpenseHandler) HandleSyncParticipants() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("GroupExpenseHandler.HandleSyncParticipants", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -137,17 +137,17 @@ func (geh *groupExpenseHandler) HandleSyncParticipants() gin.HandlerFunc {
 		req.UserProfileID = userProfileID
 		req.GroupExpenseID = expenseID
 
-		return nil, geh.groupExpenseService.SyncParticipants(ctx, req)
+		return nil, geh.groupExpenseService.SyncParticipants(ctx.Request.Context(), req)
 	})
 }
 
 func (geh *groupExpenseHandler) HandleGetRecent() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("GroupExpenseHandler.HandleGetRecent", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return geh.groupExpenseService.GetRecent(ctx, profileID)
+		return geh.groupExpenseService.GetRecent(ctx.Request.Context(), profileID)
 	})
 }

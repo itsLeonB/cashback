@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
@@ -37,6 +38,9 @@ func NewFriendshipService(
 }
 
 func (fs *friendshipServiceImpl) CreateAnonymous(ctx context.Context, req dto.NewAnonymousFriendshipRequest) (dto.FriendshipResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipService.CreateAnonymous")
+	defer span.End()
+	
 	var response dto.FriendshipResponse
 	err := fs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		profile, err := fs.profileService.GetByID(ctx, req.ProfileID)
@@ -107,6 +111,9 @@ func (fs *friendshipServiceImpl) insertAnonymousFriendship(
 }
 
 func (fs *friendshipServiceImpl) GetAll(ctx context.Context, profileID uuid.UUID) ([]dto.FriendshipResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipService.GetAll")
+	defer span.End()
+	
 	profile, err := fs.profileService.GetByID(ctx, profileID)
 	if err != nil {
 		return nil, err
@@ -155,6 +162,9 @@ func (fs *friendshipServiceImpl) GetAll(ctx context.Context, profileID uuid.UUID
 }
 
 func (fs *friendshipServiceImpl) GetDetails(ctx context.Context, profileID, friendshipID uuid.UUID) (dto.FriendDetails, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipService.GetDetails")
+	defer span.End()
+	
 	profile, err := fs.profileService.GetByID(ctx, profileID)
 	if err != nil {
 		return dto.FriendDetails{}, err
@@ -175,6 +185,9 @@ func (fs *friendshipServiceImpl) GetDetails(ctx context.Context, profileID, frie
 }
 
 func (fs *friendshipServiceImpl) IsFriends(ctx context.Context, profileID1, profileID2 uuid.UUID) (bool, bool, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipService.IsFriends")
+	defer span.End()
+	
 	friendship, err := fs.friendshipRepository.FindByProfileIDs(ctx, profileID1, profileID2)
 	if err != nil {
 		return false, false, err
@@ -188,6 +201,9 @@ func (fs *friendshipServiceImpl) IsFriends(ctx context.Context, profileID1, prof
 }
 
 func (fs *friendshipServiceImpl) GetByProfileIDs(ctx context.Context, profileID1, profileID2 uuid.UUID) (users.Friendship, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipService.GetByProfileIDs")
+	defer span.End()
+	
 	friendship, err := fs.friendshipRepository.FindByProfileIDs(ctx, profileID1, profileID2)
 	if err != nil {
 		return users.Friendship{}, err
@@ -201,6 +217,9 @@ func (fs *friendshipServiceImpl) GetByProfileIDs(ctx context.Context, profileID1
 }
 
 func (fs *friendshipServiceImpl) CreateReal(ctx context.Context, userProfileID, friendProfileID uuid.UUID) (dto.FriendshipResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipService.CreateReal")
+	defer span.End()
+	
 	var response dto.FriendshipResponse
 	err := fs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		profiles, err := fs.profileService.GetByIDs(ctx, []uuid.UUID{userProfileID, friendProfileID})
@@ -230,6 +249,9 @@ func (fs *friendshipServiceImpl) CreateReal(ctx context.Context, userProfileID, 
 }
 
 func (fs *friendshipServiceImpl) ConstructNotification(ctx context.Context, msg message.FriendRequestAccepted) (entity.Notification, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipService.ConstructNotification")
+	defer span.End()
+	
 	friendDetail, err := fs.GetDetails(ctx, msg.SenderProfileID, msg.FriendshipID)
 	if err != nil {
 		return entity.Notification{}, err

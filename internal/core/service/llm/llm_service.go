@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/ungerr"
 	"github.com/openai/openai-go/v2"
 	"github.com/openai/openai-go/v2/option"
@@ -24,6 +25,9 @@ func NewLLMService(cfg config.LLM) LLMService {
 }
 
 func (llm *openAILLMService) Prompt(ctx context.Context, systemMsg, userMsg string) (string, error) {
+	ctx, span := otel.Tracer.Start(ctx, "openAILLMService.Prompt")
+	defer span.End()
+
 	if userMsg == "" {
 		return "", ungerr.Unknown("empty user message")
 	}

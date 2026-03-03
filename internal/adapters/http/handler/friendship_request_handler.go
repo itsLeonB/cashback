@@ -22,7 +22,7 @@ func NewFriendshipRequestHandler(svc service.FriendshipRequestService) *Friendsh
 }
 
 func (frh *FriendshipRequestHandler) HandleSend() gin.HandlerFunc {
-	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
+	return server.Handler("FriendshipRequestHandler.HandleSend", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -33,12 +33,12 @@ func (frh *FriendshipRequestHandler) HandleSend() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return nil, frh.svc.Send(ctx, userProfileID, friendProfileID)
+		return nil, frh.svc.Send(ctx.Request.Context(), userProfileID, friendProfileID)
 	})
 }
 
 func (frh *FriendshipRequestHandler) HandleGetAll() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("FriendshipRequestHandler.HandleGetAll", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -52,9 +52,9 @@ func (frh *FriendshipRequestHandler) HandleGetAll() gin.HandlerFunc {
 		var response []dto.FriendshipRequestResponse
 		switch requestType {
 		case appconstant.SentFriendRequest:
-			response, err = frh.svc.GetAllSent(ctx, userProfileID)
+			response, err = frh.svc.GetAllSent(ctx.Request.Context(), userProfileID)
 		case appconstant.ReceivedFriendRequest:
-			response, err = frh.svc.GetAllReceived(ctx, userProfileID)
+			response, err = frh.svc.GetAllReceived(ctx.Request.Context(), userProfileID)
 		default:
 			err = ungerr.BadRequestError("invalid path parameter")
 		}
@@ -64,29 +64,29 @@ func (frh *FriendshipRequestHandler) HandleGetAll() gin.HandlerFunc {
 }
 
 func (frh *FriendshipRequestHandler) HandleCancel() gin.HandlerFunc {
-	return server.Handler(http.StatusNoContent, func(ctx *gin.Context) (any, error) {
+	return server.Handler("FriendshipRequestHandler.HandleCancel", http.StatusNoContent, func(ctx *gin.Context) (any, error) {
 		userProfileID, requestID, err := getIDs(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return nil, frh.svc.Cancel(ctx, userProfileID, requestID)
+		return nil, frh.svc.Cancel(ctx.Request.Context(), userProfileID, requestID)
 	})
 }
 
 func (frh *FriendshipRequestHandler) HandleIgnore() gin.HandlerFunc {
-	return server.Handler(http.StatusNoContent, func(ctx *gin.Context) (any, error) {
+	return server.Handler("FriendshipRequestHandler.HandleIgnore", http.StatusNoContent, func(ctx *gin.Context) (any, error) {
 		userProfileID, requestID, err := getIDs(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return nil, frh.svc.Ignore(ctx, userProfileID, requestID)
+		return nil, frh.svc.Ignore(ctx.Request.Context(), userProfileID, requestID)
 	})
 }
 
 func (frh *FriendshipRequestHandler) HandleBlock() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("FriendshipRequestHandler.HandleBlock", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		userProfileID, requestID, err := getIDs(ctx)
 		if err != nil {
 			return nil, err
@@ -95,9 +95,9 @@ func (frh *FriendshipRequestHandler) HandleBlock() gin.HandlerFunc {
 		command := ctx.Query("command")
 		switch command {
 		case "block":
-			return nil, frh.svc.Block(ctx, userProfileID, requestID)
+			return nil, frh.svc.Block(ctx.Request.Context(), userProfileID, requestID)
 		case "unblock":
-			return nil, frh.svc.Unblock(ctx, userProfileID, requestID)
+			return nil, frh.svc.Unblock(ctx.Request.Context(), userProfileID, requestID)
 		default:
 			return nil, ungerr.BadRequestError(fmt.Sprintf("unknown command: %s", command))
 		}
@@ -105,13 +105,13 @@ func (frh *FriendshipRequestHandler) HandleBlock() gin.HandlerFunc {
 }
 
 func (frh *FriendshipRequestHandler) HandleAccept() gin.HandlerFunc {
-	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
+	return server.Handler("FriendshipRequestHandler.HandleAccept", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		userProfileID, requestID, err := getIDs(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return frh.svc.Accept(ctx, userProfileID, requestID)
+		return frh.svc.Accept(ctx.Request.Context(), userProfileID, requestID)
 	})
 }
 

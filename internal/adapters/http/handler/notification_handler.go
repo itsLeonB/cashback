@@ -19,18 +19,18 @@ func NewNotificationHandler(notificationService service.NotificationService) *No
 }
 
 func (nh *NotificationHandler) HandleGetUnread() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("NotificationHandler.HandleGetUnread", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return nh.notificationService.GetUnread(ctx, profileID)
+		return nh.notificationService.GetUnread(ctx.Request.Context(), profileID)
 	})
 }
 
 func (nh *NotificationHandler) HandleMarkAsRead() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("NotificationHandler.HandleMarkAsRead", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
@@ -41,17 +41,17 @@ func (nh *NotificationHandler) HandleMarkAsRead() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return nil, nh.notificationService.MarkAsRead(ctx, profileID, notificationID)
+		return nil, nh.notificationService.MarkAsRead(ctx.Request.Context(), profileID, notificationID)
 	})
 }
 
 func (nh *NotificationHandler) HandleMarkAllAsRead() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("NotificationHandler.HandleMarkAllAsRead", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return nil, nh.notificationService.MarkAllAsRead(ctx, profileID)
+		return nil, nh.notificationService.MarkAllAsRead(ctx.Request.Context(), profileID)
 	})
 }

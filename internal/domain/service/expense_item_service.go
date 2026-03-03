@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
@@ -37,6 +38,9 @@ func NewExpenseItemService(
 }
 
 func (ges *expenseItemServiceImpl) Add(ctx context.Context, req dto.NewExpenseItemRequest) error {
+	ctx, span := otel.Tracer.Start(ctx, "ExpenseItemService.Add")
+	defer span.End()
+
 	if req.Amount.IsZero() {
 		return ungerr.UnprocessableEntityError(appconstant.ErrAmountZero)
 	}
@@ -53,6 +57,9 @@ func (ges *expenseItemServiceImpl) Add(ctx context.Context, req dto.NewExpenseIt
 }
 
 func (ges *expenseItemServiceImpl) Update(ctx context.Context, req dto.UpdateExpenseItemRequest) error {
+	ctx, span := otel.Tracer.Start(ctx, "ExpenseItemService.Update")
+	defer span.End()
+
 	if req.Amount.IsZero() {
 		return ungerr.UnprocessableEntityError(appconstant.ErrAmountZero)
 	}
@@ -85,6 +92,9 @@ func (ges *expenseItemServiceImpl) Update(ctx context.Context, req dto.UpdateExp
 }
 
 func (ges *expenseItemServiceImpl) Remove(ctx context.Context, groupExpenseID, expenseItemID, userProfileID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "ExpenseItemService.Remove")
+	defer span.End()
+
 	return ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		expenseItem, err := ges.getItemForUpdate(ctx, expenseItemID, groupExpenseID)
 		if err != nil {
@@ -100,6 +110,9 @@ func (ges *expenseItemServiceImpl) Remove(ctx context.Context, groupExpenseID, e
 }
 
 func (ges *expenseItemServiceImpl) SyncParticipants(ctx context.Context, req dto.SyncItemParticipantsRequest) error {
+	ctx, span := otel.Tracer.Start(ctx, "ExpenseItemService.SyncParticipants")
+	defer span.End()
+
 	return ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		expenseItem, err := ges.getItemForUpdate(ctx, req.ID, req.GroupExpenseID)
 		if err != nil {

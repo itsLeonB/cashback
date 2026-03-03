@@ -18,12 +18,12 @@ func NewTransferMethodHandler(transferMethodService service.TransferMethodServic
 }
 
 func (tmh *TransferMethodHandler) HandleGetAll() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("TransferMethodHandler.HandleGetAll", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return tmh.transferMethodService.GetAll(ctx, debts.ParentFilter(ctx.Query("status")), profileID)
+		return tmh.transferMethodService.GetAll(ctx.Request.Context(), debts.ParentFilter(ctx.Query("status")), profileID)
 	})
 }

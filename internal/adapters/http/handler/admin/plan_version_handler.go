@@ -17,19 +17,19 @@ type PlanVersionHandler struct {
 }
 
 func (pvh *PlanVersionHandler) HandleCreate() gin.HandlerFunc {
-	return server.Handler(http.StatusCreated, func(ctx *gin.Context) (any, error) {
+	return server.Handler("PlanVersionHandler.HandleCreate", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		req, err := server.BindJSON[dto.NewPlanVersionRequest](ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return pvh.svc.Create(ctx, req)
+		return pvh.svc.Create(ctx.Request.Context(), req)
 	})
 }
 
 func (pvh *PlanVersionHandler) HandleGetList() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
-		planVersions, err := pvh.svc.GetList(ctx)
+	return server.Handler("PlanVersionHandler.HandleGetList", http.StatusOK, func(ctx *gin.Context) (any, error) {
+		planVersions, err := pvh.svc.GetList(ctx.Request.Context())
 		if err != nil {
 			return nil, err
 		}
@@ -41,18 +41,18 @@ func (pvh *PlanVersionHandler) HandleGetList() gin.HandlerFunc {
 }
 
 func (pvh *PlanVersionHandler) HandleGetOne() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("PlanVersionHandler.HandleGetOne", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextPlanVersionID.String())
 		if err != nil {
 			return nil, err
 		}
 
-		return pvh.svc.GetOne(ctx, id)
+		return pvh.svc.GetOne(ctx.Request.Context(), id)
 	})
 }
 
 func (pvh *PlanVersionHandler) HandleUpdate() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("PlanVersionHandler.HandleUpdate", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextPlanVersionID.String())
 		if err != nil {
 			return nil, err
@@ -65,17 +65,17 @@ func (pvh *PlanVersionHandler) HandleUpdate() gin.HandlerFunc {
 
 		req.ID = id
 
-		return pvh.svc.Update(ctx, req)
+		return pvh.svc.Update(ctx.Request.Context(), req)
 	})
 }
 
 func (pvh *PlanVersionHandler) HandleDelete() gin.HandlerFunc {
-	return server.Handler(http.StatusOK, func(ctx *gin.Context) (any, error) {
+	return server.Handler("PlanVersionHandler.HandleDelete", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		id, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextPlanVersionID.String())
 		if err != nil {
 			return nil, err
 		}
 
-		return pvh.svc.Delete(ctx, id)
+		return pvh.svc.Delete(ctx.Request.Context(), id)
 	})
 }

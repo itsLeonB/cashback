@@ -9,6 +9,8 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/ungerr"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type asynqClient struct {
@@ -51,8 +53,16 @@ func (ac *asynqClient) Shutdown() error {
 	return nil
 }
 
-func (ac *asynqClient) AsyncEnqueue(msg queue.TaskMessage) {
-	if err := ac.Enqueue(context.Background(), msg); err != nil {
+func (ac *asynqClient) AsyncEnqueue(ctx context.Context, msg queue.TaskMessage) {
+	detached := context.Background()
+	if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
+		detached = trace.ContextWithSpan(detached, span)
+	}
+
+	if err := ac.Enqueue(detached, msg); err != nil {
+		span := trace.SpanFromContext(detached)
+		span.SetStatus(codes.Error, "asynchronous error")
+		span.RecordError(err)
 		logger.Error(err)
 	}
 }

@@ -52,7 +52,7 @@ func NewDebtService(
 func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.NewDebtTransactionRequest) (dto.DebtTransactionResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.RecordNewTransaction")
 	defer span.End()
-	
+
 	if !req.Amount.IsPositive() {
 		return dto.DebtTransactionResponse{}, ungerr.ValidationError("amount must be greater than 0")
 	}
@@ -89,7 +89,7 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 		return dto.DebtTransactionResponse{}, err
 	}
 
-	go ds.taskQueue.AsyncEnqueue(message.DebtCreated{
+	go ds.taskQueue.AsyncEnqueue(ctx, message.DebtCreated{
 		ID:               insertedDebt.ID,
 		CreatorProfileID: req.UserProfileID,
 	})
@@ -101,7 +101,7 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 func (ds *debtServiceImpl) GetTransactions(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetTransactions")
 	defer span.End()
-	
+
 	profileIDs, err := ds.profileService.GetAssociatedIDs(ctx, profileID)
 	if err != nil {
 		return nil, err
@@ -129,7 +129,7 @@ func (ds *debtServiceImpl) GetTransactions(ctx context.Context, profileID uuid.U
 func (ds *debtServiceImpl) GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (dto.FriendBalance, error) {
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetTransactionSummary")
 	defer span.End()
-	
+
 	profileIDs, err := ds.profileService.GetAssociatedIDs(ctx, profileID)
 	if err != nil {
 		return dto.FriendBalance{}, err
@@ -146,7 +146,7 @@ func (ds *debtServiceImpl) GetTransactionSummary(ctx context.Context, profileID 
 func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, groupExpense expenses.GroupExpense) error {
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.ProcessConfirmedGroupExpense")
 	defer span.End()
-	
+
 	transferMethod, err := ds.transferMethodService.GetByName(ctx, debts.GroupExpenseTransferMethod)
 	if err != nil {
 		return err
@@ -161,7 +161,7 @@ func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, gro
 func (ds *debtServiceImpl) GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]debts.DebtTransaction, []uuid.UUID, error) {
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetAllByProfileIDs")
 	defer span.End()
-	
+
 	profiles, err := ds.profileService.GetByIDs(ctx, []uuid.UUID{userProfileID, friendProfileID})
 	if err != nil {
 		return nil, nil, err
@@ -177,7 +177,7 @@ func (ds *debtServiceImpl) GetAllByProfileIDs(ctx context.Context, userProfileID
 func (ds *debtServiceImpl) GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetRecent")
 	defer span.End()
-	
+
 	profileIDs, err := ds.profileService.GetAssociatedIDs(ctx, profileID)
 	if err != nil {
 		return nil, err
@@ -205,7 +205,7 @@ func (ds *debtServiceImpl) GetRecent(ctx context.Context, profileID uuid.UUID) (
 func (ds *debtServiceImpl) ConstructNotification(ctx context.Context, msg message.DebtCreated) (entity.Notification, error) {
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.ConstructNotification")
 	defer span.End()
-	
+
 	spec := crud.Specification[debts.DebtTransaction]{}
 	spec.Model.ID = msg.ID
 	trx, err := ds.debtTransactionRepository.FindFirst(ctx, spec)

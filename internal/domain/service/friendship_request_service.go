@@ -45,8 +45,9 @@ func NewFriendshipRequestService(
 func (frs *friendshipRequestServiceImpl) Send(ctx context.Context, userProfileID, friendProfileID uuid.UUID) error {
 	ctx, span := otel.Tracer.Start(ctx, "FriendshipRequestService.Send")
 	defer span.End()
+	var msg message.FriendRequestSent
 
-	return frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+	err := frs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[users.FriendshipRequest]{}
 		spec.Model.SenderProfileID = userProfileID
 		spec.Model.RecipientProfileID = friendProfileID
@@ -73,9 +74,16 @@ func (frs *friendshipRequestServiceImpl) Send(ctx context.Context, userProfileID
 			return err
 		}
 
-		go frs.taskQueue.AsyncEnqueue(ctx, message.FriendRequestSent{ID: insertedRequest.ID})
+		msg.ID = insertedRequest.ID
+
 		return nil
 	})
+
+	if err == nil {
+		go frs.taskQueue.AsyncEnqueue(ctx, msg)
+	}
+
+	return err
 }
 
 func (frs *friendshipRequestServiceImpl) validateFriendProfile(ctx context.Context, userProfileID, friendProfileID uuid.UUID) error {

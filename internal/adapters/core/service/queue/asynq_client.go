@@ -3,6 +3,8 @@ package queue
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"syscall"
 
 	"github.com/hibiken/asynq"
 	"github.com/itsLeonB/cashback/internal/core/logger"
@@ -48,6 +50,10 @@ func (ac *asynqClient) Enqueue(ctx context.Context, message queue.TaskMessage) e
 
 func (ac *asynqClient) Shutdown() error {
 	if err := ac.client.Close(); err != nil {
+		if errors.Is(err, syscall.EPIPE) {
+			logger.Warnf("asynq client connection closed: %v", err)
+			return nil
+		}
 		return ungerr.Wrap(err, "error closing asynq client")
 	}
 	return nil

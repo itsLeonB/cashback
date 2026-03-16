@@ -113,41 +113,7 @@ func (geh *ExpenseBillHandler) HandlePresignedSave() gin.HandlerFunc {
 	})
 }
 
-func (geh *ExpenseBillHandler) HandleNotifyPresignedUploaded() gin.HandlerFunc {
-	return server.Handler("ExpenseBillHandler.HandleNotifyPresignedUploaded", http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		profileID, err := getProfileID(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		expenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		billID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextExpenseBillID.String())
-		if err != nil {
-			return nil, err
-		}
-
-		req := dto.NotifyPresignedUploadedRequest{
-			ProfileID:      profileID,
-			GroupExpenseID: expenseID,
-			BillID:         billID,
-		}
-
-		return nil, geh.expenseBillService.NotifyPresignedUploaded(ctx.Request.Context(), req)
-	})
-}
-
 func (geh *ExpenseBillHandler) HandleTriggerParsing() gin.HandlerFunc {
-	usePresigned, err := geh.flagClient.FeatureEnabled("use_presigned_bill_upload")
-	if err != nil {
-		logger.Error(ungerr.Wrap(err, "error fetching feature flag"))
-	}
-	if usePresigned {
-		return geh.HandleNotifyPresignedUploaded()
-	}
 	return server.Handler("ExpenseBillHandler.HandleTriggerParsing", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		expenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
 		if err != nil {

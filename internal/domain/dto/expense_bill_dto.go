@@ -30,9 +30,3 @@ type PresignedExpenseBillResponse struct {
 	BillID    uuid.UUID `json:"billId"`
 	UploadURL string    `json:"uploadUrl"`
 }
-
-type NotifyPresignedUploadedRequest struct {
-	ProfileID      uuid.UUID
-	GroupExpenseID uuid.UUID
-	BillID         uuid.UUID
-}

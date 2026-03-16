@@ -145,7 +145,6 @@ type ExpenseBillService interface {
 	Cleanup(ctx context.Context) error
 	TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) error
 	SavePresigned(ctx context.Context, req dto.PresignedExpenseBillRequest) (dto.PresignedExpenseBillResponse, error)
-	NotifyPresignedUploaded(ctx context.Context, req dto.NotifyPresignedUploadedRequest) error
 }
 
 type SubscriptionLimitService interface {

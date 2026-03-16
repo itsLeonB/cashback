@@ -106,7 +106,7 @@ func (ebs *expenseBillServiceImpl) SavePresigned(ctx context.Context, req dto.Pr
 		newBill := expenses.ExpenseBill{
 			GroupExpenseID: req.GroupExpenseID,
 			ImageName:      fileID.ObjectKey,
-			Status:         expenses.PendingBill,
+			Status:         expenses.NotUploadedBill,
 		}
 
 		newBill, err := ebs.billRepo.Insert(ctx, newBill)
@@ -125,25 +125,6 @@ func (ebs *expenseBillServiceImpl) SavePresigned(ctx context.Context, req dto.Pr
 		return nil
 	})
 	return resp, err
-}
-
-func (ebs *expenseBillServiceImpl) NotifyPresignedUploaded(ctx context.Context, req dto.NotifyPresignedUploadedRequest) error {
-	ctx, span := otel.Tracer.Start(ctx, "ExpenseBillService.NotifyPresignedUploaded")
-	defer span.End()
-
-	if _, err := ebs.expenseSvc.GetUnconfirmed(ctx, req.ProfileID, req.GroupExpenseID, false); err != nil {
-		return err
-	}
-
-	spec := crud.Specification[expenses.ExpenseBill]{}
-	spec.Model.ID = req.BillID
-	spec.Model.GroupExpenseID = req.GroupExpenseID
-	bill, err := ebs.getBySpec(ctx, spec)
-	if err != nil {
-		return err
-	}
-
-	return ebs.taskQueue.Enqueue(ctx, message.ExpenseBillUploaded{ID: bill.ID})
 }
 
 func (ebs *expenseBillServiceImpl) checkIfUploadAllowed(ctx context.Context, profileID, groupExpenseID uuid.UUID) error {
@@ -165,8 +146,8 @@ func (ebs *expenseBillServiceImpl) ensureSingleBill(ctx context.Context, profile
 		return nil
 	}
 
-	// Only NotDetectedBill status can be replaced
-	if expense.Bill.Status != expenses.NotDetectedBill {
+	// Only NotDetectedBill or NotUploadedBill status can be replaced
+	if expense.Bill.Status != expenses.NotDetectedBill && expense.Bill.Status != expenses.NotUploadedBill {
 		return ungerr.UnprocessableEntityError("cannot upload another bill")
 	}
 
@@ -225,7 +206,7 @@ func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID
 			return err
 		}
 
-		if bill.Status == expenses.FailedExtracting {
+		if bill.Status == expenses.FailedExtracting || bill.Status == expenses.NotUploadedBill {
 			bill.Status = expenses.PendingBill
 			if _, err := ebs.billRepo.Update(ctx, bill); err != nil {
 				return err

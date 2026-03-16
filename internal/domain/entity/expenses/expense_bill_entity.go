@@ -10,6 +10,7 @@ import (
 type BillStatus string
 
 const (
+	NotUploadedBill   BillStatus = "NOT_UPLOADED"
 	PendingBill       BillStatus = "PENDING"           // Newly uploaded bill, to be extracted by OCR service
 	ExtractedBill     BillStatus = "EXTRACTED"         // Text extracted from image, to be parsed by AI service
 	FailedExtracting  BillStatus = "FAILED_EXTRACTING" // OCR failed to extract from image, retryable

@@ -92,6 +92,41 @@ func (ebs *expenseBillServiceImpl) Save(ctx context.Context, req *dto.NewExpense
 	})
 }
 
+func (ebs *expenseBillServiceImpl) SavePresigned(ctx context.Context, req dto.PresignedExpenseBillRequest) (dto.PresignedExpenseBillResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ExpenseBillService.SavePresigned")
+	defer span.End()
+
+	var resp dto.PresignedExpenseBillResponse
+	err := ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		if err := ebs.checkIfUploadAllowed(ctx, req.ProfileID, req.GroupExpenseID); err != nil {
+			return err
+		}
+
+		fileID := ObjectKeyToFileID(util.GenerateObjectKey(req.Filename))
+		newBill := expenses.ExpenseBill{
+			GroupExpenseID: req.GroupExpenseID,
+			ImageName:      fileID.ObjectKey,
+			Status:         expenses.NotUploadedBill,
+		}
+
+		newBill, err := ebs.billRepo.Insert(ctx, newBill)
+		if err != nil {
+			return err
+		}
+
+		uploadURL, err := ebs.imageSvc.GetUploadURL(fileID)
+		if err != nil {
+			return err
+		}
+
+		resp.BillID = newBill.ID
+		resp.UploadURL = uploadURL
+
+		return nil
+	})
+	return resp, err
+}
+
 func (ebs *expenseBillServiceImpl) checkIfUploadAllowed(ctx context.Context, profileID, groupExpenseID uuid.UUID) error {
 	if err := ebs.subscriptionLimitSvc.CheckUploadLimit(ctx, profileID); err != nil {
 		return err
@@ -101,7 +136,7 @@ func (ebs *expenseBillServiceImpl) checkIfUploadAllowed(ctx context.Context, pro
 }
 
 func (ebs *expenseBillServiceImpl) ensureSingleBill(ctx context.Context, profileID, expenseID uuid.UUID) error {
-	expense, err := ebs.expenseSvc.GetUnconfirmedGroupExpenseForUpdate(ctx, profileID, expenseID)
+	expense, err := ebs.expenseSvc.GetUnconfirmedForUpdate(ctx, profileID, expenseID)
 	if err != nil {
 		return err
 	}
@@ -111,8 +146,8 @@ func (ebs *expenseBillServiceImpl) ensureSingleBill(ctx context.Context, profile
 		return nil
 	}
 
-	// Only NotDetectedBill status can be replaced
-	if expense.Bill.Status != expenses.NotDetectedBill {
+	// Only NotDetectedBill or NotUploadedBill status can be replaced
+	if expense.Bill.Status != expenses.NotDetectedBill && expense.Bill.Status != expenses.NotUploadedBill {
 		return ungerr.UnprocessableEntityError("cannot upload another bill")
 	}
 
@@ -132,7 +167,8 @@ func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg mess
 			return err
 		}
 		if bill.IsZero() {
-			return ungerr.NotFoundError(fmt.Sprintf("expense bill with ID %s is not found", spec.Model.ID))
+			logger.Errorf("expense bill with ID %s is not found", msg.ID)
+			return nil
 		}
 
 		uri := ebs.imageSvc.GetURI(ObjectKeyToFileID(bill.ImageName))
@@ -174,10 +210,10 @@ func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID
 			return err
 		}
 		if bill.IsZero() {
-			return ungerr.NotFoundError(fmt.Sprintf("expense bill with ID %s is not found", spec.Model.ID))
+			return ungerr.NotFoundError(fmt.Sprintf("expense bill with ID %s is not found", billID))
 		}
 
-		if bill.Status == expenses.FailedExtracting {
+		if bill.Status == expenses.FailedExtracting || bill.Status == expenses.NotUploadedBill {
 			bill.Status = expenses.PendingBill
 			if _, err := ebs.billRepo.Update(ctx, bill); err != nil {
 				return err

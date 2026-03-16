@@ -12,6 +12,7 @@ import (
 
 type ImageService interface {
 	Upload(ctx context.Context, req *ImageUploadRequest) (string, error)
+	GetUploadURL(fileID FileIdentifier) (string, error)
 	GetURL(fileID FileIdentifier) (string, error)
 	GetURI(fileID FileIdentifier) string
 	Delete(ctx context.Context, fileID FileIdentifier) error
@@ -52,6 +53,10 @@ func (ubs *imageServiceImpl) Upload(ctx context.Context, req *ImageUploadRequest
 	}
 
 	return ubs.storageRepo.ToURI(storageReq.FileIdentifier), nil
+}
+
+func (ubs *imageServiceImpl) GetUploadURL(fileID FileIdentifier) (string, error) {
+	return ubs.storageRepo.GetUploadURL(fileID, UploadURLDuration)
 }
 
 func (ubs *imageServiceImpl) GetURL(fileID FileIdentifier) (string, error) {

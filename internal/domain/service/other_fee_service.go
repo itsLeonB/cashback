@@ -51,7 +51,7 @@ func (ofs *otherFeeServiceImpl) Add(ctx context.Context, req dto.NewOtherFeeRequ
 	}
 
 	err := ofs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		groupExpense, err := ofs.groupExpenseSvc.GetUnconfirmedGroupExpenseForUpdate(ctx, req.UserProfileID, req.GroupExpenseID)
+		groupExpense, err := ofs.groupExpenseSvc.GetUnconfirmedForUpdate(ctx, req.UserProfileID, req.GroupExpenseID)
 		if err != nil {
 			return err
 		}
@@ -87,7 +87,7 @@ func (ofs *otherFeeServiceImpl) Update(ctx context.Context, req dto.UpdateOtherF
 	}
 
 	err := ofs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		groupExpense, err := ofs.groupExpenseSvc.GetUnconfirmedGroupExpenseForUpdate(ctx, req.UserProfileID, req.GroupExpenseID)
+		groupExpense, err := ofs.groupExpenseSvc.GetUnconfirmedForUpdate(ctx, req.UserProfileID, req.GroupExpenseID)
 		if err != nil {
 			return err
 		}
@@ -131,7 +131,7 @@ func (ofs *otherFeeServiceImpl) Remove(ctx context.Context, groupExpenseID, othe
 	defer span.End()
 
 	return ofs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		groupExpense, err := ofs.groupExpenseSvc.GetUnconfirmedGroupExpenseForUpdate(ctx, userProfileID, groupExpenseID)
+		groupExpense, err := ofs.groupExpenseSvc.GetUnconfirmedForUpdate(ctx, userProfileID, groupExpenseID)
 		if err != nil {
 			return err
 		}

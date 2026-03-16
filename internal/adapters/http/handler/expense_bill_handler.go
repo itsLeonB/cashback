@@ -5,9 +5,11 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/Flagsmith/flagsmith-go-client"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/service/storage"
 	"github.com/itsLeonB/cashback/internal/core/util"
@@ -19,13 +21,22 @@ import (
 
 type ExpenseBillHandler struct {
 	expenseBillService service.ExpenseBillService
+	flagClient         *flagsmith.Client
 }
 
 func NewExpenseBillHandler(expenseBillService service.ExpenseBillService) *ExpenseBillHandler {
-	return &ExpenseBillHandler{expenseBillService}
+	client := flagsmith.NewClient(config.Global.ClientKey, flagsmith.DefaultConfig())
+	return &ExpenseBillHandler{expenseBillService, client}
 }
 
 func (geh *ExpenseBillHandler) HandleSave() gin.HandlerFunc {
+	usePresigned, err := geh.flagClient.FeatureEnabled("use_presigned_bill_upload")
+	if err != nil {
+		logger.Error(ungerr.Wrap(err, "error fetching feature flag"))
+	}
+	if usePresigned {
+		return geh.HandlePresignedSave()
+	}
 	return server.Handler("ExpenseBillHandler.HandleSave", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
 		if err != nil {
@@ -75,6 +86,30 @@ func (geh *ExpenseBillHandler) HandleSave() gin.HandlerFunc {
 		}
 
 		return nil, geh.expenseBillService.Save(ctx.Request.Context(), request)
+	})
+}
+
+func (geh *ExpenseBillHandler) HandlePresignedSave() gin.HandlerFunc {
+	return server.Handler("ExpenseBillHandler.HandlePresignedSave", http.StatusCreated, func(ctx *gin.Context) (any, error) {
+		profileID, err := getProfileID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		expenseID, err := server.GetRequiredPathParam[uuid.UUID](ctx, appconstant.ContextGroupExpenseID.String())
+		if err != nil {
+			return nil, err
+		}
+
+		req, err := server.BindJSON[dto.PresignedExpenseBillRequest](ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		req.ProfileID = profileID
+		req.GroupExpenseID = expenseID
+
+		return geh.expenseBillService.SavePresigned(ctx.Request.Context(), req)
 	})
 }
 

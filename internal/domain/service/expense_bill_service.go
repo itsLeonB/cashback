@@ -92,6 +92,60 @@ func (ebs *expenseBillServiceImpl) Save(ctx context.Context, req *dto.NewExpense
 	})
 }
 
+func (ebs *expenseBillServiceImpl) SavePresigned(ctx context.Context, req dto.PresignedExpenseBillRequest) (dto.PresignedExpenseBillResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ExpenseBillService.SavePresigned")
+	defer span.End()
+
+	var resp dto.PresignedExpenseBillResponse
+	err := ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		if err := ebs.checkIfUploadAllowed(ctx, req.ProfileID, req.GroupExpenseID); err != nil {
+			return err
+		}
+
+		fileID := ObjectKeyToFileID(util.GenerateObjectKey(req.Filename))
+		newBill := expenses.ExpenseBill{
+			GroupExpenseID: req.GroupExpenseID,
+			ImageName:      fileID.ObjectKey,
+			Status:         expenses.PendingBill,
+		}
+
+		newBill, err := ebs.billRepo.Insert(ctx, newBill)
+		if err != nil {
+			return err
+		}
+
+		uploadURL, err := ebs.imageSvc.GetUploadURL(fileID)
+		if err != nil {
+			return err
+		}
+
+		resp.BillID = newBill.ID
+		resp.UploadURL = uploadURL
+
+		return nil
+	})
+	return resp, err
+}
+
+func (ebs *expenseBillServiceImpl) NotifyPresignedUploaded(ctx context.Context, req dto.NotifyPresignedUploadedRequest) error {
+	ctx, span := otel.Tracer.Start(ctx, "ExpenseBillService.NotifyPresignedUploaded")
+	defer span.End()
+
+	if _, err := ebs.expenseSvc.GetUnconfirmed(ctx, req.ProfileID, req.GroupExpenseID, false); err != nil {
+		return err
+	}
+
+	spec := crud.Specification[expenses.ExpenseBill]{}
+	spec.Model.ID = req.BillID
+	spec.Model.GroupExpenseID = req.GroupExpenseID
+	bill, err := ebs.getBySpec(ctx, spec)
+	if err != nil {
+		return err
+	}
+
+	return ebs.taskQueue.Enqueue(ctx, message.ExpenseBillUploaded{ID: bill.ID})
+}
+
 func (ebs *expenseBillServiceImpl) checkIfUploadAllowed(ctx context.Context, profileID, groupExpenseID uuid.UUID) error {
 	if err := ebs.subscriptionLimitSvc.CheckUploadLimit(ctx, profileID); err != nil {
 		return err
@@ -101,7 +155,7 @@ func (ebs *expenseBillServiceImpl) checkIfUploadAllowed(ctx context.Context, pro
 }
 
 func (ebs *expenseBillServiceImpl) ensureSingleBill(ctx context.Context, profileID, expenseID uuid.UUID) error {
-	expense, err := ebs.expenseSvc.GetUnconfirmedGroupExpenseForUpdate(ctx, profileID, expenseID)
+	expense, err := ebs.expenseSvc.GetUnconfirmed(ctx, profileID, expenseID, true)
 	if err != nil {
 		return err
 	}
@@ -127,12 +181,9 @@ func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg mess
 		spec := crud.Specification[expenses.ExpenseBill]{}
 		spec.Model.ID = msg.ID
 		spec.ForUpdate = true
-		bill, err := ebs.billRepo.FindFirst(ctx, spec)
+		bill, err := ebs.getBySpec(ctx, spec)
 		if err != nil {
 			return err
-		}
-		if bill.IsZero() {
-			return ungerr.NotFoundError(fmt.Sprintf("expense bill with ID %s is not found", spec.Model.ID))
 		}
 
 		uri := ebs.imageSvc.GetURI(ObjectKeyToFileID(bill.ImageName))
@@ -169,12 +220,9 @@ func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID
 		spec.Model.ID = billID
 		spec.Model.GroupExpenseID = expenseID
 		spec.ForUpdate = true
-		bill, err := ebs.billRepo.FindFirst(ctx, spec)
+		bill, err := ebs.getBySpec(ctx, spec)
 		if err != nil {
 			return err
-		}
-		if bill.IsZero() {
-			return ungerr.NotFoundError(fmt.Sprintf("expense bill with ID %s is not found", spec.Model.ID))
 		}
 
 		if bill.Status == expenses.FailedExtracting {
@@ -225,6 +273,17 @@ func (ebs *expenseBillServiceImpl) Cleanup(ctx context.Context) error {
 	logger.Infof("obtained object keys from DB:\n%s", strings.Join(validObjectKeys, "\n"))
 
 	return ebs.imageSvc.DeleteAllInvalid(ctx, config.Global.BucketNameExpenseBill, validObjectKeys)
+}
+
+func (ebs *expenseBillServiceImpl) getBySpec(ctx context.Context, spec crud.Specification[expenses.ExpenseBill]) (expenses.ExpenseBill, error) {
+	bill, err := ebs.billRepo.FindFirst(ctx, spec)
+	if err != nil {
+		return expenses.ExpenseBill{}, err
+	}
+	if bill.IsZero() {
+		return expenses.ExpenseBill{}, ungerr.NotFoundError("expense bill is not found")
+	}
+	return bill, nil
 }
 
 func (ebs *expenseBillServiceImpl) rollbackUpload(ctx context.Context, fileID storage.FileIdentifier) {

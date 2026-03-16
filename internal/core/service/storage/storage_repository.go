@@ -21,6 +21,7 @@ import (
 type StorageRepository interface {
 	Upload(ctx context.Context, req *StorageUploadRequest) error
 	Delete(ctx context.Context, fileID FileIdentifier) error
+	GetUploadURL(fileID FileIdentifier, expiration time.Duration) (string, error)
 	GetSignedURL(fileID FileIdentifier, expiration time.Duration) (string, error)
 	GetAllObjectKeys(ctx context.Context, bucketName string) ([]string, error)
 	Exists(ctx context.Context, fileID FileIdentifier) (bool, error)
@@ -105,16 +106,27 @@ func (r *gcsStorageRepository) Delete(ctx context.Context, fileID FileIdentifier
 	return nil
 }
 
+func (r *gcsStorageRepository) GetUploadURL(fileID FileIdentifier, expiration time.Duration) (string, error) {
+	return r.signedURL(fileID, &storage.SignedURLOptions{
+		Scheme:  storage.SigningSchemeV4,
+		Method:  http.MethodPut,
+		Expires: time.Now().Add(expiration),
+	})
+}
+
 func (r *gcsStorageRepository) GetSignedURL(fileID FileIdentifier, expiration time.Duration) (string, error) {
-	url, err := r.toBucket(fileID).SignedURL(fileID.ObjectKey, &storage.SignedURLOptions{
+	return r.signedURL(fileID, &storage.SignedURLOptions{
 		Scheme:  storage.SigningSchemeV4,
 		Method:  http.MethodGet,
 		Expires: time.Now().Add(expiration),
 	})
+}
+
+func (r *gcsStorageRepository) signedURL(fileID FileIdentifier, opts *storage.SignedURLOptions) (string, error) {
+	url, err := r.toBucket(fileID).SignedURL(fileID.ObjectKey, opts)
 	if err != nil {
 		return "", ungerr.Wrap(err, "failed to generate signed URL")
 	}
-
 	return url, nil
 }
 

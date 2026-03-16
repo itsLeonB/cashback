@@ -136,7 +136,7 @@ func (ebs *expenseBillServiceImpl) checkIfUploadAllowed(ctx context.Context, pro
 }
 
 func (ebs *expenseBillServiceImpl) ensureSingleBill(ctx context.Context, profileID, expenseID uuid.UUID) error {
-	expense, err := ebs.expenseSvc.GetUnconfirmed(ctx, profileID, expenseID, true)
+	expense, err := ebs.expenseSvc.GetUnconfirmedForUpdate(ctx, profileID, expenseID)
 	if err != nil {
 		return err
 	}
@@ -162,9 +162,13 @@ func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg mess
 		spec := crud.Specification[expenses.ExpenseBill]{}
 		spec.Model.ID = msg.ID
 		spec.ForUpdate = true
-		bill, err := ebs.getBySpec(ctx, spec)
+		bill, err := ebs.billRepo.FindFirst(ctx, spec)
 		if err != nil {
 			return err
+		}
+		if bill.IsZero() {
+			logger.Errorf("expense bill with ID %s is not found", msg.ID)
+			return nil
 		}
 
 		uri := ebs.imageSvc.GetURI(ObjectKeyToFileID(bill.ImageName))
@@ -201,9 +205,12 @@ func (ebs *expenseBillServiceImpl) TriggerParsing(ctx context.Context, expenseID
 		spec.Model.ID = billID
 		spec.Model.GroupExpenseID = expenseID
 		spec.ForUpdate = true
-		bill, err := ebs.getBySpec(ctx, spec)
+		bill, err := ebs.billRepo.FindFirst(ctx, spec)
 		if err != nil {
 			return err
+		}
+		if bill.IsZero() {
+			return ungerr.NotFoundError(fmt.Sprintf("expense bill with ID %s is not found", billID))
 		}
 
 		if bill.Status == expenses.FailedExtracting || bill.Status == expenses.NotUploadedBill {
@@ -254,17 +261,6 @@ func (ebs *expenseBillServiceImpl) Cleanup(ctx context.Context) error {
 	logger.Infof("obtained object keys from DB:\n%s", strings.Join(validObjectKeys, "\n"))
 
 	return ebs.imageSvc.DeleteAllInvalid(ctx, config.Global.BucketNameExpenseBill, validObjectKeys)
-}
-
-func (ebs *expenseBillServiceImpl) getBySpec(ctx context.Context, spec crud.Specification[expenses.ExpenseBill]) (expenses.ExpenseBill, error) {
-	bill, err := ebs.billRepo.FindFirst(ctx, spec)
-	if err != nil {
-		return expenses.ExpenseBill{}, err
-	}
-	if bill.IsZero() {
-		return expenses.ExpenseBill{}, ungerr.NotFoundError("expense bill is not found")
-	}
-	return bill, nil
 }
 
 func (ebs *expenseBillServiceImpl) rollbackUpload(ctx context.Context, fileID storage.FileIdentifier) {

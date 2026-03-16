@@ -310,7 +310,7 @@ func (ges *groupExpenseServiceImpl) Delete(ctx context.Context, userProfileID, i
 	defer span.End()
 
 	return ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		expense, err := ges.GetUnconfirmed(ctx, userProfileID, id, true)
+		expense, err := ges.GetUnconfirmedForUpdate(ctx, userProfileID, id)
 		if err != nil {
 			return err
 		}
@@ -328,7 +328,7 @@ func (ges *groupExpenseServiceImpl) SyncParticipants(ctx context.Context, req dt
 	}
 
 	return ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		expense, err := ges.GetUnconfirmed(ctx, req.UserProfileID, req.GroupExpenseID, true)
+		expense, err := ges.GetUnconfirmedForUpdate(ctx, req.UserProfileID, req.GroupExpenseID)
 		if err != nil {
 			return err
 		}
@@ -398,7 +398,7 @@ func (ges *groupExpenseServiceImpl) getGroupExpense(ctx context.Context, spec cr
 	return groupExpense, nil
 }
 
-func (ges *groupExpenseServiceImpl) GetUnconfirmed(ctx context.Context, profileID, id uuid.UUID, forUpdate bool) (expenses.GroupExpense, error) {
+func (ges *groupExpenseServiceImpl) GetUnconfirmedForUpdate(ctx context.Context, profileID, id uuid.UUID) (expenses.GroupExpense, error) {
 	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.GetUnconfirmed")
 	defer span.End()
 
@@ -459,7 +459,7 @@ func (ges *groupExpenseServiceImpl) processAndGetStatus(ctx context.Context, exp
 	request.Items = slices.DeleteFunc(request.Items, func(item dto.NewExpenseItemRequest) bool { return item.Amount.Equal(decimal.Zero) })
 	request.OtherFees = slices.DeleteFunc(request.OtherFees, func(fee dto.NewOtherFeeRequest) bool { return fee.Amount.Equal(decimal.Zero) })
 
-	expense, err := ges.GetUnconfirmed(ctx, uuid.Nil, expenseBill.GroupExpenseID, true)
+	expense, err := ges.GetUnconfirmedForUpdate(ctx, uuid.Nil, expenseBill.GroupExpenseID)
 	if err != nil {
 		return expenses.FailedParsingBill, err
 	}
@@ -498,7 +498,7 @@ func (ges *groupExpenseServiceImpl) Recalculate(ctx context.Context, userProfile
 	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.Recalculate")
 	defer span.End()
 
-	groupExpense, err := ges.GetUnconfirmed(ctx, userProfileID, groupExpenseID, true)
+	groupExpense, err := ges.GetUnconfirmedForUpdate(ctx, userProfileID, groupExpenseID)
 	if err != nil {
 		return err
 	}

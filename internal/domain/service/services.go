@@ -117,7 +117,7 @@ type GroupExpenseService interface {
 	SyncParticipants(ctx context.Context, req dto.ExpenseParticipantsRequest) error
 	GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.GroupExpenseResponse, error)
 
-	GetUnconfirmed(ctx context.Context, profileID, id uuid.UUID, forUpdate bool) (expenses.GroupExpense, error)
+	GetUnconfirmedForUpdate(ctx context.Context, profileID, id uuid.UUID) (expenses.GroupExpense, error)
 	ParseFromBillText(ctx context.Context, msg message.ExpenseBillTextExtracted) error
 	Recalculate(ctx context.Context, userProfileID, groupExpenseID uuid.UUID, amountChanged bool) error
 	GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (expenses.GroupExpense, error)

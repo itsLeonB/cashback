@@ -24,11 +24,16 @@ import (
 	"go.opentelemetry.io/otel/trace/noop"
 )
 
+type component struct {
+	enabled bool
+	initFn  func(context.Context, *resource.Resource, config.OTel) (func(context.Context) error, error)
+}
+
 var Tracer trace.Tracer = noop.NewTracerProvider().Tracer("")
 
 // InitSDK initializes the OpenTelemetry SDK for metrics and logs.
 func InitSDK(ctx context.Context, cfg config.OTel) (func(context.Context) error, error) {
-	if !cfg.Enabled {
+	if !cfg.Enabled || (!cfg.MetricsEnabled && !cfg.LogsEnabled && !cfg.TracesEnabled) {
 		return func(context.Context) error { return nil }, nil
 	}
 
@@ -67,10 +72,39 @@ func InitSDK(ctx context.Context, cfg config.OTel) (func(context.Context) error,
 		propagation.Baggage{},
 	))
 
-	// Metrics
+	components := []component{
+		{
+			enabled: cfg.MetricsEnabled,
+			initFn:  initMetrics,
+		},
+		{
+			enabled: cfg.LogsEnabled,
+			initFn:  initLogs,
+		},
+		{
+			enabled: cfg.TracesEnabled,
+			initFn:  initTraces,
+		},
+	}
+
+	for _, component := range components {
+		if !component.enabled {
+			continue
+		}
+		shutdownFunc, err := component.initFn(ctx, res, cfg)
+		if err != nil {
+			handleErr()
+			return nil, err
+		}
+		shutdownFuncs = append(shutdownFuncs, shutdownFunc)
+	}
+
+	return shutdown, nil
+}
+
+func initMetrics(ctx context.Context, res *resource.Resource, _ config.OTel) (func(context.Context) error, error) {
 	metricExporter, err := otlpmetrichttp.New(ctx)
 	if err != nil {
-		handleErr()
 		return nil, ungerr.Wrap(err, "failed to create metric exporter")
 	}
 
@@ -78,39 +112,54 @@ func InitSDK(ctx context.Context, cfg config.OTel) (func(context.Context) error,
 		sdkmetric.WithResource(res),
 		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter, sdkmetric.WithInterval(15*time.Second))),
 	)
-	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
 	otel.SetMeterProvider(meterProvider)
 
-	// Logs
+	return meterProvider.Shutdown, nil
+}
+
+func initLogs(ctx context.Context, res *resource.Resource, cfg config.OTel) (func(context.Context) error, error) {
 	logExporter, err := otlploghttp.New(ctx)
 	if err != nil {
-		handleErr()
 		return nil, ungerr.Wrap(err, "failed to create log exporter")
 	}
 
 	loggerProvider := sdklog.NewLoggerProvider(
 		sdklog.WithResource(res),
-		sdklog.WithProcessor(sdklog.NewBatchProcessor(logExporter)),
+		sdklog.WithProcessor(
+			sdklog.NewBatchProcessor(
+				logExporter,
+				sdklog.WithMaxQueueSize(cfg.MaxQueueSize),
+				sdklog.WithExportMaxBatchSize(cfg.MaxExportBatchSize),
+				sdklog.WithExportInterval(cfg.BatchTimeout),
+				sdklog.WithExportTimeout(cfg.ExportTimeout),
+			),
+		),
 	)
-	shutdownFuncs = append(shutdownFuncs, loggerProvider.Shutdown)
 	global.SetLoggerProvider(loggerProvider)
 
-	// Tracer
+	return loggerProvider.Shutdown, nil
+}
+
+func initTraces(ctx context.Context, res *resource.Resource, cfg config.OTel) (func(context.Context) error, error) {
 	traceExporter, err := otlptrace.New(ctx, otlptracehttp.NewClient())
 	if err != nil {
-		handleErr()
 		return nil, ungerr.Wrap(err, "failed to create trace exporter")
 	}
 
 	tracerProvider := sdktrace.NewTracerProvider(
 		sdktrace.WithResource(res),
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		sdktrace.WithBatcher(traceExporter),
+		sdktrace.WithBatcher(
+			traceExporter,
+			sdktrace.WithMaxQueueSize(cfg.MaxQueueSize),
+			sdktrace.WithMaxExportBatchSize(cfg.MaxExportBatchSize),
+			sdktrace.WithBatchTimeout(cfg.BatchTimeout),
+			sdktrace.WithExportTimeout(cfg.ExportTimeout),
+		),
 	)
-	shutdownFuncs = append(shutdownFuncs, tracerProvider.Shutdown)
 	otel.SetTracerProvider(tracerProvider)
 
 	Tracer = tracerProvider.Tracer(cfg.ServiceName)
 
-	return shutdown, nil
+	return tracerProvider.Shutdown, nil
 }

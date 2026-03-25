@@ -71,6 +71,7 @@ func (ss *subscriptionService) Create(ctx context.Context, req dto.NewSubscripti
 		ProfileID:     req.ProfileID,
 		PlanVersionID: req.PlanVersionID,
 		AutoRenew:     req.AutoRenew,
+		Status:        entity.SubscriptionActive,
 	}
 
 	if !req.EndsAt.IsZero() {

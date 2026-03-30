@@ -103,17 +103,7 @@ func (ges *groupExpenseServiceImpl) GetDetails(ctx context.Context, id, userProf
 
 	spec := crud.Specification[expenses.GroupExpense]{}
 	spec.Model.ID = id
-	spec.PreloadRelations = []string{
-		"Items",
-		"OtherFees",
-		"Payer",
-		"Creator",
-		"Items.Participants",
-		"Items.Participants.Profile",
-		"Participants",
-		"Participants.Profile",
-		"Bill",
-	}
+	spec.PreloadRelations = spec.Model.ForDisplayRelations()
 
 	groupExpense, err := ges.getGroupExpense(ctx, spec)
 	if err != nil {
@@ -155,18 +145,7 @@ func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, profil
 		spec.Model.ID = id
 		spec.Model.CreatorProfileID = profileID
 		spec.ForUpdate = true
-		spec.PreloadRelations = []string{
-			"Items",
-			"OtherFees",
-			"Payer",
-			"Creator",
-			"Items.Participants",
-			"Items.Participants.Profile",
-			"OtherFees.Participants",
-			"OtherFees.Participants.Profile",
-			"Participants",
-			"Participants.Profile",
-		}
+		spec.PreloadRelations = spec.Model.ForCalculationRelations()
 
 		groupExpense, err := ges.getGroupExpense(ctx, spec)
 		if err != nil {
@@ -351,11 +330,8 @@ func (ges *groupExpenseServiceImpl) SyncParticipants(ctx context.Context, req dt
 }
 
 func (ges *groupExpenseServiceImpl) validateAndGetParticipants(ctx context.Context, req dto.ExpenseParticipantsRequest) ([]expenses.ExpenseParticipant, []uuid.UUID, error) {
-	participantSet := mapset.NewSet[uuid.UUID]()
-	for _, pid := range req.ParticipantProfileIDs {
-		participantSet.Add(pid)
-	}
-
+	// --- Dedup check ---
+	participantSet := mapset.NewSet(req.ParticipantProfileIDs...)
 	if participantSet.Cardinality() != len(req.ParticipantProfileIDs) {
 		return nil, nil, ungerr.UnprocessableEntityError("duplicate participant profile IDs given")
 	}
@@ -363,28 +339,66 @@ func (ges *groupExpenseServiceImpl) validateAndGetParticipants(ctx context.Conte
 		return nil, nil, ungerr.UnprocessableEntityError("payer profile ID must be one of the participant profile IDs")
 	}
 
-	for _, participantProfileID := range req.ParticipantProfileIDs {
-		if participantProfileID == req.UserProfileID {
+	if err := ges.checkFriendships(ctx, req.ParticipantProfileIDs, req.UserProfileID); err != nil {
+		return nil, nil, err
+	}
+
+	if err := ges.validateProxies(participantSet, req.ProxyByProfileIDs, req.PayerProfileID); err != nil {
+		return nil, nil, err
+	}
+
+	// --- Build participant slice ---
+	participantSlice := req.ParticipantProfileIDs
+	if !participantSet.Contains(req.UserProfileID) {
+		participantSlice = append(participantSlice, req.UserProfileID)
+	}
+
+	participants := ezutil.MapSlice(participantSlice, func(id uuid.UUID) expenses.ExpenseParticipant {
+		proxyID, ok := req.ProxyByProfileIDs[id]
+		return expenses.ExpenseParticipant{
+			ParticipantProfileID: id,
+			ProxyProfileID:       uuid.NullUUID{UUID: proxyID, Valid: ok},
+		}
+	})
+
+	return participants, participantSlice, nil
+}
+
+func (ges *groupExpenseServiceImpl) validateProxies(participantSet mapset.Set[uuid.UUID], proxyByProfileIDs map[uuid.UUID]uuid.UUID, payerProfileID uuid.UUID) error {
+	for id, proxyID := range proxyByProfileIDs {
+		if !participantSet.Contains(proxyID) {
+			return ungerr.UnprocessableEntityError(fmt.Sprintf("proxy for participant %s does not exist in participants list", id))
+		}
+		if proxyID == id {
+			return ungerr.UnprocessableEntityError("proxy cannot be the same as participant")
+		}
+		if _, chained := proxyByProfileIDs[proxyID]; chained {
+			return ungerr.UnprocessableEntityError(fmt.Sprintf("proxy %s cannot itself have a proxy (chaining not allowed)", proxyID))
+		}
+		if proxyID == payerProfileID {
+			return ungerr.UnprocessableEntityError("proxy cannot be the payer")
+		}
+	}
+	return nil
+}
+
+func (ges *groupExpenseServiceImpl) checkFriendships(ctx context.Context, participantProfileIDs []uuid.UUID, userProfileID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.checkFriendships")
+	defer span.End()
+
+	for _, pid := range participantProfileIDs {
+		if pid == userProfileID {
 			continue
 		}
-		isFriends, _, err := ges.friendshipService.IsFriends(ctx, req.UserProfileID, participantProfileID)
+		isFriends, _, err := ges.friendshipService.IsFriends(ctx, userProfileID, pid)
 		if err != nil {
-			return nil, nil, err
+			return err
 		}
 		if !isFriends {
-			return nil, nil, ungerr.UnprocessableEntityError(appconstant.ErrNotFriends)
+			return ungerr.UnprocessableEntityError(appconstant.ErrNotFriends)
 		}
 	}
-
-	if !participantSet.Contains(req.UserProfileID) {
-		participantSet.Add(req.UserProfileID)
-	}
-
-	participantSlice := participantSet.ToSlice()
-
-	return ezutil.MapSlice(participantSlice, func(id uuid.UUID) expenses.ExpenseParticipant {
-		return expenses.ExpenseParticipant{ParticipantProfileID: id}
-	}), participantSlice, nil
+	return nil
 }
 
 func (ges *groupExpenseServiceImpl) getGroupExpense(ctx context.Context, spec crud.Specification[expenses.GroupExpense]) (expenses.GroupExpense, error) {
@@ -642,18 +656,7 @@ func (ges *groupExpenseServiceImpl) GetByID(ctx context.Context, id uuid.UUID, f
 	spec := crud.Specification[expenses.GroupExpense]{}
 	spec.Model.ID = id
 	spec.ForUpdate = forUpdate
-	spec.PreloadRelations = []string{
-		"Items",
-		"OtherFees",
-		"Payer",
-		"Creator",
-		"Items.Participants",
-		"Items.Participants.Profile",
-		"OtherFees.Participants",
-		"OtherFees.Participants.Profile",
-		"Participants",
-		"Participants.Profile",
-	}
+	spec.PreloadRelations = spec.Model.ForCalculationRelations()
 
 	return ges.getGroupExpense(ctx, spec)
 }

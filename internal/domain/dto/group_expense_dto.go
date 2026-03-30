@@ -38,8 +38,9 @@ type GroupExpenseResponse struct {
 }
 
 type ExpenseParticipantResponse struct {
-	Profile     SimpleProfile   `json:"profile"`
-	ShareAmount decimal.Decimal `json:"shareAmount"`
+	ParticipantProfile SimpleProfile   `json:"participantProfile"`
+	ProxyProfile       SimpleProfile   `json:"proxyProfile"`
+	ShareAmount        decimal.Decimal `json:"shareAmount"`
 }
 
 type NewDraftRequest struct {
@@ -47,10 +48,11 @@ type NewDraftRequest struct {
 }
 
 type ExpenseParticipantsRequest struct {
-	ParticipantProfileIDs []uuid.UUID `json:"participantProfileIds" binding:"required,min=1"`
-	PayerProfileID        uuid.UUID   `json:"payerProfileId" binding:"required"`
-	UserProfileID         uuid.UUID   `json:"-"`
-	GroupExpenseID        uuid.UUID   `json:"-"`
+	ParticipantProfileIDs []uuid.UUID             `json:"participantProfileIds" binding:"required,min=1"`
+	ProxyByProfileIDs     map[uuid.UUID]uuid.UUID `json:"proxyByProfileIds"`
+	PayerProfileID        uuid.UUID               `json:"payerProfileId" binding:"required"`
+	UserProfileID         uuid.UUID               `json:"-"`
+	GroupExpenseID        uuid.UUID               `json:"-"`
 }
 
 type ExpenseConfirmationResponse struct {
@@ -62,12 +64,13 @@ type ExpenseConfirmationResponse struct {
 }
 
 type ConfirmedExpenseParticipant struct {
-	Profile    SimpleProfile        `json:"profile"`
-	Items      []ConfirmedItemShare `json:"items"`
-	ItemsTotal decimal.Decimal      `json:"itemsTotal"`
-	Fees       []ConfirmedItemShare `json:"fees"`
-	FeesTotal  decimal.Decimal      `json:"feesTotal"`
-	Total      decimal.Decimal      `json:"total"`
+	Profile      SimpleProfile        `json:"profile"`
+	ProxyProfile SimpleProfile        `json:"proxyProfile"`
+	Items        []ConfirmedItemShare `json:"items"`
+	ItemsTotal   decimal.Decimal      `json:"itemsTotal"`
+	Fees         []ConfirmedItemShare `json:"fees"`
+	FeesTotal    decimal.Decimal      `json:"feesTotal"`
+	Total        decimal.Decimal      `json:"total"`
 }
 
 type ConfirmedItemShare struct {

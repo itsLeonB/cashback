@@ -11,10 +11,12 @@ type ExpenseParticipant struct {
 	crud.BaseEntity
 	GroupExpenseID       uuid.UUID
 	ParticipantProfileID uuid.UUID
+	ProxyProfileID       uuid.NullUUID
 	ShareAmount          decimal.Decimal
 
 	// Relationships
-	Profile users.UserProfile `gorm:"foreignKey:ParticipantProfileID"`
+	ParticipantProfile users.UserProfile `gorm:"foreignKey:ParticipantProfileID"`
+	ProxyProfile       users.UserProfile `gorm:"foreignKey:ProxyProfileID"`
 }
 
 func (ep ExpenseParticipant) TableName() string {

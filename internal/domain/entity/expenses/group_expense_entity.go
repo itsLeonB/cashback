@@ -41,3 +41,25 @@ type GroupExpense struct {
 	Participants []ExpenseParticipant `gorm:"foreignKey:GroupExpenseID"`
 	Bill         ExpenseBill          `gorm:"foreignKey:GroupExpenseID"`
 }
+
+func (GroupExpense) coreRelations() []string {
+	return []string{
+		"Items",
+		"OtherFees",
+		"Payer",
+		"Creator",
+		"Items.Participants",
+		"Items.Participants.Profile",
+		"Participants",
+		"Participants.ParticipantProfile",
+		"Participants.ProxyProfile",
+	}
+}
+
+func (ge GroupExpense) ForCalculationRelations() []string {
+	return append(ge.coreRelations(), "OtherFees.Participants", "OtherFees.Participants.Profile")
+}
+
+func (ge GroupExpense) ForDisplayRelations() []string {
+	return append(ge.coreRelations(), "Bill")
+}

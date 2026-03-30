@@ -81,7 +81,7 @@ func (ges *expenseItemServiceImpl) Update(ctx context.Context, req dto.UpdateExp
 		amountChanged := expenseItem.TotalAmount().Compare(updatedExpenseItem.TotalAmount()) != 0
 
 		// 3. Handle amount change - update allocations if amount changed
-		if amountChanged {
+		if amountChanged && len(updatedExpenseItem.Participants) > 0 {
 			if _, err = ges.allocateAndSyncParticipants(ctx, updatedExpenseItem); err != nil {
 				return err
 			}
@@ -130,12 +130,17 @@ func (ges *expenseItemServiceImpl) SyncParticipants(ctx context.Context, req dto
 }
 
 func (ges *expenseItemServiceImpl) allocateAndSyncParticipants(ctx context.Context, expenseItem expenses.ExpenseItem) (expenses.ExpenseItem, error) {
-	allocatedParticipants, err := ges.allocationSvc.AllocateAmounts(expenseItem.TotalAmount(), expenseItem.Participants)
-	if err != nil {
-		return expenses.ExpenseItem{}, err
+	var err error
+	allocatedParticipants := []expenses.ItemParticipant{}
+
+	if len(expenseItem.Participants) > 0 {
+		allocatedParticipants, err = ges.allocationSvc.AllocateAmounts(expenseItem.TotalAmount(), expenseItem.Participants)
+		if err != nil {
+			return expenses.ExpenseItem{}, err
+		}
 	}
 
-	if err := ges.expenseItemRepository.SyncParticipants(ctx, expenseItem.ID, allocatedParticipants); err != nil {
+	if err = ges.expenseItemRepository.SyncParticipants(ctx, expenseItem.ID, allocatedParticipants); err != nil {
 		return expenses.ExpenseItem{}, err
 	}
 

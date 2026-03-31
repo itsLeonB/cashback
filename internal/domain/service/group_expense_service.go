@@ -343,8 +343,10 @@ func (ges *groupExpenseServiceImpl) validateAndGetParticipants(ctx context.Conte
 		return nil, nil, err
 	}
 
-	if err := ges.validateProxies(participantSet, req.ProxyByProfileIDs, req.PayerProfileID); err != nil {
-		return nil, nil, err
+	if req.ProxyByProfileIDs != nil {
+		if err := ges.validateProxies(participantSet, req.ProxyByProfileIDs, req.PayerProfileID); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// --- Build participant slice ---
@@ -354,7 +356,10 @@ func (ges *groupExpenseServiceImpl) validateAndGetParticipants(ctx context.Conte
 	}
 
 	participants := ezutil.MapSlice(participantSlice, func(id uuid.UUID) expenses.ExpenseParticipant {
-		proxyID, ok := req.ProxyByProfileIDs[id]
+		proxyID, ok := uuid.Nil, false
+		if req.ProxyByProfileIDs != nil {
+			proxyID, ok = req.ProxyByProfileIDs[id]
+		}
 		return expenses.ExpenseParticipant{
 			ParticipantProfileID: id,
 			ProxyProfileID:       uuid.NullUUID{UUID: proxyID, Valid: ok},

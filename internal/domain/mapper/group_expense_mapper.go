@@ -78,6 +78,7 @@ func ExpenseParticipantToResponse(expenseParticipant expenses.ExpenseParticipant
 		ParticipantProfile: ProfileToSimple(expenseParticipant.ParticipantProfile, userProfileID),
 		ProxyProfile:       ProfileToSimple(expenseParticipant.ProxyProfile, userProfileID),
 		ShareAmount:        expenseParticipant.ShareAmount,
+		HasProxy:           expenseParticipant.ProxyProfileID.Valid,
 	}
 }
 
@@ -231,6 +232,7 @@ func ToConfirmationResponse(expense expenses.GroupExpense, userProfileID uuid.UU
 			Fees:         fees,
 			FeesTotal:    feesTotal,
 			Total:        participant.ShareAmount,
+			HasProxy:     participant.ProxyProfileID.Valid,
 		}
 	}
 

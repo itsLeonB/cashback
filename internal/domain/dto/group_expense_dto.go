@@ -39,8 +39,9 @@ type GroupExpenseResponse struct {
 
 type ExpenseParticipantResponse struct {
 	ParticipantProfile SimpleProfile   `json:"participantProfile"`
-	ProxyProfile       SimpleProfile   `json:"proxyProfile"`
+	ProxyProfile       SimpleProfile   `json:"proxyProfile,omitzero"`
 	ShareAmount        decimal.Decimal `json:"shareAmount"`
+	HasProxy           bool            `json:"hasProxy"`
 }
 
 type NewDraftRequest struct {
@@ -65,12 +66,13 @@ type ExpenseConfirmationResponse struct {
 
 type ConfirmedExpenseParticipant struct {
 	Profile      SimpleProfile        `json:"profile"`
-	ProxyProfile SimpleProfile        `json:"proxyProfile"`
+	ProxyProfile SimpleProfile        `json:"proxyProfile,omitzero"`
 	Items        []ConfirmedItemShare `json:"items"`
 	ItemsTotal   decimal.Decimal      `json:"itemsTotal"`
 	Fees         []ConfirmedItemShare `json:"fees"`
 	FeesTotal    decimal.Decimal      `json:"feesTotal"`
 	Total        decimal.Decimal      `json:"total"`
+	HasProxy     bool                 `json:"hasProxy"`
 }
 
 type ConfirmedItemShare struct {

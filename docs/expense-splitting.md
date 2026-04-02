@@ -5,13 +5,13 @@
 The expense splitting system is designed to:
 
 1. **Allocate item costs among participants** (share calculation)
-2. **Compute participant balances**
+2. **Compute participant share totals** (items + fees)
 3. **Record debts as immutable transactions**
 
 This system follows a **ledger-first, append-only model** with a strict lifecycle:
 
 ```text
-Draft → Preview (dry-run) → Confirm → Immutable ledger
+Draft → Ready → Confirm (with optional dry-run preview)
 ```
 
 ---
@@ -41,8 +41,9 @@ Draft → Preview (dry-run) → Confirm → Immutable ledger
 
 | Component | Responsibility |
 |----------|----------------|
-| Allocation | Who consumed what |
-| Participant Snapshot | Final per-user balances |
+| Allocation | Who consumed what (per item) |
+| Fee Split | How other fees are distributed |
+| Participant Snapshot | Final per-user share totals |
 | Debt Transactions | Ledger for cross-expense aggregation |
 
 ---
@@ -50,7 +51,7 @@ Draft → Preview (dry-run) → Confirm → Immutable ledger
 ### 4. Single Payer Model
 
 - Each expense has **exactly one payer**
-- All debts are directed toward that payer
+- All debts are directed toward that payer (or through a proxy — see section 4)
 
 ---
 
@@ -67,9 +68,9 @@ Draft → Preview (dry-run) → Confirm → Immutable ledger
 
 Each expense item has:
 
-- `totalAmount`
+- `totalAmount` (unit price × quantity)
 - `participants[]`
-- optional `weight`
+- optional `weight` per participant
 
 Supports:
 
@@ -86,7 +87,8 @@ Supports:
 - Weight rules:
   - All weights = 0 → equal split
   - All weights > 0 → weighted split
-  - Mixed → ❌ invalid
+  - Mixed (some zero, some positive) → ❌ invalid
+  - Any negative weight → ❌ invalid
 
 ---
 
@@ -126,7 +128,7 @@ remainder = totalAmount - allocatedSum
 
 Assigned to:
 - participant with highest weight
-- tie-breaker: lowest ProfileID
+- tie-breaker: lowest ProfileID (UUID comparison)
 
 ---
 
@@ -138,80 +140,129 @@ sum(allocatedAmounts) == totalAmount
 
 ---
 
-## 2. Expense Total Calculation
+## 2. Other Fee Calculation
+
+Other fees are split across all expense participants using one of two strategies:
+
+### EQUAL_SPLIT
+
+- Fee is divided equally among all participants
+- Used for flat fees (e.g., table charge, booking fee)
 
 ```text
-totalAmount = sum(items) + sum(fees)
+shareAmount = fee.amount / participantCount
 ```
 
-Expense status:
+### ITEMIZED_SPLIT
 
-- `Draft` → incomplete
-- `Ready` → valid for confirmation
-
----
-
-## 3. Participant Balance Calculation
-
-After allocation, each participant has:
+- Fee is distributed proportionally to each participant's item share
+- Used for percentage-based fees (e.g., tax, service charge)
 
 ```text
-allocatedAmount
-paidAmount
-```
-
-Balance is:
-
-```text
-balance = paidAmount - allocatedAmount
+rate = fee.amount / expense.itemsTotal
+shareAmount = participant.shareAmount * rate
 ```
 
 ---
 
-### Interpretation
+## 3. Expense Total Calculation
 
-| Balance | Meaning |
-|--------|--------|
-| > 0    | Is owed money |
-| < 0    | Owes money |
-| = 0    | Settled |
+```text
+itemsTotal = sum(item.unitPrice * item.quantity)
+feesTotal  = sum(otherFees)
+totalAmount = itemsTotal + feesTotal
+```
+
+Expense status transitions:
+
+| Status | Condition |
+|--------|-----------|
+| `DRAFT` | No items, or some items have no participants |
+| `READY` | All items have at least one participant |
+| `CONFIRMED` | Confirmed by creator; immutable |
+
+Status is recalculated automatically whenever items or their participants change.
 
 ---
 
-## 4. Debt Calculation
+## 4. Participant Share Calculation
 
-### Model
+After item allocation and fee splitting, each participant's total share is:
 
-- Single payer
-- No proxy (in current logic)
-- No partial payments
+```text
+shareAmount = sum(item allocations) + sum(fee shares)
+```
+
+This is stored in `group_expense_participants.share_amount`.
 
 ---
+
+## 5. Proxy Model
+
+A participant can have a **proxy** — another participant who pays on their behalf.
+
+### Rules
+
+- Proxy must be one of the expense participants
+- Proxy cannot be the payer
+- Proxy cannot itself have a proxy (no chaining)
+- A participant cannot proxy themselves
+
+### Debt Generation with Proxy
+
+When participant P has proxy X, and payer is A, two debt transactions are created:
+
+```text
+P → X = shareAmount   (X covered P's share)
+X → A = shareAmount   (X owes the payer for P's share)
+```
+
+Without a proxy, a single transaction is created:
+
+```text
+P → A = shareAmount
+```
+
+---
+
+## 6. Debt Calculation
 
 ### Process
 
 1. Identify payer
 2. For each participant (excluding payer):
+   - If participant has a proxy → create two-leg debt (see section 5)
+   - Otherwise → create direct debt to payer
+3. Participants with `shareAmount == 0` are skipped
+
+### Debt Transaction Fields
 
 ```text
-debt = allocatedAmount
+lenderProfileID
+borrowerProfileID
+amount
+transferMethodID
+groupExpenseID
+description
 ```
 
-3. Create debt:
+### Description Format
 
-```text
-participant → payer = allocatedAmount
-```
+| Case | Description |
+|------|-------------|
+| Direct debt | `Share for group expense: <description>` |
+| Proxy covers participant | `Covered share for group expense: <description>` |
+| Payer owed by proxy | `Covered <participantName>'s share for group expense: <description>` |
 
 ---
 
-### Example
+### Example (no proxy)
 
-| User | Paid | Share | Balance |
-|------|------|-------|--------|
-| A    | 100  | 30    | +70    |
-| You  | 0    | 30    | -30    |
-| B    | 0    | 40    | -40    |
+| User | Share |
+|------|-------|
+| A (payer) | 30 |
+| You | 30 |
+| B | 40 |
 
 Debts:
 
@@ -220,79 +271,110 @@ You → A = 30
 B → A = 40
 ```
 
----
+### Example (with proxy)
 
-## 5. Debt Transaction Model
+| User | Share | Proxy |
+|------|-------|-------|
+| A (payer) | 30 | — |
+| You | 30 | — |
+| B | 40 | You |
 
-Each debt is recorded as an **immutable ledger entry**:
+Debts:
 
 ```text
-fromProfileID
-toProfileID
-amount
-group_expense_id
-description
+You → A = 30          (You owes payer directly)
+B → You = 40          (You covered B's share)
+You → A = 40          (You owes payer for B's share)
 ```
 
 ---
 
-### Key Characteristics
+## 7. Lifecycle
 
-- Append-only
-- No updates
-- No deletes
-- Created only after confirmation
+### DRAFT
 
----
-
-### Description Format
-
-Debt transactions include a standardized description:
-
-```text
-[DIRECT] Share for "<expense_name>"
-```
-
-Example:
-
-```text
-[DIRECT] Share for "Dinner"
-```
-
----
-
-## 6. Lifecycle
-
-### Draft
-
-- Expense can be freely edited
+- Expense can be freely edited (items, fees, participants)
+- Status is `DRAFT` when any item has no participants
 - No debts created
 
 ---
 
-### Preview (Dry Run)
+### READY
 
+- All items have at least one participant assigned
+- Status transitions to `READY` automatically
+- Expense is eligible for confirmation
+
+---
+
+### Dry-Run (Preview)
+
+- Call `ConfirmDraft` with `dryRun=true`
 - System computes:
-  - allocations
-  - balances
-  - resulting debts
-- Stored in:
-  ```
-  group_expense_participants
-  ```
-- User must verify before confirmation
+  - item allocations
+  - fee splits
+  - participant share totals
+- Snapshot is written to `group_expense_participants`
+- Returns a full `ExpenseConfirmationResponse` with per-participant breakdown (items, fees, totals)
+- Expense status is **not** changed
 
 ---
 
-### Confirmed
+### CONFIRMED
 
-- Expense becomes immutable
-- Debt transactions are generated from snapshot
+- Call `ConfirmDraft` with `dryRun=false`
+- Requires:
+  - Status is `READY`
+  - At least one item
+  - A payer is set
+- Expense status becomes `CONFIRMED`
+- Participant snapshot is written
+- `ExpenseConfirmed` event is enqueued → debt transactions are created asynchronously
 - No further modification allowed
+- `Processed` flag is set after debt transactions are created (idempotency guard)
 
 ---
 
-## 7. Source of Truth
+## 8. Confirmation Response
+
+Both dry-run and confirmed calls return an `ExpenseConfirmationResponse`:
+
+```text
+id
+description
+totalAmount
+payer
+participants[]:
+  profile
+  proxyProfile (if applicable)
+  items[]:
+    id, name, baseAmount, shareRate, shareAmount
+  itemsTotal
+  fees[]:
+    id, name, baseAmount, shareRate, shareAmount
+  feesTotal
+  total (= itemsTotal + feesTotal)
+  hasProxy
+```
+
+---
+
+## 9. Bill Parsing (OCR Flow)
+
+An expense bill image can be uploaded and parsed automatically:
+
+1. Image is uploaded → `ExpenseBillUploaded` event enqueued
+2. Worker extracts text from image (OCR)
+3. `ExpenseBillTextExtracted` event enqueued
+4. LLM parses extracted text into a structured `NewGroupExpenseRequest`
+5. Expense draft is updated with parsed items and fees
+6. Bill status transitions: `PENDING` → `PARSED` | `FAILED` | `NOT_DETECTED`
+
+Items and fees with `amount == 0` are discarded after parsing.
+
+---
+
+## 10. Source of Truth
 
 ### Per Expense
 
@@ -300,8 +382,8 @@ Example:
 group_expense_participants
 ```
 
-- stores final computed balances
-- used for UI and reporting
+- stores final computed share totals per participant
+- used for UI, confirmation preview, and debt generation
 
 ---
 
@@ -323,7 +405,7 @@ ALL debt_transactions must be derived ONLY from group_expense_participants
 
 ---
 
-## 8. Net Balance Calculation
+## 11. Net Balance Calculation
 
 Across multiple expenses:
 
@@ -331,90 +413,69 @@ Across multiple expenses:
 net(A, B) = sum(A → B) - sum(B → A)
 ```
 
----
-
-### Properties
-
 - No graph optimization
 - No settlement logic
 - Simple aggregation only
 
 ---
 
-## 9. Design Decisions
+## 12. Design Decisions
 
 ### Deterministic Allocation
 
 - Same input → same output
 
----
-
 ### Decimal Arithmetic
 
-- Prevents floating point errors
-
----
+- Uses `shopspring/decimal` to prevent floating-point errors
 
 ### Immutable Ledger
 
 - Ensures auditability
 - Prevents accidental inconsistencies
 
----
-
 ### Snapshot-Based Calculation
 
 - Avoids recomputation from ledger
-- Ensures consistency
-
----
+- Ensures consistency between preview and confirmation
 
 ### Explicit Confirmation Step
 
 - Prevents incorrect debt recording
 
----
+### Idempotency Guard
 
-## 10. Edge Cases
-
-### Invalid Weights
-
-- negative → ❌
-- mixed zero/non-zero → ❌
+- `GroupExpense.Processed` flag prevents duplicate debt creation if the confirmation event is replayed
 
 ---
 
-### No Participants
+## 13. Edge Cases
 
-- ❌ cannot allocate
-
----
-
-### Negative Amount
-
-- ❌ rejected
-
----
-
-### Rounding Issues
-
-- resolved via remainder assignment
+| Case | Behavior |
+|------|----------|
+| Negative weight | ❌ rejected |
+| Mixed zero/non-zero weights | ❌ rejected |
+| No participants on item | ❌ cannot confirm |
+| No items | ❌ cannot confirm |
+| No payer set | ❌ cannot confirm |
+| Already confirmed | ❌ rejected |
+| `shareAmount == 0` | participant skipped in debt generation |
+| Rounding remainder | assigned to highest-weight participant (lowest UUID as tiebreaker) |
 
 ---
 
-## 11. Mental Model
-
-The system operates as:
+## 14. Mental Model
 
 ```text
-1. Split cost (allocation)
-2. Compute balances (snapshot)
-3. Record obligations (ledger)
+1. Split item costs (allocation per item)
+2. Split other fees (equal or itemized)
+3. Sum per participant (snapshot)
+4. Record obligations (immutable ledger)
 ```
 
 ---
 
-## 12. Summary
+## 15. Summary
 
 ### Share Calculation
 
@@ -422,27 +483,22 @@ The system operates as:
 total → weights → allocation → rounding → validation
 ```
 
----
+### Fee Calculation
+
+```text
+EQUAL_SPLIT: fee / participantCount
+ITEMIZED_SPLIT: fee * (participantShare / itemsTotal)
+```
 
 ### Debt Calculation
 
 ```text
-allocatedAmount → participant → payer → ledger entry
+shareAmount → direct: participant → payer
+            → proxy:  participant → proxy → payer
 ```
-
----
 
 ### Architecture
 
 ```text
-allocation → snapshot → immutable ledger
+allocation → fee split → snapshot → immutable ledger
 ```
-
----
-
-This design ensures:
-
-- Accuracy
-- Simplicity
-- Auditability
-- Deterministic behavior

@@ -75,8 +75,10 @@ func GroupExpenseSimpleMapper(userProfileID uuid.UUID, billURL string, construct
 
 func ExpenseParticipantToResponse(expenseParticipant expenses.ExpenseParticipant, userProfileID uuid.UUID) dto.ExpenseParticipantResponse {
 	return dto.ExpenseParticipantResponse{
-		Profile:     ProfileToSimple(expenseParticipant.Profile, userProfileID),
-		ShareAmount: expenseParticipant.ShareAmount,
+		ParticipantProfile: ProfileToSimple(expenseParticipant.ParticipantProfile, userProfileID),
+		ProxyProfile:       ProfileToSimple(expenseParticipant.ProxyProfile, userProfileID),
+		ShareAmount:        expenseParticipant.ShareAmount,
+		HasProxy:           expenseParticipant.ProxyProfileID.Valid,
 	}
 }
 
@@ -101,22 +103,40 @@ func ExpenseParticipantToData(participant expenses.ExpenseParticipant) (expenses
 }
 
 func GroupExpenseToDebtTransactions(groupExpense expenses.GroupExpense, transferMethodID uuid.UUID) []debts.DebtTransaction {
-	debtTransactions := make([]debts.DebtTransaction, 0, len(groupExpense.Participants))
+	groupExpenseID := uuid.NullUUID{UUID: groupExpense.ID, Valid: true}
+	debtTransactions := make([]debts.DebtTransaction, 0, 2*len(groupExpense.Participants))
+
 	for _, participant := range groupExpense.Participants {
-		if groupExpense.PayerProfileID.UUID == participant.ParticipantProfileID {
+		if groupExpense.PayerProfileID.UUID == participant.ParticipantProfileID || participant.ShareAmount.IsZero() {
 			continue
 		}
-		debtTransactions = append(debtTransactions, debts.DebtTransaction{
-			LenderProfileID:   groupExpense.PayerProfileID.UUID,
-			BorrowerProfileID: participant.ParticipantProfileID,
-			Amount:            participant.ShareAmount,
-			TransferMethodID:  transferMethodID,
-			GroupExpenseID: uuid.NullUUID{
-				UUID:  groupExpense.ID,
-				Valid: true,
-			},
-			Description: fmt.Sprintf("Share for group expense: %s", groupExpense.Description),
-		})
+		if participant.ProxyProfileID.Valid {
+			debtTransactions = append(debtTransactions, debts.DebtTransaction{
+				LenderProfileID:   participant.ProxyProfileID.UUID,
+				BorrowerProfileID: participant.ParticipantProfileID,
+				Amount:            participant.ShareAmount,
+				TransferMethodID:  transferMethodID,
+				GroupExpenseID:    groupExpenseID,
+				Description:       fmt.Sprintf("Covered share for group expense: %s", groupExpense.Description),
+			})
+			debtTransactions = append(debtTransactions, debts.DebtTransaction{
+				LenderProfileID:   groupExpense.PayerProfileID.UUID,
+				BorrowerProfileID: participant.ProxyProfileID.UUID,
+				Amount:            participant.ShareAmount,
+				TransferMethodID:  transferMethodID,
+				GroupExpenseID:    groupExpenseID,
+				Description:       fmt.Sprintf("Covered %s's share for group expense: %s", participant.ParticipantProfile.Name, groupExpense.Description),
+			})
+		} else {
+			debtTransactions = append(debtTransactions, debts.DebtTransaction{
+				LenderProfileID:   groupExpense.PayerProfileID.UUID,
+				BorrowerProfileID: participant.ParticipantProfileID,
+				Amount:            participant.ShareAmount,
+				TransferMethodID:  transferMethodID,
+				GroupExpenseID:    groupExpenseID,
+				Description:       fmt.Sprintf("Share for group expense: %s", groupExpense.Description),
+			})
+		}
 	}
 
 	return debtTransactions
@@ -205,12 +225,14 @@ func ToConfirmationResponse(expense expenses.GroupExpense, userProfileID uuid.UU
 		}
 
 		participants[i] = dto.ConfirmedExpenseParticipant{
-			Profile:    ProfileToSimple(participant.Profile, userProfileID),
-			Items:      items,
-			ItemsTotal: itemsTotal,
-			Fees:       fees,
-			FeesTotal:  feesTotal,
-			Total:      participant.ShareAmount,
+			Profile:      ProfileToSimple(participant.ParticipantProfile, userProfileID),
+			ProxyProfile: ProfileToSimple(participant.ProxyProfile, userProfileID),
+			Items:        items,
+			ItemsTotal:   itemsTotal,
+			Fees:         fees,
+			FeesTotal:    feesTotal,
+			Total:        participant.ShareAmount,
+			HasProxy:     participant.ProxyProfileID.Valid,
 		}
 	}
 

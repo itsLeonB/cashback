@@ -42,7 +42,7 @@ func (ger *groupExpenseRepositoryGorm) SyncParticipants(ctx context.Context, gro
 		// Upsert: insert new or update existing
 		if err := db.Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "group_expense_id"}, {Name: "participant_profile_id"}},
-			DoUpdates: clause.AssignmentColumns([]string{"share_amount"}),
+			DoUpdates: clause.AssignmentColumns([]string{"share_amount", "proxy_profile_id"}),
 		}).Create(&participants).Error; err != nil {
 			return ungerr.Wrap(err, appconstant.ErrDataUpdate)
 		}

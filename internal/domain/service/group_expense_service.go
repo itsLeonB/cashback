@@ -371,17 +371,20 @@ func (ges *groupExpenseServiceImpl) validateAndGetParticipants(ctx context.Conte
 
 func (ges *groupExpenseServiceImpl) validateProxies(participantSet mapset.Set[uuid.UUID], proxyByProfileIDs map[uuid.UUID]uuid.UUID, payerProfileID uuid.UUID) error {
 	for id, proxyID := range proxyByProfileIDs {
-		if !participantSet.Contains(proxyID) {
-			return ungerr.UnprocessableEntityError(fmt.Sprintf("proxy for participant %s does not exist in participants list", id))
-		}
 		if proxyID == id {
 			return ungerr.UnprocessableEntityError("proxy cannot be the same as participant")
+		}
+		if proxyID == payerProfileID {
+			return ungerr.UnprocessableEntityError("proxy cannot be the payer")
+		}
+		if id == payerProfileID {
+			return ungerr.UnprocessableEntityError("payer cannot have a proxy")
 		}
 		if _, chained := proxyByProfileIDs[proxyID]; chained {
 			return ungerr.UnprocessableEntityError(fmt.Sprintf("proxy %s cannot itself have a proxy (chaining not allowed)", proxyID))
 		}
-		if proxyID == payerProfileID {
-			return ungerr.UnprocessableEntityError("proxy cannot be the payer")
+		if !participantSet.Contains(proxyID) {
+			return ungerr.UnprocessableEntityError(fmt.Sprintf("proxy for participant %s does not exist in participants list", id))
 		}
 	}
 	return nil

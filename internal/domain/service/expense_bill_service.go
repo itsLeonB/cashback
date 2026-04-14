@@ -53,50 +53,6 @@ func NewExpenseBillService(
 	}
 }
 
-func (ebs *expenseBillServiceImpl) Save(ctx context.Context, req *dto.NewExpenseBillRequest) error {
-	ctx, span := otel.Tracer.Start(ctx, "ExpenseBillService.Save")
-	defer span.End()
-
-	return ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		bill, err := ebs.getBillForUpload(ctx, req.ProfileID, req.GroupExpenseID)
-		if err != nil {
-			return err
-		}
-
-		if bill.ID == uuid.Nil {
-			bill.ImageName = ObjectKeyToFileID(util.GenerateObjectKey(req.Filename)).ObjectKey
-		}
-
-		bill.Status = expenses.PendingBill
-		var savedBill expenses.ExpenseBill
-		if bill.ID == uuid.Nil {
-			savedBill, err = ebs.billRepo.Insert(ctx, bill)
-		} else {
-			savedBill, err = ebs.billRepo.Update(ctx, bill)
-		}
-		if err != nil {
-			return err
-		}
-
-		fileID := ObjectKeyToFileID(savedBill.ImageName)
-		if _, err = ebs.imageSvc.Upload(ctx, &storage.ImageUploadRequest{
-			ImageData:      req.ImageData,
-			ContentType:    req.ContentType,
-			FileSize:       req.FileSize,
-			FileIdentifier: fileID,
-		}); err != nil {
-			return err
-		}
-
-		if err = ebs.taskQueue.Enqueue(ctx, message.ExpenseBillUploaded{ID: savedBill.ID}); err != nil {
-			go ebs.rollbackUpload(context.Background(), fileID)
-			return err
-		}
-
-		return nil
-	})
-}
-
 func (ebs *expenseBillServiceImpl) SavePresigned(ctx context.Context, req dto.PresignedExpenseBillRequest) (dto.PresignedExpenseBillResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "ExpenseBillService.SavePresigned")
 	defer span.End()
@@ -269,12 +225,6 @@ func (ebs *expenseBillServiceImpl) Cleanup(ctx context.Context) error {
 	logger.Infof("obtained object keys from DB:\n%s", strings.Join(validObjectKeys, "\n"))
 
 	return ebs.imageSvc.DeleteAllInvalid(ctx, config.Global.BucketNameExpenseBill, validObjectKeys)
-}
-
-func (ebs *expenseBillServiceImpl) rollbackUpload(ctx context.Context, fileID storage.FileIdentifier) {
-	if err := ebs.imageSvc.Delete(ctx, fileID); err != nil {
-		logger.Errorf("error rolling back bill upload: %v", err)
-	}
 }
 
 func ObjectKeyToFileID(objectKey string) storage.FileIdentifier {

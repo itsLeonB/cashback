@@ -140,7 +140,6 @@ type OtherFeeService interface {
 }
 
 type ExpenseBillService interface {
-	Save(ctx context.Context, req *dto.NewExpenseBillRequest) error
 	ExtractBillText(ctx context.Context, msg message.ExpenseBillUploaded) error
 	Cleanup(ctx context.Context) error
 	TriggerParsing(ctx context.Context, expenseID, billID uuid.UUID) error

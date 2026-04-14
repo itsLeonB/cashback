@@ -364,11 +364,11 @@ participants[]:
 
 The bill upload and parsing flow is an asynchronous, multi-stage process that leverages Google Vision for OCR and LLM for structured parsing.
 
-For a detailed technical breakdown, including sequence diagrams and implementation details, see [Bill Upload Flow](file:///home/leon/itsLeonB/cashback/docs/bill-upload-flow.md).
+For a detailed technical breakdown, including sequence diagrams and implementation details, see [Bill Upload Flow](./bill-upload-flow.md).
 
 ### High-level Stages:
 
-1. **Upload**: Image is uploaded (direct or via presigned URL) and stored in GCS.
+1. **Upload**: Image is uploaded via a presigned URL and stored in GCS.
 2. **OCR**: An asynchronous worker extracts raw text from the image using Google Vision.
 3. **Parsing**: Another worker sends the extracted text to an LLM to generate a structured `NewGroupExpenseRequest`.
 4. **Update**: The expense draft is automatically updated with the parsed items and fees.

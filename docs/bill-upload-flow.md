@@ -19,18 +19,11 @@ sequenceDiagram
 
     User->>Frontend: Selects Image
     Frontend->>Frontend: Compress Image
-
-    alt Traditional Upload
-        Frontend->>API: POST /group-expenses/:id/bill
-        API->>Storage: Upload Image
-        API->>Queue: ExpenseBillUploaded
-    else Presigned Upload (Feature Flag)
-        Frontend->>API: POST /group-expenses/:id/bill/presigned
-        API-->>Frontend: Presigned URL + BillID
-        Frontend->>Storage: PUT Image
-        Frontend->>API: POST /group-expenses/:id/bill/:billId/parse
-        API->>Queue: ExpenseBillUploaded
-    end
+    Frontend->>API: POST /group-expenses/:id/bills
+    API-->>Frontend: Presigned URL + BillID
+    Frontend->>Storage: PUT Image
+    Frontend->>API: PUT /group-expenses/:id/bills/:billId
+    API->>Queue: ExpenseBillUploaded
 
     Queue->>Worker: Handle ExpenseBillUploaded
     Worker->>OCR (Vision): Extract Text
@@ -44,32 +37,14 @@ sequenceDiagram
 
 ---
 
-## 1. Frontend Optimization
+## 2. Upload Flow
 
-To improve reliability on unstable networks, images are compressed client-side before upload.
+The system uses a **presigned upload strategy** to improve reliability and reduce server load.
 
-- **Utility**: `compressImageForOCR`
-- **Logic**: Skips files < 800 KB; others are compressed while maintaining OCR-readable quality.
-- **Library**: `browser-image-compression`
-
----
-
-## 2. Upload Strategies
-
-The system supports two upload strategies controlled by the `use_presigned_bill_upload` feature flag.
-
-### Traditional Upload
-
-1. Frontend sends a `multipart/form-data` request to the API.
-2. API streams the file to storage and creates a DB record.
-3. API enqueues `ExpenseBillUploaded`.
-
-### Presigned Upload
-
-1. Frontend requests a presigned URL.
-2. API creates a DB record in `NOT_UPLOADED_BILL` status and returns a PUT URL.
-3. Frontend uploads directly to Storage.
-4. Frontend notifies API via `/parse` endpoint, which enqueues `ExpenseBillUploaded`.
+1. **Get Presigned URL**: Frontend sends `POST /api/v1/group-expenses/:id/bills`.
+2. **Record Initialization**: API creates/reuses a DB record in `NOT_UPLOADED_BILL` status (or reuses an existing failed/incomplete record) and returns a unique PUT URL.
+3. **Storage Upload**: Frontend performs a `PUT` request directly to Storage.
+4. **Processing Trigger**: Frontend notifies API via `PUT /api/v1/group-expenses/:id/bills/:billId`, which enqueues `ExpenseBillUploaded`.
 
 ---
 
@@ -101,14 +76,15 @@ The system supports two upload strategies controlled by the `use_presigned_bill_
 
 ## 4. Bill Lifecycle Status
 
-| Status              | Description                                        |
-| ------------------- | -------------------------------------------------- |
-| `PENDING`           | Uploaded, waiting for OCR.                         |
-| `EXTRACTED`         | OCR complete, waiting for LLM parsing.             |
-| `PARSED`            | Successfully parsed into expense items.            |
-| `FAILED`            | Critical error during OCR or parsing.              |
-| `NOT_DETECTED`      | LLM could not find valid receipt data in the text. |
-| `NOT_UPLOADED_BILL` | Presigned URL issued but upload not yet confirmed. |
+| Status              | Value               | Description                                        |
+| ------------------- | ------------------- | -------------------------------------------------- |
+| `NOT_UPLOADED`      | `NOT_UPLOADED`      | Presigned URL issued but upload not yet confirmed. |
+| `PENDING`           | `PENDING`           | Uploaded, waiting for OCR.                         |
+| `EXTRACTED`         | `EXTRACTED`         | OCR complete, waiting for LLM parsing.             |
+| `FAILED_EXTRACTING` | `FAILED_EXTRACTING` | OCR failed to extract text from the image.         |
+| `PARSED`            | `PARSED`            | Successfully parsed into expense items.            |
+| `FAILED_PARSING`    | `FAILED_PARSING`    | LLM failed to parse structured data from text.     |
+| `NOT_DETECTED`      | `NOT_DETECTED`      | LLM could not find valid receipt data in the text. |
 
 ---
 

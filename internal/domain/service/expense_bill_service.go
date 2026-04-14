@@ -58,22 +58,27 @@ func (ebs *expenseBillServiceImpl) Save(ctx context.Context, req *dto.NewExpense
 	defer span.End()
 
 	return ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		if err := ebs.checkIfUploadAllowed(ctx, req.ProfileID, req.GroupExpenseID); err != nil {
-			return err
-		}
-
-		fileID := ObjectKeyToFileID(util.GenerateObjectKey(req.Filename))
-		newBill := expenses.ExpenseBill{
-			GroupExpenseID: req.GroupExpenseID,
-			ImageName:      fileID.ObjectKey,
-			Status:         expenses.PendingBill,
-		}
-
-		savedBill, err := ebs.billRepo.Insert(ctx, newBill)
+		bill, err := ebs.getBillForUpload(ctx, req.ProfileID, req.GroupExpenseID)
 		if err != nil {
 			return err
 		}
 
+		if bill.ID == uuid.Nil {
+			bill.ImageName = ObjectKeyToFileID(util.GenerateObjectKey(req.Filename)).ObjectKey
+		}
+
+		bill.Status = expenses.PendingBill
+		var savedBill expenses.ExpenseBill
+		if bill.ID == uuid.Nil {
+			savedBill, err = ebs.billRepo.Insert(ctx, bill)
+		} else {
+			savedBill, err = ebs.billRepo.Update(ctx, bill)
+		}
+		if err != nil {
+			return err
+		}
+
+		fileID := ObjectKeyToFileID(savedBill.ImageName)
 		if _, err = ebs.imageSvc.Upload(ctx, &storage.ImageUploadRequest{
 			ImageData:      req.ImageData,
 			ContentType:    req.ContentType,
@@ -98,28 +103,33 @@ func (ebs *expenseBillServiceImpl) SavePresigned(ctx context.Context, req dto.Pr
 
 	var resp dto.PresignedExpenseBillResponse
 	err := ebs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		if err := ebs.checkIfUploadAllowed(ctx, req.ProfileID, req.GroupExpenseID); err != nil {
-			return err
-		}
-
-		fileID := ObjectKeyToFileID(util.GenerateObjectKey(req.Filename))
-		newBill := expenses.ExpenseBill{
-			GroupExpenseID: req.GroupExpenseID,
-			ImageName:      fileID.ObjectKey,
-			Status:         expenses.NotUploadedBill,
-		}
-
-		newBill, err := ebs.billRepo.Insert(ctx, newBill)
+		bill, err := ebs.getBillForUpload(ctx, req.ProfileID, req.GroupExpenseID)
 		if err != nil {
 			return err
 		}
 
+		if bill.ID == uuid.Nil {
+			bill.ImageName = ObjectKeyToFileID(util.GenerateObjectKey(req.Filename)).ObjectKey
+		}
+
+		bill.Status = expenses.NotUploadedBill
+		var savedBill expenses.ExpenseBill
+		if bill.ID == uuid.Nil {
+			savedBill, err = ebs.billRepo.Insert(ctx, bill)
+		} else {
+			savedBill, err = ebs.billRepo.Update(ctx, bill)
+		}
+		if err != nil {
+			return err
+		}
+
+		fileID := ObjectKeyToFileID(savedBill.ImageName)
 		uploadURL, err := ebs.imageSvc.GetUploadURL(fileID)
 		if err != nil {
 			return err
 		}
 
-		resp.BillID = newBill.ID
+		resp.BillID = savedBill.ID
 		resp.UploadURL = uploadURL
 
 		return nil
@@ -127,31 +137,29 @@ func (ebs *expenseBillServiceImpl) SavePresigned(ctx context.Context, req dto.Pr
 	return resp, err
 }
 
-func (ebs *expenseBillServiceImpl) checkIfUploadAllowed(ctx context.Context, profileID, groupExpenseID uuid.UUID) error {
+func (ebs *expenseBillServiceImpl) getBillForUpload(ctx context.Context, profileID, expenseID uuid.UUID) (expenses.ExpenseBill, error) {
 	if err := ebs.subscriptionLimitSvc.CheckUploadLimit(ctx, profileID); err != nil {
-		return err
+		return expenses.ExpenseBill{}, err
 	}
 
-	return ebs.ensureSingleBill(ctx, profileID, groupExpenseID)
-}
-
-func (ebs *expenseBillServiceImpl) ensureSingleBill(ctx context.Context, profileID, expenseID uuid.UUID) error {
 	expense, err := ebs.expenseSvc.GetUnconfirmedForUpdate(ctx, profileID, expenseID)
 	if err != nil {
-		return err
+		return expenses.ExpenseBill{}, err
 	}
 
 	// No existing bill - nothing to check
 	if expense.Bill.IsZero() {
-		return nil
+		return expenses.ExpenseBill{GroupExpenseID: expenseID}, nil
 	}
 
-	// Only NotDetectedBill or NotUploadedBill status can be replaced
-	if expense.Bill.Status != expenses.NotDetectedBill && expense.Bill.Status != expenses.NotUploadedBill {
-		return ungerr.UnprocessableEntityError("cannot upload another bill")
+	switch expense.Bill.Status {
+	case expenses.NotUploadedBill, expenses.FailedExtracting, expenses.FailedParsingBill, expenses.NotDetectedBill:
+		return expense.Bill, nil
+	case expenses.PendingBill, expenses.ExtractedBill, expenses.ParsedBill:
+		return expenses.ExpenseBill{}, ungerr.BadRequestError("Not allowed to reupload")
+	default:
+		return expenses.ExpenseBill{}, ungerr.UnprocessableEntityError("unknown bill status")
 	}
-
-	return ebs.billRepo.Delete(ctx, expense.Bill)
 }
 
 func (ebs *expenseBillServiceImpl) ExtractBillText(ctx context.Context, msg message.ExpenseBillUploaded) error {

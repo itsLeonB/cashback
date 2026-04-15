@@ -39,12 +39,12 @@ Draft → Ready → Confirm (with optional dry-run preview)
 
 ### 3. Separation of Responsibilities
 
-| Component | Responsibility |
-|----------|----------------|
-| Allocation | Who consumed what (per item) |
-| Fee Split | How other fees are distributed |
-| Participant Snapshot | Final per-user share totals |
-| Debt Transactions | Ledger for cross-expense aggregation |
+| Component            | Responsibility                       |
+| -------------------- | ------------------------------------ |
+| Allocation           | Who consumed what (per item)         |
+| Fee Split            | How other fees are distributed       |
+| Participant Snapshot | Final per-user share totals          |
+| Debt Transactions    | Ledger for cross-expense aggregation |
 
 ---
 
@@ -127,6 +127,7 @@ remainder = totalAmount - allocatedSum
 ```
 
 Assigned to:
+
 - participant with highest weight
 - tie-breaker: lowest ProfileID (UUID comparison)
 
@@ -175,11 +176,11 @@ totalAmount = itemsTotal + feesTotal
 
 Expense status transitions:
 
-| Status | Condition |
-|--------|-----------|
-| `DRAFT` | No items, or some items have no participants |
-| `READY` | All items have at least one participant |
-| `CONFIRMED` | Confirmed by creator; immutable |
+| Status      | Condition                                    |
+| ----------- | -------------------------------------------- |
+| `DRAFT`     | No items, or some items have no participants |
+| `READY`     | All items have at least one participant      |
+| `CONFIRMED` | Confirmed by creator; immutable              |
 
 Status is recalculated automatically whenever items or their participants change.
 
@@ -248,21 +249,21 @@ description
 
 ### Description Format
 
-| Case | Description |
-|------|-------------|
-| Direct debt | `Share for group expense: <description>` |
-| Proxy covers participant | `Covered share for group expense: <description>` |
-| Payer owed by proxy | `Covered <participantName>'s share for group expense: <description>` |
+| Case                     | Description                                                          |
+| ------------------------ | -------------------------------------------------------------------- |
+| Direct debt              | `Share for group expense: <description>`                             |
+| Proxy covers participant | `Covered share for group expense: <description>`                     |
+| Payer owed by proxy      | `Covered <participantName>'s share for group expense: <description>` |
 
 ---
 
 ### Example (no proxy)
 
-| User | Share |
-|------|-------|
-| A (payer) | 30 |
-| You | 30 |
-| B | 40 |
+| User      | Share |
+| --------- | ----- |
+| A (payer) | 30    |
+| You       | 30    |
+| B         | 40    |
 
 Debts:
 
@@ -273,11 +274,11 @@ B → A = 40
 
 ### Example (with proxy)
 
-| User | Share | Proxy |
-|------|-------|-------|
-| A (payer) | 30 | — |
-| You | 30 | — |
-| B | 40 | You |
+| User      | Share | Proxy |
+| --------- | ----- | ----- |
+| A (payer) | 30    | —     |
+| You       | 30    | —     |
+| B         | 40    | You   |
 
 Debts:
 
@@ -359,18 +360,18 @@ participants[]:
 
 ---
 
-## 9. Bill Parsing (OCR Flow)
+## 9. Bill Upload & Parsing Flow (OCR)
 
-An expense bill image can be uploaded and parsed automatically:
+The bill upload and parsing flow is an asynchronous, multi-stage process that leverages Google Vision for OCR and LLM for structured parsing.
 
-1. Image is uploaded → `ExpenseBillUploaded` event enqueued
-2. Worker extracts text from image (OCR)
-3. `ExpenseBillTextExtracted` event enqueued
-4. LLM parses extracted text into a structured `NewGroupExpenseRequest`
-5. Expense draft is updated with parsed items and fees
-6. Bill status transitions: `PENDING` → `PARSED` | `FAILED` | `NOT_DETECTED`
+For a detailed technical breakdown, including sequence diagrams and implementation details, see [Bill Upload Flow](./bill-upload-flow.md).
 
-Items and fees with `amount == 0` are discarded after parsing.
+### High-level Stages:
+
+1. **Upload**: Image is uploaded via a presigned URL and stored in GCS.
+2. **OCR**: An asynchronous worker extracts raw text from the image using Google Vision.
+3. **Parsing**: Another worker sends the extracted text to an LLM to generate a structured `NewGroupExpenseRequest`.
+4. **Update**: The expense draft is automatically updated with the parsed items and fees.
 
 ---
 
@@ -451,16 +452,16 @@ net(A, B) = sum(A → B) - sum(B → A)
 
 ## 13. Edge Cases
 
-| Case | Behavior |
-|------|----------|
-| Negative weight | ❌ rejected |
-| Mixed zero/non-zero weights | ❌ rejected |
-| No participants on item | ❌ cannot confirm |
-| No items | ❌ cannot confirm |
-| No payer set | ❌ cannot confirm |
-| Already confirmed | ❌ rejected |
-| `shareAmount == 0` | participant skipped in debt generation |
-| Rounding remainder | assigned to highest-weight participant (lowest UUID as tiebreaker) |
+| Case                        | Behavior                                                           |
+| --------------------------- | ------------------------------------------------------------------ |
+| Negative weight             | ❌ rejected                                                        |
+| Mixed zero/non-zero weights | ❌ rejected                                                        |
+| No participants on item     | ❌ cannot confirm                                                  |
+| No items                    | ❌ cannot confirm                                                  |
+| No payer set                | ❌ cannot confirm                                                  |
+| Already confirmed           | ❌ rejected                                                        |
+| `shareAmount == 0`          | participant skipped in debt generation                             |
+| Rounding remainder          | assigned to highest-weight participant (lowest UUID as tiebreaker) |
 
 ---
 

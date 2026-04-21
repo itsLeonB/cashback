@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
@@ -604,7 +605,7 @@ func (ges *groupExpenseServiceImpl) parseExpenseBillTextToExpenseRequest(
 	}
 	logger.Debugf("prompt response: %s", raw)
 
-	if raw == string(expenses.NotDetectedBill) {
+	if strings.TrimSpace(raw) == string(expenses.NotDetectedBill) {
 		logger.Info("group expense not detected")
 		return dto.NewGroupExpenseRequest{}, expenses.ErrExpenseNotDetected
 	}

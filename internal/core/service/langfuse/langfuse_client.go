@@ -8,8 +8,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/itsLeonB/cashback/internal/core/config"
@@ -90,13 +90,16 @@ func (p *Prompt) Compile(vars map[string]any) ([]ChatMessage, error) {
 	}, nil
 }
 
+var placeholderRe = regexp.MustCompile(`\{\{\s*([a-zA-Z0-9_]+)\s*\}\}`)
+
 func injectVariables(template string, vars map[string]any) string {
-	result := template
-	for k, v := range vars {
-		placeholder := fmt.Sprintf("{{%s}}", k)
-		result = strings.ReplaceAll(result, placeholder, fmt.Sprintf("%v", v))
-	}
-	return result
+	return placeholderRe.ReplaceAllStringFunc(template, func(match string) string {
+		key := placeholderRe.FindStringSubmatch(match)[1]
+		if v, ok := vars[key]; ok {
+			return fmt.Sprintf("%v", v)
+		}
+		return match
+	})
 }
 
 type GetPromptOptions struct {

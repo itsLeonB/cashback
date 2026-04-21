@@ -81,7 +81,7 @@ func (llm *openAILLMService) Chat(ctx context.Context, msgs []ChatMessage) (stri
 		case "assistant":
 			openaiMsgs = append(openaiMsgs, openai.AssistantMessage(msg.Content))
 		default:
-			openaiMsgs = append(openaiMsgs, openai.UserMessage(msg.Content))
+			return "", ungerr.Unknownf("unhandled message role: %s", msg.Role)
 		}
 	}
 

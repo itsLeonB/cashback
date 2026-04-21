@@ -612,6 +612,7 @@ func (ges *groupExpenseServiceImpl) parseExpenseBillTextToExpenseRequest(ctx con
 	if err != nil {
 		return dto.NewGroupExpenseRequest{}, err
 	}
+	logger.Debugf("prompt response: %s", promptResponse)
 
 	if promptResponse == string(expenses.NotDetectedBill) {
 		logger.Info("group expense not detected")

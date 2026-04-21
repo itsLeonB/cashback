@@ -6,12 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
+	"github.com/itsLeonB/cashback/internal/core/service/langfuse"
 	"github.com/itsLeonB/cashback/internal/core/service/llm"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/core/service/storage"
@@ -22,6 +24,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
 	"github.com/itsLeonB/cashback/internal/domain/service/expense"
+	"github.com/itsLeonB/cashback/internal/domain/service/expense/billparse"
 	"github.com/itsLeonB/cashback/internal/domain/service/fee"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
@@ -40,6 +43,7 @@ type groupExpenseServiceImpl struct {
 	calculationSvc        expense.CalculationService
 	imageSvc              storage.ImageService
 	taskQueue             queue.TaskQueue
+	langfuseClient        langfuse.Client
 }
 
 func NewGroupExpenseService(
@@ -52,6 +56,7 @@ func NewGroupExpenseService(
 	llmService llm.LLMService,
 	imageSvc storage.ImageService,
 	taskQueue queue.TaskQueue,
+	langfuseClient langfuse.Client,
 ) GroupExpenseService {
 	return &groupExpenseServiceImpl{
 		friendshipService,
@@ -64,6 +69,7 @@ func NewGroupExpenseService(
 		expense.NewCalculationService(),
 		imageSvc,
 		taskQueue,
+		langfuseClient,
 	}
 }
 
@@ -573,74 +579,38 @@ func (ges *groupExpenseServiceImpl) validate(request dto.NewGroupExpenseRequest)
 	return nil
 }
 
-func (ges *groupExpenseServiceImpl) parseExpenseBillTextToExpenseRequest(ctx context.Context, text string) (dto.NewGroupExpenseRequest, error) {
-	promptResponse, err := ges.llmService.Prompt(ctx, ges.buildSystemPrompt(), ges.buildUserPrompt(text))
+func (ges *groupExpenseServiceImpl) parseExpenseBillTextToExpenseRequest(
+	ctx context.Context, text string,
+) (dto.NewGroupExpenseRequest, error) {
+	p := billparse.ActiveBillParsePrompt
+
+	prompt, err := ges.langfuseClient.GetPrompt(ctx, p.PromptName, p.GetOptions())
 	if err != nil {
 		return dto.NewGroupExpenseRequest{}, err
 	}
-	if promptResponse == string(expenses.NotDetectedBill) {
+
+	msgs, err := prompt.Compile(p.CompileVars(string(expenses.NotDetectedBill), text))
+	if err != nil {
+		return dto.NewGroupExpenseRequest{}, err
+	}
+
+	llmMsgs := make([]llm.ChatMessage, 0, len(msgs))
+	for _, m := range msgs {
+		llmMsgs = append(llmMsgs, llm.ChatMessage{Role: m.Role, Content: m.Content})
+	}
+
+	raw, err := ges.llmService.Chat(ctx, llmMsgs)
+	if err != nil {
+		return dto.NewGroupExpenseRequest{}, err
+	}
+	logger.Debugf("prompt response: %s", raw)
+
+	if strings.TrimSpace(raw) == string(expenses.NotDetectedBill) {
 		logger.Info("group expense not detected")
 		return dto.NewGroupExpenseRequest{}, expenses.ErrExpenseNotDetected
 	}
 
-	request, err := ezutil.Unmarshal[dto.NewGroupExpenseRequest]([]byte(promptResponse))
-	if err != nil {
-		return dto.NewGroupExpenseRequest{}, err
-	}
-
-	return request, nil
-}
-
-func (ges *groupExpenseServiceImpl) buildSystemPrompt() string {
-	return fmt.Sprintf(`You are an expert at parsing expense documents and receipts. 
-Extract the expense information and return ONLY a valid JSON object in the following schema:
-
-{
-  "totalAmount": number,
-  "subtotal": number,
-  "description": string,
-  "items": [
-    {
-      "name": string,
-      "amount": number,   // price per unit
-      "quantity": number
-    }
-  ],
-  "otherFees": [
-    {
-      "name": string,
-      "amount": number,
-      "calculationMethod": "EQUAL_SPLIT" | "ITEMIZED_SPLIT"
-    }
-  ]
-}
-
-INSTRUCTIONS:
-1. Return ONLY the JSON object, no explanations, no comments.
-2. The JSON must be compact (no spaces, no line breaks, no pretty formatting).
-3. totalAmount = subtotal + sum of otherFees.
-4. subtotal = sum of (item.amount * item.quantity).
-5. If subtotal is not explicitly mentioned, calculate it.
-6. If quantity is not specified, assume 1.
-7. Item.amount is always price per unit, not total for all units.
-8. For otherFees:
-   - Use "ITEMIZED_SPLIT" for percentage-based fees like tax or service charge, 
-     because they should be distributed proportionally to the items each person ordered.
-   - Use "EQUAL_SPLIT" only for true flat fees that apply equally regardless of items 
-     (e.g., table charge, fixed booking fee).
-9. All numeric values must be numbers, not strings.
-10. Decimal separator can be "." or ",". Normalize both to "." in the output.
-   - Example: "10,5" → 10.5
-   - Example: "10.50" → 10.5
-11. Thousands separators may appear as "." or "," in the input. Always remove them before parsing.
-   - Example: "10.000" → 10000
-   - Example: "10,000" → 10000
-12. The final output must contain plain numeric values, with no thousands separators, and "." as the decimal separator.
-13. If no clear expense information exists, return string "%s"`, expenses.NotDetectedBill)
-}
-
-func (ges *groupExpenseServiceImpl) buildUserPrompt(text string) string {
-	return fmt.Sprintf("TEXT TO PARSE:\n%s", text)
+	return p.ParseResponse(raw)
 }
 
 func (ges *groupExpenseServiceImpl) getPendingForProcessingExpenseBill(ctx context.Context, id uuid.UUID) (expenses.ExpenseBill, error) {

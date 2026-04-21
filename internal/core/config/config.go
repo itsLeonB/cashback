@@ -26,6 +26,7 @@ type Config struct {
 	Payment
 	Flag
 	OTel
+	Langfuse
 }
 
 var Global *Config
@@ -101,6 +102,11 @@ func Load() error {
 		errs = errors.Join(errs, err)
 	}
 
+	var langfuse Langfuse
+	if err = envconfig.Process(langfuse.Prefix(), &langfuse); err != nil {
+		errs = errors.Join(errs, err)
+	}
+
 	if errs != nil {
 		return ungerr.Wrap(errs, "error loading config")
 	}
@@ -118,6 +124,7 @@ func Load() error {
 		payment,
 		flag,
 		otel,
+		langfuse,
 	}
 
 	return nil

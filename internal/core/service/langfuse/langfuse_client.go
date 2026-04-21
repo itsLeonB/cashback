@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/ungerr"
 )
@@ -61,6 +63,40 @@ func (p *Prompt) Text() (string, error) {
 		return "", ungerr.Wrap(err, "failed to unmarshal text prompt")
 	}
 	return text, nil
+}
+
+func (p *Prompt) Compile(vars map[string]any) ([]ChatMessage, error) {
+	if p.Type == PromptTypeChat {
+		msgs, err := p.ChatMessages()
+		if err != nil {
+			return nil, err
+		}
+		for i := range msgs {
+			msgs[i].Content = injectVariables(msgs[i].Content, vars)
+		}
+		return msgs, nil
+	}
+
+	text, err := p.Text()
+	if err != nil {
+		return nil, err
+	}
+	return []ChatMessage{
+		{
+			Role:    "user",
+			Content: injectVariables(text, vars),
+			Type:    "chatmessage",
+		},
+	}, nil
+}
+
+func injectVariables(template string, vars map[string]any) string {
+	result := template
+	for k, v := range vars {
+		placeholder := fmt.Sprintf("{{%s}}", k)
+		result = strings.ReplaceAll(result, placeholder, fmt.Sprintf("%v", v))
+	}
+	return result
 }
 
 type GetPromptOptions struct {
@@ -128,7 +164,12 @@ func (c *langfuseClient) GetPrompt(ctx context.Context, name string, opts ...Get
 	if err != nil {
 		return nil, ungerr.Wrap(err, "failed to execute request")
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			span.RecordError(err)
+			logger.Errorf("error closing response body: %v", err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)

@@ -8,6 +8,7 @@ import (
 	"github.com/hibiken/asynq"
 	adapters "github.com/itsLeonB/cashback/internal/adapters/core/service/queue"
 	"github.com/itsLeonB/cashback/internal/core/config"
+	"github.com/itsLeonB/cashback/internal/core/service/langfuse"
 	"github.com/itsLeonB/cashback/internal/core/service/llm"
 	"github.com/itsLeonB/cashback/internal/core/service/mail"
 	"github.com/itsLeonB/cashback/internal/core/service/ocr"
@@ -18,14 +19,15 @@ import (
 )
 
 type CoreServices struct {
-	LLM     llm.LLMService
-	Mail    mail.MailService
-	Image   storage.ImageService
-	State   store.StateStore
-	OCR     ocr.OCRService
-	Storage storage.StorageRepository
-	Queue   queue.TaskQueue
-	WebPush webpush.Client
+	LLM      llm.LLMService
+	Mail     mail.MailService
+	Image    storage.ImageService
+	State    store.StateStore
+	OCR      ocr.OCRService
+	Storage  storage.StorageRepository
+	Queue    queue.TaskQueue
+	WebPush  webpush.Client
+	Langfuse langfuse.Client
 }
 
 func (cs *CoreServices) Shutdown() error {
@@ -34,6 +36,9 @@ func (cs *CoreServices) Shutdown() error {
 		errs = errors.Join(errs, e)
 	}
 	if e := cs.Queue.Shutdown(); e != nil {
+		errs = errors.Join(errs, e)
+	}
+	if e := cs.Langfuse.Shutdown(); e != nil {
 		errs = errors.Join(errs, e)
 	}
 	return errs
@@ -69,6 +74,7 @@ func ProvideCoreServices() (*CoreServices, error) {
 		storageRepo,
 		taskQueue,
 		webpush.NewWebPush(config.Global.Push),
+		langfuse.NewClient(config.Global.Langfuse),
 	}, nil
 }
 

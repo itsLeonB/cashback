@@ -33,7 +33,7 @@ func TestLangfuseClient_GetPrompt(t *testing.T) {
 
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(expectedPrompt)
+			_ = json.NewEncoder(w).Encode(expectedPrompt)
 		}))
 		defer server.Close()
 
@@ -68,7 +68,7 @@ func TestLangfuseClient_GetPrompt(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(expectedPrompt)
+			_ = json.NewEncoder(w).Encode(expectedPrompt)
 		}))
 		defer server.Close()
 
@@ -92,7 +92,7 @@ func TestLangfuseClient_GetPrompt(t *testing.T) {
 	t.Run("error_not_found", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte("not found"))
+			_, _ = w.Write([]byte("not found"))
 		}))
 		defer server.Close()
 

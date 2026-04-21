@@ -593,8 +593,8 @@ func (ges *groupExpenseServiceImpl) parseExpenseBillTextToExpenseRequest(ctx con
 	}
 
 	msgs, err := prompt.Compile(map[string]any{
-		"notDetectedBill": expenses.NotDetectedBill,
-		"text":            text,
+		"not_detected_bill_string": expenses.NotDetectedBill,
+		"text_to_parse":            text,
 	})
 	if err != nil {
 		return dto.NewGroupExpenseRequest{}, err

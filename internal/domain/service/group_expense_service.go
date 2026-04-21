@@ -10,7 +10,6 @@ import (
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
-	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/langfuse"
@@ -24,6 +23,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
 	"github.com/itsLeonB/cashback/internal/domain/service/expense"
+	"github.com/itsLeonB/cashback/internal/domain/service/expense/billparse"
 	"github.com/itsLeonB/cashback/internal/domain/service/fee"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
@@ -578,53 +578,38 @@ func (ges *groupExpenseServiceImpl) validate(request dto.NewGroupExpenseRequest)
 	return nil
 }
 
-const promptName = "parse-bill"
+func (ges *groupExpenseServiceImpl) parseExpenseBillTextToExpenseRequest(
+	ctx context.Context, text string,
+) (dto.NewGroupExpenseRequest, error) {
+	p := billparse.ActiveBillParsePrompt
 
-var promptVersion = 1
-
-func (ges *groupExpenseServiceImpl) parseExpenseBillTextToExpenseRequest(ctx context.Context, text string) (dto.NewGroupExpenseRequest, error) {
-	opt := langfuse.GetPromptOptions{}
-	if config.Global.App.Env == "debug" {
-		opt.Version = &promptVersion
-	}
-	prompt, err := ges.langfuseClient.GetPrompt(ctx, promptName, opt)
+	prompt, err := ges.langfuseClient.GetPrompt(ctx, p.PromptName, p.GetOptions())
 	if err != nil {
 		return dto.NewGroupExpenseRequest{}, err
 	}
 
-	msgs, err := prompt.Compile(map[string]any{
-		"not_detected_bill_string": expenses.NotDetectedBill,
-		"text_to_parse":            text,
-	})
+	msgs, err := prompt.Compile(p.CompileVars(string(expenses.NotDetectedBill), text))
 	if err != nil {
 		return dto.NewGroupExpenseRequest{}, err
 	}
 
 	llmMsgs := make([]llm.ChatMessage, 0, len(msgs))
 	for _, m := range msgs {
-		llmMsgs = append(llmMsgs, llm.ChatMessage{
-			Role:    m.Role,
-			Content: m.Content,
-		})
+		llmMsgs = append(llmMsgs, llm.ChatMessage{Role: m.Role, Content: m.Content})
 	}
 
-	promptResponse, err := ges.llmService.Chat(ctx, llmMsgs)
+	raw, err := ges.llmService.Chat(ctx, llmMsgs)
 	if err != nil {
 		return dto.NewGroupExpenseRequest{}, err
 	}
-	logger.Debugf("prompt response: %s", promptResponse)
+	logger.Debugf("prompt response: %s", raw)
 
-	if promptResponse == string(expenses.NotDetectedBill) {
+	if raw == string(expenses.NotDetectedBill) {
 		logger.Info("group expense not detected")
 		return dto.NewGroupExpenseRequest{}, expenses.ErrExpenseNotDetected
 	}
 
-	request, err := ezutil.Unmarshal[dto.NewGroupExpenseRequest]([]byte(promptResponse))
-	if err != nil {
-		return dto.NewGroupExpenseRequest{}, err
-	}
-
-	return request, nil
+	return p.ParseResponse(raw)
 }
 
 func (ges *groupExpenseServiceImpl) getPendingForProcessingExpenseBill(ctx context.Context, id uuid.UUID) (expenses.ExpenseBill, error) {

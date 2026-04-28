@@ -30,6 +30,7 @@ import (
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 	"github.com/shopspring/decimal"
+	"golang.org/x/text/currency"
 )
 
 type groupExpenseServiceImpl struct {
@@ -81,6 +82,7 @@ func (ges *groupExpenseServiceImpl) CreateDraft(ctx context.Context, userProfile
 		CreatorProfileID: userProfileID,
 		Description:      description,
 		Status:           expenses.DraftExpense,
+		Currency:         currency.IDR.String(),
 	}
 
 	insertedDraftExpense, err := ges.expenseRepo.Insert(ctx, newDraftExpense)

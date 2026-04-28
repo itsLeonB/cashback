@@ -18,6 +18,7 @@ type NewGroupExpenseRequest struct {
 
 type GroupExpenseResponse struct {
 	BaseDTO
+	Currency         string                 `json:"currency"`
 	TotalAmount      decimal.Decimal        `json:"totalAmount"`
 	ItemsTotalAmount decimal.Decimal        `json:"itemsTotalAmount"`
 	FeesTotalAmount  decimal.Decimal        `json:"feesTotalAmount"`
@@ -59,6 +60,7 @@ type ExpenseParticipantsRequest struct {
 type ExpenseConfirmationResponse struct {
 	ID           uuid.UUID                     `json:"id"`
 	Description  string                        `json:"description"`
+	Currency     string                        `json:"currency"`
 	TotalAmount  decimal.Decimal               `json:"totalAmount"`
 	Payer        SimpleProfile                 `json:"payer"`
 	Participants []ConfirmedExpenseParticipant `json:"participants"`

@@ -1,6 +1,8 @@
 package expenses
 
 import (
+	"database/sql"
+
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/go-crud"
@@ -24,14 +26,18 @@ const (
 
 type GroupExpense struct {
 	crud.BaseEntity
-	PayerProfileID   uuid.NullUUID
-	TotalAmount      decimal.Decimal
-	ItemsTotal       decimal.Decimal
-	FeesTotal        decimal.Decimal
-	Description      string
-	Status           ExpenseStatus
-	CreatorProfileID uuid.UUID
-	Processed        bool
+	PayerProfileID       uuid.NullUUID
+	Currency             string
+	TotalAmount          decimal.Decimal
+	ItemsTotal           decimal.Decimal
+	FeesTotal            decimal.Decimal
+	Description          string
+	Status               ExpenseStatus
+	CreatorProfileID     uuid.UUID
+	Processed            bool
+	FxRateToHomeCurrency decimal.NullDecimal
+	FxHomeCurrency       sql.NullString
+	FxLockedAt           sql.NullTime
 
 	// Relationships
 	Payer        users.UserProfile    `gorm:"foreignKey:PayerProfileID"`

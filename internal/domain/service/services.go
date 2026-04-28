@@ -92,7 +92,7 @@ type DebtService interface {
 	RecordNewTransaction(ctx context.Context, request dto.NewDebtTransactionRequest) (dto.DebtTransactionResponse, error)
 	GetTransactions(ctx context.Context, userProfileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
 	GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]debts.DebtTransaction, []uuid.UUID, error)
-	GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (dto.FriendBalance, error)
+	GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (map[string]dto.FriendBalance, error)
 	GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
 
 	ConstructNotification(ctx context.Context, msg message.DebtCreated) (entity.Notification, error)

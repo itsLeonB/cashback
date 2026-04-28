@@ -20,6 +20,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/repository"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
+	"golang.org/x/text/currency"
 )
 
 type userServiceImpl struct {
@@ -71,9 +72,10 @@ func (us *userServiceImpl) CreateNew(ctx context.Context, request dto.NewUserReq
 
 		if request.VerifyNow {
 			profile := dto.NewProfileRequest{
-				UserID: user.ID,
-				Name:   request.Name,
-				Avatar: request.Avatar,
+				UserID:       user.ID,
+				Name:         request.Name,
+				Avatar:       request.Avatar,
+				HomeCurrency: currency.IDR.String(),
 			}
 
 			if _, err = us.profileSvc.Create(ctx, profile); err != nil {
@@ -112,9 +114,10 @@ func (us *userServiceImpl) Verify(ctx context.Context, id uuid.UUID, email strin
 
 	if user.Profile.IsZero() {
 		profile := dto.NewProfileRequest{
-			UserID: user.ID,
-			Name:   name,
-			Avatar: avatar,
+			UserID:       user.ID,
+			Name:         name,
+			Avatar:       avatar,
+			HomeCurrency: currency.IDR.String(),
 		}
 
 		if _, err = us.profileSvc.Create(ctx, profile); err != nil {

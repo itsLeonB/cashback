@@ -14,6 +14,7 @@ type DebtTransaction struct {
 	crud.BaseEntity
 	LenderProfileID   uuid.UUID
 	BorrowerProfileID uuid.UUID
+	Currency          string
 	Amount            decimal.Decimal
 	TransferMethodID  uuid.UUID
 	Description       string

@@ -102,7 +102,7 @@ func MapToFriendDetailsResponse(
 	userAssociatedIDs []uuid.UUID,
 ) (dto.FriendDetailsResponse, error) {
 	return dto.FriendDetailsResponse{
-		Friend:  friendDetails,
-		Balance: MapToFriendBalanceSummary(debtTransactions, userAssociatedIDs),
+		Friend:              friendDetails,
+		BalancesPerCurrency: SummarizePerCurrency(debtTransactions, userAssociatedIDs),
 	}, nil
 }

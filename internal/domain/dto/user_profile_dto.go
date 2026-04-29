@@ -10,6 +10,7 @@ type ProfileResponse struct {
 	Name                     string               `json:"name"`
 	Avatar                   string               `json:"avatar"`
 	Email                    string               `json:"email"`
+	HomeCurrency             string               `json:"homeCurrency"`
 	IsAnonymous              bool                 `json:"isAnonymous"`
 	AssociatedAnonProfileIDs []uuid.UUID          `json:"associatedAnonProfileIds"`
 	RealProfileID            uuid.UUID            `json:"realProfileId"`
@@ -37,7 +38,8 @@ type SimpleProfile struct {
 }
 
 type NewProfileRequest struct {
-	UserID uuid.UUID
-	Name   string `validate:"required,min=1,max=255"`
-	Avatar string
+	UserID       uuid.UUID
+	Name         string `validate:"required,min=1,max=255"`
+	Avatar       string
+	HomeCurrency string `validate:"required,len=3"`
 }

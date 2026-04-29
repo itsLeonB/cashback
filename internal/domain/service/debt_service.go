@@ -78,12 +78,22 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 		lenderID, borrowerID = req.FriendProfileID, req.UserProfileID
 	}
 
+	currency := req.Currency
+	if currency == "" {
+		userProfile, err := ds.profileService.GetEntityByID(ctx, req.UserProfileID)
+		if err != nil {
+			return dto.DebtTransactionResponse{}, err
+		}
+		currency = userProfile.HomeCurrency
+	}
+
 	insertedDebt, err := ds.debtTransactionRepository.Insert(ctx, debts.DebtTransaction{
 		LenderProfileID:   lenderID,
 		BorrowerProfileID: borrowerID,
 		Amount:            req.Amount,
 		TransferMethodID:  req.TransferMethodID,
 		Description:       req.Description,
+		Currency:          currency,
 	})
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
@@ -126,21 +136,21 @@ func (ds *debtServiceImpl) GetTransactions(ctx context.Context, profileID uuid.U
 	return ezutil.MapSlice(transactions, mapper.DebtTransactionSimpleMapper(profileID, profilesByID)), nil
 }
 
-func (ds *debtServiceImpl) GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (dto.FriendBalance, error) {
+func (ds *debtServiceImpl) GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (map[string]dto.FriendBalance, error) {
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetTransactionSummary")
 	defer span.End()
 
 	profileIDs, err := ds.profileService.GetAssociatedIDs(ctx, profileID)
 	if err != nil {
-		return dto.FriendBalance{}, err
+		return nil, err
 	}
 
 	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs, -1, false)
 	if err != nil {
-		return dto.FriendBalance{}, err
+		return nil, err
 	}
 
-	return mapper.MapToFriendBalanceSummary(transactions, profileIDs), nil
+	return mapper.SummarizePerCurrency(transactions, profileIDs), nil
 }
 
 func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, groupExpense expenses.GroupExpense) error {

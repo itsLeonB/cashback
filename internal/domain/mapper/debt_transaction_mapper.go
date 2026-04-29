@@ -6,7 +6,6 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/shopspring/decimal"
-	"golang.org/x/text/currency"
 )
 
 func MapToFriendBalanceSummary(transactions []debts.DebtTransaction, userAssociatedIDs []uuid.UUID) dto.FriendBalance {
@@ -17,8 +16,21 @@ func MapToFriendBalanceSummary(transactions []debts.DebtTransaction, userAssocia
 		TotalLentToFriend:       totalLent,
 		TotalBorrowedFromFriend: totalBorrowed,
 		TransactionHistory:      history,
-		CurrencyCode:            currency.IDR.String(),
 	}
+}
+
+func SummarizePerCurrency(transactions []debts.DebtTransaction, userAssociatedIDs []uuid.UUID) map[string]dto.FriendBalance {
+	transactionsByCurrency := make(map[string][]debts.DebtTransaction)
+	for _, transaction := range transactions {
+		transactionsByCurrency[transaction.Currency] = append(transactionsByCurrency[transaction.Currency], transaction)
+	}
+
+	balancesPerCurrency := make(map[string]dto.FriendBalance, len(transactionsByCurrency))
+	for currency, transactions := range transactionsByCurrency {
+		balancesPerCurrency[currency] = MapToFriendBalanceSummary(transactions, userAssociatedIDs)
+	}
+
+	return balancesPerCurrency
 }
 
 func calculateBalances(userAssociatedIDs []uuid.UUID, transactions []debts.DebtTransaction) (decimal.Decimal, decimal.Decimal, []dto.FriendTransactionItem) {
@@ -88,6 +100,7 @@ func DebtTransactionToResponse(userProfileID uuid.UUID, transaction debts.DebtTr
 			IsUser: profileID == userProfileID,
 		},
 		Type:           txType,
+		Currency:       transaction.Currency,
 		Amount:         transaction.Amount,
 		TransferMethod: transaction.TransferMethod.Display,
 		Description:    transaction.Description,

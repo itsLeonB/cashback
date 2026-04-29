@@ -8,9 +8,10 @@ import (
 
 type UserProfile struct {
 	crud.BaseEntity
-	UserID uuid.NullUUID
-	Name   string
-	Avatar string
+	UserID       uuid.NullUUID
+	Name         string
+	Avatar       string
+	HomeCurrency string
 
 	// Relationships
 	RelatedRealProfile  RelatedProfile                `gorm:"foreignKey:AnonProfileID"`

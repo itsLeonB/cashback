@@ -73,8 +73,9 @@ func (ps *profileServiceImpl) Create(ctx context.Context, request dto.NewProfile
 				UUID:  request.UserID,
 				Valid: request.UserID != uuid.Nil,
 			},
-			Name:   request.Name,
-			Avatar: request.Avatar,
+			Name:         request.Name,
+			Avatar:       request.Avatar,
+			HomeCurrency: request.HomeCurrency,
 		}
 
 		insertedProfile, err := ps.profileRepo.Insert(ctx, newProfile)

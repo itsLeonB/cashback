@@ -88,7 +88,10 @@ func (fs *friendshipServiceImpl) insertAnonymousFriendship(
 	userProfile dto.ProfileResponse,
 	friendName string,
 ) (dto.FriendshipResponse, error) {
-	newProfile := dto.NewProfileRequest{Name: friendName}
+	newProfile := dto.NewProfileRequest{
+		Name:         friendName,
+		HomeCurrency: userProfile.HomeCurrency,
+	}
 
 	insertedProfile, err := fs.profileService.Create(ctx, newProfile)
 	if err != nil {

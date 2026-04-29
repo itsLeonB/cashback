@@ -42,7 +42,6 @@ type FriendBalance struct {
 	TotalLentToFriend       decimal.Decimal         `json:"totalLentToFriend"`
 	TotalBorrowedFromFriend decimal.Decimal         `json:"totalBorrowedFromFriend"`
 	TransactionHistory      []FriendTransactionItem `json:"transactionHistory"`
-	CurrencyCode            string                  `json:"currencyCode"`
 }
 
 type FriendTransactionItem struct {
@@ -54,7 +53,7 @@ type FriendTransactionItem struct {
 }
 
 type FriendDetailsResponse struct {
-	Friend                   FriendDetails `json:"friend"`
-	Balance                  FriendBalance `json:"balance"`
-	RedirectToRealFriendship uuid.UUID     `json:"redirectToRealFriendship,omitzero"`
+	Friend                   FriendDetails            `json:"friend"`
+	RedirectToRealFriendship uuid.UUID                `json:"redirectToRealFriendship,omitzero"`
+	BalancesPerCurrency      map[string]FriendBalance `json:"balancesPerCurrency"`
 }

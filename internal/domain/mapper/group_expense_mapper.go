@@ -41,6 +41,7 @@ func GroupExpenseToResponse(
 ) dto.GroupExpenseResponse {
 	expense := dto.GroupExpenseResponse{
 		BaseDTO:          BaseToDTO(groupExpense.BaseEntity),
+		Currency:         groupExpense.Currency,
 		TotalAmount:      groupExpense.TotalAmount,
 		ItemsTotalAmount: groupExpense.ItemsTotal,
 		FeesTotalAmount:  groupExpense.FeesTotal,
@@ -114,6 +115,7 @@ func GroupExpenseToDebtTransactions(groupExpense expenses.GroupExpense, transfer
 			debtTransactions = append(debtTransactions, debts.DebtTransaction{
 				LenderProfileID:   participant.ProxyProfileID.UUID,
 				BorrowerProfileID: participant.ParticipantProfileID,
+				Currency:          groupExpense.Currency,
 				Amount:            participant.ShareAmount,
 				TransferMethodID:  transferMethodID,
 				GroupExpenseID:    groupExpenseID,
@@ -122,6 +124,7 @@ func GroupExpenseToDebtTransactions(groupExpense expenses.GroupExpense, transfer
 			debtTransactions = append(debtTransactions, debts.DebtTransaction{
 				LenderProfileID:   groupExpense.PayerProfileID.UUID,
 				BorrowerProfileID: participant.ProxyProfileID.UUID,
+				Currency:          groupExpense.Currency,
 				Amount:            participant.ShareAmount,
 				TransferMethodID:  transferMethodID,
 				GroupExpenseID:    groupExpenseID,
@@ -131,6 +134,7 @@ func GroupExpenseToDebtTransactions(groupExpense expenses.GroupExpense, transfer
 			debtTransactions = append(debtTransactions, debts.DebtTransaction{
 				LenderProfileID:   groupExpense.PayerProfileID.UUID,
 				BorrowerProfileID: participant.ParticipantProfileID,
+				Currency:          groupExpense.Currency,
 				Amount:            participant.ShareAmount,
 				TransferMethodID:  transferMethodID,
 				GroupExpenseID:    groupExpenseID,
@@ -239,6 +243,7 @@ func ToConfirmationResponse(expense expenses.GroupExpense, userProfileID uuid.UU
 	return dto.ExpenseConfirmationResponse{
 		ID:           expense.ID,
 		Description:  expense.Description,
+		Currency:     expense.Currency,
 		TotalAmount:  expense.TotalAmount,
 		Payer:        ProfileToSimple(expense.Payer, userProfileID),
 		Participants: participants,

@@ -24,6 +24,7 @@ func ProfileToResponse(profile users.UserProfile, email string, anonProfileIDs [
 		Name:                     profile.Name,
 		Avatar:                   profile.Avatar,
 		Email:                    email,
+		HomeCurrency:             profile.HomeCurrency,
 		IsAnonymous:              !profile.UserID.Valid,
 		AssociatedAnonProfileIDs: associatedAnonProfileIDs,
 		RealProfileID:            realProfileID,

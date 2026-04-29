@@ -60,7 +60,7 @@ func (fc *equalSplitFeeCalculator) Split(fee expenses.OtherFee, groupExpense exp
 
 func (fc *equalSplitFeeCalculator) GetInfo() dto.FeeCalculationMethodInfo {
 	return dto.FeeCalculationMethodInfo{
-		Name:        fc.method,
+		Name:        string(fc.method),
 		Display:     "Equal split",
 		Description: "Equally split the fee to all participants",
 	}

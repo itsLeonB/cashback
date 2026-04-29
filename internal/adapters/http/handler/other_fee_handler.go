@@ -8,6 +8,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
+	_ "github.com/itsLeonB/ginkgo/pkg/response"
 	"github.com/itsLeonB/ginkgo/pkg/server"
 )
 
@@ -23,6 +24,18 @@ func NewOtherFeeHandler(
 	}
 }
 
+// HandleAdd godoc
+// @Summary      Add a fee to a group expense
+// @Tags         other-fees
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        groupExpenseId path string true "Group expense ID"
+// @Param        body body dto.NewOtherFeeRequest true "New fee payload"
+// @Success      201  {object}  response.JSONResponse[dto.OtherFeeResponse]
+// @Failure      400  {object}  map[string]any
+// @Failure      401  {object}  map[string]any
+// @Router       /group-expenses/{groupExpenseId}/fees [post]
 func (geh *OtherFeeHandler) HandleAdd() gin.HandlerFunc {
 	return server.Handler("OtherFeeHandler.HandleAdd", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
@@ -47,6 +60,19 @@ func (geh *OtherFeeHandler) HandleAdd() gin.HandlerFunc {
 	})
 }
 
+// HandleUpdate godoc
+// @Summary      Update a fee on a group expense
+// @Tags         other-fees
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        groupExpenseId path string true "Group expense ID"
+// @Param        otherFeeId     path string true "Fee ID"
+// @Param        body body dto.UpdateOtherFeeRequest true "Update fee payload"
+// @Success      200  {object}  response.JSONResponse[dto.OtherFeeResponse]
+// @Failure      400  {object}  map[string]any
+// @Failure      401  {object}  map[string]any
+// @Router       /group-expenses/{groupExpenseId}/fees/{otherFeeId} [put]
 func (geh *OtherFeeHandler) HandleUpdate() gin.HandlerFunc {
 	return server.Handler("OtherFeeHandler.HandleUpdate", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
@@ -77,6 +103,16 @@ func (geh *OtherFeeHandler) HandleUpdate() gin.HandlerFunc {
 	})
 }
 
+// HandleRemove godoc
+// @Summary      Remove a fee from a group expense
+// @Tags         other-fees
+// @Security     BearerAuth
+// @Param        groupExpenseId path string true "Group expense ID"
+// @Param        otherFeeId     path string true "Fee ID"
+// @Success      204
+// @Failure      401  {object}  map[string]any
+// @Failure      404  {object}  map[string]any
+// @Router       /group-expenses/{groupExpenseId}/fees/{otherFeeId} [delete]
 func (geh *OtherFeeHandler) HandleRemove() gin.HandlerFunc {
 	return server.Handler("OtherFeeHandler.HandleRemove", http.StatusNoContent, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
@@ -98,6 +134,14 @@ func (geh *OtherFeeHandler) HandleRemove() gin.HandlerFunc {
 	})
 }
 
+// HandleGetFeeCalculationMethods godoc
+// @Summary      Get available fee calculation methods
+// @Tags         other-fees
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {object}  response.JSONResponse[[]dto.FeeCalculationMethodInfo]
+// @Failure      401  {object}  map[string]any
+// @Router       /group-expenses/fee-calculation-methods [get]
 func (geh *OtherFeeHandler) HandleGetFeeCalculationMethods() gin.HandlerFunc {
 	return server.Handler("OtherFeeHandler.HandleGetFeeCalculationMethods", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		return geh.otherFeeSvc.GetCalculationMethods(), nil

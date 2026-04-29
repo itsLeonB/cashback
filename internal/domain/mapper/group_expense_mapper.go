@@ -46,7 +46,7 @@ func GroupExpenseToResponse(
 		ItemsTotalAmount: groupExpense.ItemsTotal,
 		FeesTotalAmount:  groupExpense.FeesTotal,
 		Description:      groupExpense.Description,
-		Status:           groupExpense.Status,
+		Status:           string(groupExpense.Status),
 		Payer:            ProfileToSimple(groupExpense.Payer, userProfileID),
 		Creator:          ProfileToSimple(groupExpense.Creator, userProfileID),
 		Items:            ezutil.MapSlice(groupExpense.Items, getExpenseItemSimpleMapper(userProfileID)),

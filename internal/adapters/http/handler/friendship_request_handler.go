@@ -9,6 +9,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
+	_ "github.com/itsLeonB/ginkgo/pkg/response"
 	"github.com/itsLeonB/ginkgo/pkg/server"
 	"github.com/itsLeonB/ungerr"
 )
@@ -21,6 +22,16 @@ func NewFriendshipRequestHandler(svc service.FriendshipRequestService) *Friendsh
 	return &FriendshipRequestHandler{svc}
 }
 
+// HandleSend godoc
+// @Summary      Send a friend request
+// @Tags         friend-requests
+// @Security     BearerAuth
+// @Produce      json
+// @Param        profileId path string true "Target profile ID"
+// @Success      201  {object}  map[string]any
+// @Failure      400  {object}  map[string]any
+// @Failure      401  {object}  map[string]any
+// @Router       /profiles/{profileId}/friend-requests [post]
 func (frh *FriendshipRequestHandler) HandleSend() gin.HandlerFunc {
 	return server.Handler("FriendshipRequestHandler.HandleSend", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
@@ -37,6 +48,16 @@ func (frh *FriendshipRequestHandler) HandleSend() gin.HandlerFunc {
 	})
 }
 
+// HandleGetAll godoc
+// @Summary      Get all friend requests (sent or received)
+// @Tags         friend-requests
+// @Security     BearerAuth
+// @Produce      json
+// @Param        type path string true "Request type: sent or received"
+// @Success      200  {object}  response.JSONResponse[[]dto.FriendshipRequestResponse]
+// @Failure      400  {object}  map[string]any
+// @Failure      401  {object}  map[string]any
+// @Router       /friend-requests/{type} [get]
 func (frh *FriendshipRequestHandler) HandleGetAll() gin.HandlerFunc {
 	return server.Handler("FriendshipRequestHandler.HandleGetAll", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		userProfileID, err := getProfileID(ctx)
@@ -63,6 +84,15 @@ func (frh *FriendshipRequestHandler) HandleGetAll() gin.HandlerFunc {
 	})
 }
 
+// HandleCancel godoc
+// @Summary      Cancel a sent friend request
+// @Tags         friend-requests
+// @Security     BearerAuth
+// @Param        requestId path string true "Friend request ID"
+// @Success      204
+// @Failure      401  {object}  map[string]any
+// @Failure      404  {object}  map[string]any
+// @Router       /friend-requests/sent/{requestId} [delete]
 func (frh *FriendshipRequestHandler) HandleCancel() gin.HandlerFunc {
 	return server.Handler("FriendshipRequestHandler.HandleCancel", http.StatusNoContent, func(ctx *gin.Context) (any, error) {
 		userProfileID, requestID, err := getIDs(ctx)
@@ -74,6 +104,15 @@ func (frh *FriendshipRequestHandler) HandleCancel() gin.HandlerFunc {
 	})
 }
 
+// HandleIgnore godoc
+// @Summary      Ignore a received friend request
+// @Tags         friend-requests
+// @Security     BearerAuth
+// @Param        requestId path string true "Friend request ID"
+// @Success      204
+// @Failure      401  {object}  map[string]any
+// @Failure      404  {object}  map[string]any
+// @Router       /friend-requests/received/{requestId} [delete]
 func (frh *FriendshipRequestHandler) HandleIgnore() gin.HandlerFunc {
 	return server.Handler("FriendshipRequestHandler.HandleIgnore", http.StatusNoContent, func(ctx *gin.Context) (any, error) {
 		userProfileID, requestID, err := getIDs(ctx)
@@ -85,6 +124,17 @@ func (frh *FriendshipRequestHandler) HandleIgnore() gin.HandlerFunc {
 	})
 }
 
+// HandleBlock godoc
+// @Summary      Block or unblock a friend request sender
+// @Tags         friend-requests
+// @Security     BearerAuth
+// @Produce      json
+// @Param        requestId path  string true  "Friend request ID"
+// @Param        command   query string true  "Command: block or unblock"
+// @Success      200  {object}  map[string]any
+// @Failure      400  {object}  map[string]any
+// @Failure      401  {object}  map[string]any
+// @Router       /friend-requests/received/{requestId} [patch]
 func (frh *FriendshipRequestHandler) HandleBlock() gin.HandlerFunc {
 	return server.Handler("FriendshipRequestHandler.HandleBlock", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		userProfileID, requestID, err := getIDs(ctx)
@@ -104,6 +154,16 @@ func (frh *FriendshipRequestHandler) HandleBlock() gin.HandlerFunc {
 	})
 }
 
+// HandleAccept godoc
+// @Summary      Accept a received friend request
+// @Tags         friend-requests
+// @Security     BearerAuth
+// @Produce      json
+// @Param        requestId path string true "Friend request ID"
+// @Success      201  {object}  response.JSONResponse[dto.FriendshipResponse]
+// @Failure      401  {object}  map[string]any
+// @Failure      404  {object}  map[string]any
+// @Router       /friend-requests/received/{requestId} [post]
 func (frh *FriendshipRequestHandler) HandleAccept() gin.HandlerFunc {
 	return server.Handler("FriendshipRequestHandler.HandleAccept", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		userProfileID, requestID, err := getIDs(ctx)

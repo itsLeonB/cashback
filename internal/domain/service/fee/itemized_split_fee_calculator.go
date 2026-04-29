@@ -63,7 +63,7 @@ func (fc *itemizedSplitFeeCalculator) Split(fee expenses.OtherFee, groupExpense 
 
 func (fc *itemizedSplitFeeCalculator) GetInfo() dto.FeeCalculationMethodInfo {
 	return dto.FeeCalculationMethodInfo{
-		Name:        fc.method,
+		Name:        string(fc.method),
 		Display:     "Itemized split",
 		Description: "Split the fee by a fixed rate applied to each expense items",
 	}

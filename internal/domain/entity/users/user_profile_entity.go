@@ -1,6 +1,8 @@
 package users
 
 import (
+	"database/sql"
+
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/entity/debts"
 	"github.com/itsLeonB/go-crud"
@@ -12,6 +14,7 @@ type UserProfile struct {
 	Name         string
 	Avatar       string
 	HomeCurrency string
+	OnboardedAt  sql.NullTime
 
 	// Relationships
 	RelatedRealProfile  RelatedProfile                `gorm:"foreignKey:AnonProfileID"`

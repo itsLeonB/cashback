@@ -29,6 +29,7 @@ func ProfileToResponse(profile users.UserProfile, email string, anonProfileIDs [
 		AssociatedAnonProfileIDs: associatedAnonProfileIDs,
 		RealProfileID:            realProfileID,
 		CurrentSubscription:      subscription,
+		IsOnboarded:              profile.OnboardedAt.Valid,
 	}
 }
 

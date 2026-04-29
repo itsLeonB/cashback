@@ -3277,6 +3277,9 @@ const docTemplate = `{
                 "isAnonymous": {
                     "type": "boolean"
                 },
+                "isOnboarded": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
                 },

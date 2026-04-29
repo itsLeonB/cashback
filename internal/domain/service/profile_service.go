@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/logger"
@@ -298,6 +299,11 @@ func (ps *profileServiceImpl) Update(ctx context.Context, req dto.UpdateProfileR
 
 		if req.HomeCurrency != "" {
 			profile.HomeCurrency = req.HomeCurrency
+		}
+
+		if !profile.OnboardedAt.Valid {
+			profile.OnboardedAt.Time = time.Now()
+			profile.OnboardedAt.Valid = true
 		}
 
 		updatedProfile, err := ps.profileRepo.Update(ctx, profile)

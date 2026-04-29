@@ -517,6 +517,8 @@ definitions:
         type: string
       isAnonymous:
         type: boolean
+      isOnboarded:
+        type: boolean
       name:
         type: string
       realProfileId:

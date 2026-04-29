@@ -15,6 +15,7 @@ type ProfileResponse struct {
 	AssociatedAnonProfileIDs []uuid.UUID          `json:"associatedAnonProfileIds"`
 	RealProfileID            uuid.UUID            `json:"realProfileId"`
 	CurrentSubscription      SubscriptionResponse `json:"currentSubscription"`
+	IsOnboarded              bool                 `json:"isOnboarded"`
 }
 
 type UpdateProfileRequest struct {

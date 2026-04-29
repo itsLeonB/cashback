@@ -275,25 +275,29 @@ func (ps *profileServiceImpl) GetEntityByID(ctx context.Context, id uuid.UUID) (
 	return profile, nil
 }
 
-func (ps *profileServiceImpl) Update(ctx context.Context, id uuid.UUID, name string) (dto.ProfileResponse, error) {
+func (ps *profileServiceImpl) Update(ctx context.Context, req dto.UpdateProfileRequest) (dto.ProfileResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "ProfileService.Update")
 	defer span.End()
 
 	var response dto.ProfileResponse
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		spec := crud.Specification[users.UserProfile]{}
-		spec.Model.ID = id
+		spec.Model.ID = req.ID
 		spec.ForUpdate = true
 		profile, err := ps.profileRepo.FindFirst(ctx, spec)
 		if err != nil {
 			return err
 		}
 		if profile.IsZero() {
-			return ungerr.NotFoundError(fmt.Sprintf("profile ID: %s is not found", id))
+			return ungerr.NotFoundError(fmt.Sprintf("profile ID: %s is not found", req.ID))
 		}
 
-		if name != "" {
-			profile.Name = name
+		if req.Name != "" {
+			profile.Name = req.Name
+		}
+
+		if req.HomeCurrency != "" {
+			profile.HomeCurrency = req.HomeCurrency
 		}
 
 		updatedProfile, err := ps.profileRepo.Update(ctx, profile)

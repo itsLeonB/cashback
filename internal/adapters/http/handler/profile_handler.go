@@ -47,7 +47,9 @@ func (ph *ProfileHandler) HandleUpdate() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return ph.profileService.Update(ctx.Request.Context(), profileID, request.Name)
+		request.ID = profileID
+
+		return ph.profileService.Update(ctx.Request.Context(), request)
 	})
 }
 

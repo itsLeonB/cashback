@@ -18,7 +18,9 @@ type ProfileResponse struct {
 }
 
 type UpdateProfileRequest struct {
-	Name string `json:"name" binding:"required,min=3,max=255"`
+	ID           uuid.UUID `json:"-"`
+	Name         string    `json:"name" binding:"required,min=3,max=255"`
+	HomeCurrency string    `json:"homeCurrency" binding:"required,len=3"`
 }
 
 type SearchRequest struct {

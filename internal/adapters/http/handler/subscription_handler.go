@@ -8,6 +8,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	service "github.com/itsLeonB/cashback/internal/domain/service/monetization"
+	_ "github.com/itsLeonB/ginkgo/pkg/response"
 	"github.com/itsLeonB/ginkgo/pkg/server"
 )
 
@@ -16,6 +17,17 @@ type SubscriptionHandler struct {
 	paymentSvc service.PaymentService
 }
 
+// HandleCreatePurchase godoc
+// @Summary      Create a subscription purchase
+// @Tags         subscriptions
+// @Security     BearerAuth
+// @Produce      json
+// @Param        planId        path string true "Plan ID"
+// @Param        planVersionId path string true "Plan version ID"
+// @Success      201  {object}  response.JSONResponse[monetization.PaymentResponse]
+// @Failure      400  {object}  map[string]any
+// @Failure      401  {object}  map[string]any
+// @Router       /plans/{planId}/versions/{planVersionId}/subscriptions [post]
 func (sh *SubscriptionHandler) HandleCreatePurchase() gin.HandlerFunc {
 	return server.Handler("SubscriptionHandler.HandleCreatePurchase", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)
@@ -43,6 +55,14 @@ func (sh *SubscriptionHandler) HandleCreatePurchase() gin.HandlerFunc {
 	})
 }
 
+// HandleGetSubscribedDetails godoc
+// @Summary      Get current subscription details
+// @Tags         subscriptions
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {object}  response.JSONResponse[monetization.SubscriptionResponse]
+// @Failure      401  {object}  map[string]any
+// @Router       /profile/subscription [get]
 func (sh *SubscriptionHandler) HandleGetSubscribedDetails() gin.HandlerFunc {
 	return server.Handler("SubscriptionHandler.HandleGetSubscribedDetails", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		profileID, err := getProfileID(ctx)

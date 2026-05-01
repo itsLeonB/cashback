@@ -1,0 +1,4153 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Cashback backend API",
+        "title": "Cashback API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/auth/login": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login with email and password",
+                "parameters": [
+                    {
+                        "description": "Login payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.InternalLoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Logout current session",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/password-reset": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Send password reset email",
+                "parameters": [
+                    {
+                        "description": "Email payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SendPasswordResetRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Refresh access token",
+                "parameters": [
+                    {
+                        "description": "Refresh token payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RefreshTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/reset-password": {
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Reset password using token",
+                "parameters": [
+                    {
+                        "description": "Reset password payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResetPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/verify-registration": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Verify email registration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Verification token",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/{provider}": {
+            "get": {
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Initiate OAuth2 login",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "OAuth provider (e.g. google)",
+                        "name": "provider",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "307": {
+                        "description": "Temporary Redirect"
+                    }
+                }
+            }
+        },
+        "/auth/{provider}/callback": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Handle OAuth2 provider callback",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "OAuth provider (e.g. google)",
+                        "name": "provider",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Authorization code from provider",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "State token",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/debts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "debts"
+                ],
+                "summary": "Get all debt transactions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-array_dto_DebtTransactionResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "debts"
+                ],
+                "summary": "Record a new debt transaction",
+                "parameters": [
+                    {
+                        "description": "New debt transaction payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.NewDebtTransactionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_DebtTransactionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/debts/recent": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "debts"
+                ],
+                "summary": "Get recent debt transactions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-array_dto_DebtTransactionResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/debts/summary": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "debts"
+                ],
+                "summary": "Get debt transaction summary",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-map_string_dto_FriendBalance"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/friend-requests/received/{requestId}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "friend-requests"
+                ],
+                "summary": "Accept a received friend request",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Friend request ID",
+                        "name": "requestId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_FriendshipResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "friend-requests"
+                ],
+                "summary": "Ignore a received friend request",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Friend request ID",
+                        "name": "requestId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "friend-requests"
+                ],
+                "summary": "Block or unblock a friend request sender",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Friend request ID",
+                        "name": "requestId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Command: block or unblock",
+                        "name": "command",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/friend-requests/sent/{requestId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "friend-requests"
+                ],
+                "summary": "Cancel a sent friend request",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Friend request ID",
+                        "name": "requestId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/friend-requests/{type}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "friend-requests"
+                ],
+                "summary": "Get all friend requests (sent or received)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Request type: sent or received",
+                        "name": "type",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-array_dto_FriendshipRequestResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/friendships": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "friendships"
+                ],
+                "summary": "Get all friendships",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-array_dto_FriendshipResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "friendships"
+                ],
+                "summary": "Create an anonymous friendship",
+                "parameters": [
+                    {
+                        "description": "New anonymous friendship payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.NewAnonymousFriendshipRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_FriendshipResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/friendships/{friendshipId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "friendships"
+                ],
+                "summary": "Get friendship details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Friendship ID",
+                        "name": "friendshipId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_FriendDetailsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/group-expenses": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "group-expenses"
+                ],
+                "summary": "Get all group expenses",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by ownership (default: owned)",
+                        "name": "ownership",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-array_dto_GroupExpenseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "group-expenses"
+                ],
+                "summary": "Create a draft group expense",
+                "parameters": [
+                    {
+                        "description": "New draft payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.NewDraftRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_GroupExpenseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/group-expenses/fee-calculation-methods": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "other-fees"
+                ],
+                "summary": "Get available fee calculation methods",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-array_dto_FeeCalculationMethodInfo"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/group-expenses/recent": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "group-expenses"
+                ],
+                "summary": "Get recent group expenses",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-array_dto_GroupExpenseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/group-expenses/{groupExpenseId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "group-expenses"
+                ],
+                "summary": "Get group expense details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group expense ID",
+                        "name": "groupExpenseId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_GroupExpenseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "group-expenses"
+                ],
+                "summary": "Delete a group expense",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group expense ID",
+                        "name": "groupExpenseId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/group-expenses/{groupExpenseId}/bills": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "expense-bills"
+                ],
+                "summary": "Get a presigned URL to upload an expense bill",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group expense ID",
+                        "name": "groupExpenseId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Presigned bill payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.PresignedExpenseBillRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_PresignedExpenseBillResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/group-expenses/{groupExpenseId}/bills/{expenseBillId}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "expense-bills"
+                ],
+                "summary": "Trigger parsing of an uploaded expense bill",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group expense ID",
+                        "name": "groupExpenseId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Expense bill ID",
+                        "name": "expenseBillId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/group-expenses/{groupExpenseId}/confirmed": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "group-expenses"
+                ],
+                "summary": "Confirm a draft group expense",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group expense ID",
+                        "name": "groupExpenseId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Set to true for dry run",
+                        "name": "dry-run",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_ExpenseConfirmationResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/group-expenses/{groupExpenseId}/fees": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "other-fees"
+                ],
+                "summary": "Add a fee to a group expense",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group expense ID",
+                        "name": "groupExpenseId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New fee payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.NewOtherFeeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_OtherFeeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/group-expenses/{groupExpenseId}/fees/{otherFeeId}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "other-fees"
+                ],
+                "summary": "Update a fee on a group expense",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group expense ID",
+                        "name": "groupExpenseId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Fee ID",
+                        "name": "otherFeeId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update fee payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateOtherFeeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_OtherFeeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "other-fees"
+                ],
+                "summary": "Remove a fee from a group expense",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group expense ID",
+                        "name": "groupExpenseId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Fee ID",
+                        "name": "otherFeeId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/group-expenses/{groupExpenseId}/items": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "expense-items"
+                ],
+                "summary": "Add an item to a group expense",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group expense ID",
+                        "name": "groupExpenseId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New expense item payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.NewExpenseItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/group-expenses/{groupExpenseId}/items/{expenseItemId}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "expense-items"
+                ],
+                "summary": "Update an expense item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group expense ID",
+                        "name": "groupExpenseId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Expense item ID",
+                        "name": "expenseItemId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update expense item payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateExpenseItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "expense-items"
+                ],
+                "summary": "Remove an expense item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group expense ID",
+                        "name": "groupExpenseId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Expense item ID",
+                        "name": "expenseItemId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/group-expenses/{groupExpenseId}/items/{expenseItemId}/participants": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "expense-items"
+                ],
+                "summary": "Sync participants of an expense item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group expense ID",
+                        "name": "groupExpenseId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Expense item ID",
+                        "name": "expenseItemId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Participants payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SyncItemParticipantsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/group-expenses/{groupExpenseId}/participants": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "group-expenses"
+                ],
+                "summary": "Sync participants of a group expense",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group expense ID",
+                        "name": "groupExpenseId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Participants payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ExpenseParticipantsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Get unread notifications",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-array_dto_NotificationResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Mark all notifications as read",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/{notificationId}": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Mark a notification as read",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Notification ID",
+                        "name": "notificationId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/payments/midtrans/notifications": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payments"
+                ],
+                "summary": "Handle Midtrans payment notification",
+                "parameters": [
+                    {
+                        "description": "Midtrans notification payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/monetization.MidtransNotificationPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/plans": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "plans"
+                ],
+                "summary": "Get active subscription plans",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-array_monetization_PlanVersionResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/plans/{planId}/versions/{planVersionId}/subscriptions": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subscriptions"
+                ],
+                "summary": "Create a subscription purchase",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Plan ID",
+                        "name": "planId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Plan version ID",
+                        "name": "planVersionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-monetization_PaymentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/profile": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Get current user's profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_ProfileResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Update current user's profile",
+                "parameters": [
+                    {
+                        "description": "Update profile payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-dto_ProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/associate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Associate anonymous profile with real profile",
+                "parameters": [
+                    {
+                        "description": "Associate payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.AssociateProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/subscription": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "subscriptions"
+                ],
+                "summary": "Get current subscription details",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-monetization_SubscriptionResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/transfer-methods": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile-transfer-methods"
+                ],
+                "summary": "Get all transfer methods owned by current profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-array_dto_ProfileTransferMethodResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile-transfer-methods"
+                ],
+                "summary": "Add a transfer method to profile",
+                "parameters": [
+                    {
+                        "description": "New profile transfer method payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.NewProfileTransferMethodRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/profiles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile"
+                ],
+                "summary": "Search profiles",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search query",
+                        "name": "q",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-array_dto_ProfileResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/profiles/{profileId}/friend-requests": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "friend-requests"
+                ],
+                "summary": "Send a friend request",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Target profile ID",
+                        "name": "profileId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/profiles/{profileId}/transfer-methods": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "profile-transfer-methods"
+                ],
+                "summary": "Get all transfer methods of a friend profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Friend profile ID",
+                        "name": "profileId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-array_dto_ProfileTransferMethodResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/push/subscribe": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "push"
+                ],
+                "summary": "Subscribe to push notifications",
+                "parameters": [
+                    {
+                        "description": "Push subscription payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.PushSubscriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/push/unsubscribe": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "push"
+                ],
+                "summary": "Unsubscribe from push notifications",
+                "parameters": [
+                    {
+                        "description": "Push unsubscribe payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.PushUnsubscribeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/subscriptions/{subscriptionId}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payments"
+                ],
+                "summary": "Make a payment for a subscription",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Subscription ID",
+                        "name": "subscriptionId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-monetization_PaymentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/transfer-methods": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "transfer-methods"
+                ],
+                "summary": "Get all transfer methods",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by status",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.JSONResponse-array_dto_TransferMethodResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dto.AssociateProfileRequest": {
+            "type": "object",
+            "required": [
+                "anonProfileId",
+                "realProfileId"
+            ],
+            "properties": {
+                "anonProfileId": {
+                    "type": "string"
+                },
+                "realProfileId": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ConfirmedExpenseParticipant": {
+            "type": "object",
+            "properties": {
+                "fees": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ConfirmedItemShare"
+                    }
+                },
+                "feesTotal": {
+                    "type": "number"
+                },
+                "hasProxy": {
+                    "type": "boolean"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ConfirmedItemShare"
+                    }
+                },
+                "itemsTotal": {
+                    "type": "number"
+                },
+                "profile": {
+                    "$ref": "#/definitions/dto.SimpleProfile"
+                },
+                "proxyProfile": {
+                    "$ref": "#/definitions/dto.SimpleProfile"
+                },
+                "total": {
+                    "type": "number"
+                }
+            }
+        },
+        "dto.ConfirmedItemShare": {
+            "type": "object",
+            "properties": {
+                "baseAmount": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "shareAmount": {
+                    "type": "number"
+                },
+                "shareRate": {
+                    "type": "number"
+                }
+            }
+        },
+        "dto.DebtTransactionDirection": {
+            "type": "string",
+            "enum": [
+                "INCOMING",
+                "OUTGOING"
+            ],
+            "x-enum-varnames": [
+                "IncomingDebt",
+                "OutgoingDebt"
+            ]
+        },
+        "dto.DebtTransactionResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "groupExpenseId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isFromExpense": {
+                    "type": "boolean"
+                },
+                "profile": {
+                    "$ref": "#/definitions/dto.SimpleProfile"
+                },
+                "transferMethod": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "\"LENT\" or \"BORROWED\"",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ExpenseBillResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "imageUrl": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ExpenseConfirmationResponse": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "participants": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ConfirmedExpenseParticipant"
+                    }
+                },
+                "payer": {
+                    "$ref": "#/definitions/dto.SimpleProfile"
+                },
+                "totalAmount": {
+                    "type": "number"
+                }
+            }
+        },
+        "dto.ExpenseItemResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "groupExpenseId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "participants": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ItemParticipantResponse"
+                    }
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ExpenseParticipantResponse": {
+            "type": "object",
+            "properties": {
+                "hasProxy": {
+                    "type": "boolean"
+                },
+                "participantProfile": {
+                    "$ref": "#/definitions/dto.SimpleProfile"
+                },
+                "proxyProfile": {
+                    "$ref": "#/definitions/dto.SimpleProfile"
+                },
+                "shareAmount": {
+                    "type": "number"
+                }
+            }
+        },
+        "dto.ExpenseParticipantsRequest": {
+            "type": "object",
+            "required": [
+                "participantProfileIds",
+                "payerProfileId"
+            ],
+            "properties": {
+                "participantProfileIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "payerProfileId": {
+                    "type": "string"
+                },
+                "proxyByProfileIds": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "dto.FeeCalculationMethodInfo": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "display": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.FeeParticipantResponse": {
+            "type": "object",
+            "properties": {
+                "profile": {
+                    "$ref": "#/definitions/dto.SimpleProfile"
+                },
+                "shareAmount": {
+                    "type": "number"
+                }
+            }
+        },
+        "dto.FriendBalance": {
+            "type": "object",
+            "properties": {
+                "netBalance": {
+                    "type": "number"
+                },
+                "totalBorrowedFromFriend": {
+                    "type": "number"
+                },
+                "totalLentToFriend": {
+                    "type": "number"
+                },
+                "transactionHistory": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.FriendTransactionItem"
+                    }
+                }
+            }
+        },
+        "dto.FriendDetails": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "profileId": {
+                    "type": "string"
+                },
+                "profileId1": {
+                    "type": "string"
+                },
+                "profileId2": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.FriendDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "balancesPerCurrency": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/dto.FriendBalance"
+                    }
+                },
+                "friend": {
+                    "$ref": "#/definitions/dto.FriendDetails"
+                },
+                "redirectToRealFriendship": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.FriendTransactionItem": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "transferMethod": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.FriendshipRequestResponse": {
+            "type": "object",
+            "properties": {
+                "blockedAt": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isBlocked": {
+                    "type": "boolean"
+                },
+                "isReceivedByUser": {
+                    "type": "boolean"
+                },
+                "isSentByUser": {
+                    "type": "boolean"
+                },
+                "recipientAvatar": {
+                    "type": "string"
+                },
+                "recipientName": {
+                    "type": "string"
+                },
+                "senderAvatar": {
+                    "type": "string"
+                },
+                "senderName": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.FriendshipResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "profileAvatar": {
+                    "type": "string"
+                },
+                "profileId": {
+                    "type": "string"
+                },
+                "profileName": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.GroupExpenseResponse": {
+            "type": "object",
+            "properties": {
+                "bill": {
+                    "$ref": "#/definitions/dto.ExpenseBillResponse"
+                },
+                "billExists": {
+                    "type": "boolean"
+                },
+                "confirmationPreview": {
+                    "$ref": "#/definitions/dto.ExpenseConfirmationResponse"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "creator": {
+                    "$ref": "#/definitions/dto.SimpleProfile"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "feesTotalAmount": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isPreviewable": {
+                    "type": "boolean"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ExpenseItemResponse"
+                    }
+                },
+                "itemsTotalAmount": {
+                    "type": "number"
+                },
+                "otherFees": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.OtherFeeResponse"
+                    }
+                },
+                "participants": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ExpenseParticipantResponse"
+                    }
+                },
+                "payer": {
+                    "description": "Relationships",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.SimpleProfile"
+                        }
+                    ]
+                },
+                "status": {
+                    "type": "string"
+                },
+                "totalAmount": {
+                    "type": "number"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.InternalLoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "minLength": 3
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ItemParticipantRequest": {
+            "type": "object",
+            "required": [
+                "profileId"
+            ],
+            "properties": {
+                "profileId": {
+                    "type": "string"
+                },
+                "weight": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.ItemParticipantResponse": {
+            "type": "object",
+            "properties": {
+                "allocatedAmount": {
+                    "type": "number"
+                },
+                "profile": {
+                    "$ref": "#/definitions/dto.SimpleProfile"
+                },
+                "weight": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.Limits": {
+            "type": "object",
+            "properties": {
+                "uploads": {
+                    "$ref": "#/definitions/dto.UploadLimits"
+                }
+            }
+        },
+        "dto.NewAnonymousFriendshipRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 3
+                }
+            }
+        },
+        "dto.NewDebtTransactionRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "friendProfileId",
+                "transferMethodId"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "direction": {
+                    "enum": [
+                        "INCOMING",
+                        "OUTGOING"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.DebtTransactionDirection"
+                        }
+                    ]
+                },
+                "friendProfileId": {
+                    "type": "string"
+                },
+                "transferMethodId": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.NewDraftRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.NewExpenseItemRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "name",
+                "quantity"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 3
+                },
+                "quantity": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
+        "dto.NewOtherFeeRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "calculationMethod",
+                "name"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "calculationMethod": {
+                    "$ref": "#/definitions/expenses.FeeCalculationMethod"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 3
+                }
+            }
+        },
+        "dto.NewProfileTransferMethodRequest": {
+            "type": "object",
+            "required": [
+                "accountName",
+                "accountNumber",
+                "transferMethodId"
+            ],
+            "properties": {
+                "accountName": {
+                    "type": "string",
+                    "minLength": 3
+                },
+                "accountNumber": {
+                    "type": "string",
+                    "minLength": 3
+                },
+                "transferMethodId": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.NotificationResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "entityId": {
+                    "type": "string"
+                },
+                "entityType": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object"
+                },
+                "readAt": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.OtherFeeResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "calculationMethod": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "participants": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.FeeParticipantResponse"
+                    }
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.PresignedExpenseBillRequest": {
+            "type": "object",
+            "required": [
+                "fileName"
+            ],
+            "properties": {
+                "fileName": {
+                    "type": "string",
+                    "minLength": 3
+                }
+            }
+        },
+        "dto.PresignedExpenseBillResponse": {
+            "type": "object",
+            "properties": {
+                "billId": {
+                    "type": "string"
+                },
+                "uploadUrl": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ProfileResponse": {
+            "type": "object",
+            "properties": {
+                "associatedAnonProfileIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "avatar": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "currentSubscription": {
+                    "$ref": "#/definitions/dto.SubscriptionResponse"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "homeCurrency": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isAnonymous": {
+                    "type": "boolean"
+                },
+                "isOnboarded": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "realProfileId": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ProfileTransferMethodResponse": {
+            "type": "object",
+            "properties": {
+                "accountName": {
+                    "type": "string"
+                },
+                "accountNumber": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "method": {
+                    "$ref": "#/definitions/dto.TransferMethodResponse"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.PushSubscriptionKeys": {
+            "type": "object",
+            "required": [
+                "auth",
+                "p256dh"
+            ],
+            "properties": {
+                "auth": {
+                    "type": "string"
+                },
+                "p256dh": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.PushSubscriptionRequest": {
+            "type": "object",
+            "required": [
+                "endpoint",
+                "keys"
+            ],
+            "properties": {
+                "endpoint": {
+                    "type": "string"
+                },
+                "keys": {
+                    "$ref": "#/definitions/dto.PushSubscriptionKeys"
+                },
+                "userAgent": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.PushUnsubscribeRequest": {
+            "type": "object",
+            "required": [
+                "endpoint"
+            ],
+            "properties": {
+                "endpoint": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RefreshTokenRequest": {
+            "type": "object",
+            "required": [
+                "refreshToken"
+            ],
+            "properties": {
+                "refreshToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ResetPasswordRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "passwordConfirmation",
+                "token"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "passwordConfirmation": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string",
+                    "minLength": 3
+                }
+            }
+        },
+        "dto.SendPasswordResetRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "minLength": 3
+                }
+            }
+        },
+        "dto.SimpleProfile": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isUser": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.SubscriptionResponse": {
+            "type": "object",
+            "properties": {
+                "limits": {
+                    "$ref": "#/definitions/dto.Limits"
+                },
+                "plan": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.SyncItemParticipantsRequest": {
+            "type": "object",
+            "properties": {
+                "participants": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ItemParticipantRequest"
+                    }
+                }
+            }
+        },
+        "dto.TokenResponse": {
+            "type": "object",
+            "properties": {
+                "refreshToken": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.TransferMethodResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "display": {
+                    "type": "string"
+                },
+                "iconUrl": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parentId": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpdateExpenseItemRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "name",
+                "quantity"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 3
+                },
+                "quantity": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
+        "dto.UpdateOtherFeeRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "calculationMethod",
+                "name"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "calculationMethod": {
+                    "$ref": "#/definitions/expenses.FeeCalculationMethod"
+                },
+                "name": {
+                    "type": "string",
+                    "minLength": 3
+                }
+            }
+        },
+        "dto.UpdateProfileRequest": {
+            "type": "object",
+            "required": [
+                "homeCurrency",
+                "name"
+            ],
+            "properties": {
+                "homeCurrency": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 3
+                }
+            }
+        },
+        "dto.UploadLimit": {
+            "type": "object",
+            "properties": {
+                "canUpload": {
+                    "type": "boolean"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "remaining": {
+                    "type": "integer"
+                },
+                "resetAt": {
+                    "type": "string"
+                },
+                "used": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.UploadLimits": {
+            "type": "object",
+            "properties": {
+                "canUpload": {
+                    "type": "boolean"
+                },
+                "daily": {
+                    "$ref": "#/definitions/dto.UploadLimit"
+                },
+                "monthly": {
+                    "$ref": "#/definitions/dto.UploadLimit"
+                }
+            }
+        },
+        "expenses.FeeCalculationMethod": {
+            "type": "string",
+            "enum": [
+                "EQUAL_SPLIT",
+                "ITEMIZED_SPLIT"
+            ],
+            "x-enum-varnames": [
+                "EqualSplitFee",
+                "ItemizedSplitFee"
+            ]
+        },
+        "map_string_dto.FriendBalance": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/dto.FriendBalance"
+            }
+        },
+        "monetization.MidtransNotificationPayload": {
+            "type": "object",
+            "required": [
+                "gross_amount",
+                "order_id",
+                "signature_key",
+                "status_code"
+            ],
+            "properties": {
+                "gross_amount": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "string"
+                },
+                "signature_key": {
+                    "type": "string"
+                },
+                "status_code": {
+                    "type": "string"
+                },
+                "status_message": {
+                    "type": "string"
+                }
+            }
+        },
+        "monetization.PaymentResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "endsAt": {
+                    "type": "string"
+                },
+                "expiredAt": {
+                    "type": "string"
+                },
+                "failureReason": {
+                    "type": "string"
+                },
+                "gateway": {
+                    "type": "string"
+                },
+                "gatewayEventId": {
+                    "type": "string"
+                },
+                "gatewaySubscriptionId": {
+                    "type": "string"
+                },
+                "gatewayTransactionId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "paidAt": {
+                    "type": "string"
+                },
+                "startsAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "subscriptionId": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "monetization.PlanVersionResponse": {
+            "type": "object",
+            "properties": {
+                "billUploadsDaily": {
+                    "type": "integer"
+                },
+                "billUploadsMonthly": {
+                    "type": "integer"
+                },
+                "billingInterval": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "effectiveFrom": {
+                    "type": "string"
+                },
+                "effectiveTo": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "planId": {
+                    "type": "string"
+                },
+                "planName": {
+                    "type": "string"
+                },
+                "priceAmount": {
+                    "type": "number"
+                },
+                "priceCurrency": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "monetization.SubscriptionResponse": {
+            "type": "object",
+            "properties": {
+                "autoRenew": {
+                    "type": "boolean"
+                },
+                "billUploadsDaily": {
+                    "type": "integer"
+                },
+                "billUploadsMonthly": {
+                    "type": "integer"
+                },
+                "canceledAt": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "currentPeriodEnd": {
+                    "type": "string"
+                },
+                "currentPeriodStart": {
+                    "type": "string"
+                },
+                "endsAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "paymentDueDays": {
+                    "type": "integer"
+                },
+                "planName": {
+                    "type": "string"
+                },
+                "planVersionId": {
+                    "type": "string"
+                },
+                "profileId": {
+                    "type": "string"
+                },
+                "profileName": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.JSONResponse-array_dto_DebtTransactionResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.DebtTransactionResponse"
+                    }
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-array_dto_FeeCalculationMethodInfo": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.FeeCalculationMethodInfo"
+                    }
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-array_dto_FriendshipRequestResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.FriendshipRequestResponse"
+                    }
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-array_dto_FriendshipResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.FriendshipResponse"
+                    }
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-array_dto_GroupExpenseResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.GroupExpenseResponse"
+                    }
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-array_dto_NotificationResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.NotificationResponse"
+                    }
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-array_dto_ProfileResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ProfileResponse"
+                    }
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-array_dto_ProfileTransferMethodResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ProfileTransferMethodResponse"
+                    }
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-array_dto_TransferMethodResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.TransferMethodResponse"
+                    }
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-array_monetization_PlanVersionResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/monetization.PlanVersionResponse"
+                    }
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-dto_DebtTransactionResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/dto.DebtTransactionResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-dto_ExpenseConfirmationResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/dto.ExpenseConfirmationResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-dto_FriendDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/dto.FriendDetailsResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-dto_FriendshipResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/dto.FriendshipResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-dto_GroupExpenseResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/dto.GroupExpenseResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-dto_OtherFeeResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/dto.OtherFeeResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-dto_PresignedExpenseBillResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/dto.PresignedExpenseBillResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-dto_ProfileResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/dto.ProfileResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-dto_TokenResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/dto.TokenResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-map_string_dto_FriendBalance": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/map_string_dto.FriendBalance"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-monetization_PaymentResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/monetization.PaymentResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-monetization_SubscriptionResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/monetization.SubscriptionResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.Pagination": {
+            "type": "object",
+            "properties": {
+                "currentPage": {
+                    "type": "integer"
+                },
+                "hasNextPage": {
+                    "type": "boolean"
+                },
+                "hasPrevPage": {
+                    "type": "boolean"
+                },
+                "totalData": {
+                    "type": "integer"
+                },
+                "totalPages": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}

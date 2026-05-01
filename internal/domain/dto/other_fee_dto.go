@@ -12,17 +12,17 @@ type FeeParticipantResponse struct {
 }
 
 type FeeCalculationMethodInfo struct {
-	Name        expenses.FeeCalculationMethod `json:"name"`
-	Display     string                        `json:"display"`
-	Description string                        `json:"description"`
+	Name        string `json:"name"`
+	Display     string `json:"display"`
+	Description string `json:"description"`
 }
 
 type OtherFeeResponse struct {
 	BaseDTO
-	Name              string                        `json:"name"`
-	Amount            decimal.Decimal               `json:"amount"`
-	CalculationMethod expenses.FeeCalculationMethod `json:"calculationMethod"`
-	Participants      []FeeParticipantResponse      `json:"participants,omitempty"`
+	Name              string                   `json:"name"`
+	Amount            decimal.Decimal          `json:"amount"`
+	CalculationMethod string                   `json:"calculationMethod"`
+	Participants      []FeeParticipantResponse `json:"participants,omitempty"`
 }
 
 type NewOtherFeeRequest struct {

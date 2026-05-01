@@ -1,0 +1,2699 @@
+basePath: /api/v1
+definitions:
+  dto.AssociateProfileRequest:
+    properties:
+      anonProfileId:
+        type: string
+      realProfileId:
+        type: string
+    required:
+    - anonProfileId
+    - realProfileId
+    type: object
+  dto.ConfirmedExpenseParticipant:
+    properties:
+      fees:
+        items:
+          $ref: '#/definitions/dto.ConfirmedItemShare'
+        type: array
+      feesTotal:
+        type: number
+      hasProxy:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/dto.ConfirmedItemShare'
+        type: array
+      itemsTotal:
+        type: number
+      profile:
+        $ref: '#/definitions/dto.SimpleProfile'
+      proxyProfile:
+        $ref: '#/definitions/dto.SimpleProfile'
+      total:
+        type: number
+    type: object
+  dto.ConfirmedItemShare:
+    properties:
+      baseAmount:
+        type: number
+      id:
+        type: string
+      name:
+        type: string
+      shareAmount:
+        type: number
+      shareRate:
+        type: number
+    type: object
+  dto.DebtTransactionDirection:
+    enum:
+    - INCOMING
+    - OUTGOING
+    type: string
+    x-enum-varnames:
+    - IncomingDebt
+    - OutgoingDebt
+  dto.DebtTransactionResponse:
+    properties:
+      amount:
+        type: number
+      createdAt:
+        type: string
+      currency:
+        type: string
+      description:
+        type: string
+      groupExpenseId:
+        type: string
+      id:
+        type: string
+      isFromExpense:
+        type: boolean
+      profile:
+        $ref: '#/definitions/dto.SimpleProfile'
+      transferMethod:
+        type: string
+      type:
+        description: '"LENT" or "BORROWED"'
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  dto.ExpenseBillResponse:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      imageUrl:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  dto.ExpenseConfirmationResponse:
+    properties:
+      currency:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      participants:
+        items:
+          $ref: '#/definitions/dto.ConfirmedExpenseParticipant'
+        type: array
+      payer:
+        $ref: '#/definitions/dto.SimpleProfile'
+      totalAmount:
+        type: number
+    type: object
+  dto.ExpenseItemResponse:
+    properties:
+      amount:
+        type: number
+      createdAt:
+        type: string
+      groupExpenseId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      participants:
+        items:
+          $ref: '#/definitions/dto.ItemParticipantResponse'
+        type: array
+      quantity:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  dto.ExpenseParticipantResponse:
+    properties:
+      hasProxy:
+        type: boolean
+      participantProfile:
+        $ref: '#/definitions/dto.SimpleProfile'
+      proxyProfile:
+        $ref: '#/definitions/dto.SimpleProfile'
+      shareAmount:
+        type: number
+    type: object
+  dto.ExpenseParticipantsRequest:
+    properties:
+      participantProfileIds:
+        items:
+          type: string
+        minItems: 1
+        type: array
+      payerProfileId:
+        type: string
+      proxyByProfileIds:
+        additionalProperties:
+          type: string
+        type: object
+    required:
+    - participantProfileIds
+    - payerProfileId
+    type: object
+  dto.FeeCalculationMethodInfo:
+    properties:
+      description:
+        type: string
+      display:
+        type: string
+      name:
+        type: string
+    type: object
+  dto.FeeParticipantResponse:
+    properties:
+      profile:
+        $ref: '#/definitions/dto.SimpleProfile'
+      shareAmount:
+        type: number
+    type: object
+  dto.FriendBalance:
+    properties:
+      netBalance:
+        type: number
+      totalBorrowedFromFriend:
+        type: number
+      totalLentToFriend:
+        type: number
+      transactionHistory:
+        items:
+          $ref: '#/definitions/dto.FriendTransactionItem'
+        type: array
+    type: object
+  dto.FriendDetails:
+    properties:
+      avatar:
+        type: string
+      createdAt:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      profileId:
+        type: string
+      profileId1:
+        type: string
+      profileId2:
+        type: string
+      type:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  dto.FriendDetailsResponse:
+    properties:
+      balancesPerCurrency:
+        additionalProperties:
+          $ref: '#/definitions/dto.FriendBalance'
+        type: object
+      friend:
+        $ref: '#/definitions/dto.FriendDetails'
+      redirectToRealFriendship:
+        type: string
+    type: object
+  dto.FriendTransactionItem:
+    properties:
+      amount:
+        type: number
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      transferMethod:
+        type: string
+      type:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  dto.FriendshipRequestResponse:
+    properties:
+      blockedAt:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      isBlocked:
+        type: boolean
+      isReceivedByUser:
+        type: boolean
+      isSentByUser:
+        type: boolean
+      recipientAvatar:
+        type: string
+      recipientName:
+        type: string
+      senderAvatar:
+        type: string
+      senderName:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  dto.FriendshipResponse:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      profileAvatar:
+        type: string
+      profileId:
+        type: string
+      profileName:
+        type: string
+      type:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  dto.GroupExpenseResponse:
+    properties:
+      bill:
+        $ref: '#/definitions/dto.ExpenseBillResponse'
+      billExists:
+        type: boolean
+      confirmationPreview:
+        $ref: '#/definitions/dto.ExpenseConfirmationResponse'
+      createdAt:
+        type: string
+      creator:
+        $ref: '#/definitions/dto.SimpleProfile'
+      currency:
+        type: string
+      description:
+        type: string
+      feesTotalAmount:
+        type: number
+      id:
+        type: string
+      isPreviewable:
+        type: boolean
+      items:
+        items:
+          $ref: '#/definitions/dto.ExpenseItemResponse'
+        type: array
+      itemsTotalAmount:
+        type: number
+      otherFees:
+        items:
+          $ref: '#/definitions/dto.OtherFeeResponse'
+        type: array
+      participants:
+        items:
+          $ref: '#/definitions/dto.ExpenseParticipantResponse'
+        type: array
+      payer:
+        allOf:
+        - $ref: '#/definitions/dto.SimpleProfile'
+        description: Relationships
+      status:
+        type: string
+      totalAmount:
+        type: number
+      updatedAt:
+        type: string
+    type: object
+  dto.InternalLoginRequest:
+    properties:
+      email:
+        minLength: 3
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.ItemParticipantRequest:
+    properties:
+      profileId:
+        type: string
+      weight:
+        type: integer
+    required:
+    - profileId
+    type: object
+  dto.ItemParticipantResponse:
+    properties:
+      allocatedAmount:
+        type: number
+      profile:
+        $ref: '#/definitions/dto.SimpleProfile'
+      weight:
+        type: integer
+    type: object
+  dto.Limits:
+    properties:
+      uploads:
+        $ref: '#/definitions/dto.UploadLimits'
+    type: object
+  dto.NewAnonymousFriendshipRequest:
+    properties:
+      name:
+        minLength: 3
+        type: string
+    required:
+    - name
+    type: object
+  dto.NewDebtTransactionRequest:
+    properties:
+      amount:
+        type: number
+      currency:
+        type: string
+      description:
+        type: string
+      direction:
+        allOf:
+        - $ref: '#/definitions/dto.DebtTransactionDirection'
+        enum:
+        - INCOMING
+        - OUTGOING
+      friendProfileId:
+        type: string
+      transferMethodId:
+        type: string
+    required:
+    - amount
+    - friendProfileId
+    - transferMethodId
+    type: object
+  dto.NewDraftRequest:
+    properties:
+      description:
+        type: string
+    type: object
+  dto.NewExpenseItemRequest:
+    properties:
+      amount:
+        type: number
+      name:
+        minLength: 3
+        type: string
+      quantity:
+        minimum: 1
+        type: integer
+    required:
+    - amount
+    - name
+    - quantity
+    type: object
+  dto.NewOtherFeeRequest:
+    properties:
+      amount:
+        type: number
+      calculationMethod:
+        $ref: '#/definitions/expenses.FeeCalculationMethod'
+      name:
+        minLength: 3
+        type: string
+    required:
+    - amount
+    - calculationMethod
+    - name
+    type: object
+  dto.NewProfileTransferMethodRequest:
+    properties:
+      accountName:
+        minLength: 3
+        type: string
+      accountNumber:
+        minLength: 3
+        type: string
+      transferMethodId:
+        type: string
+    required:
+    - accountName
+    - accountNumber
+    - transferMethodId
+    type: object
+  dto.NotificationResponse:
+    properties:
+      createdAt:
+        type: string
+      entityId:
+        type: string
+      entityType:
+        type: string
+      id:
+        type: string
+      metadata:
+        type: object
+      readAt:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  dto.OtherFeeResponse:
+    properties:
+      amount:
+        type: number
+      calculationMethod:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      participants:
+        items:
+          $ref: '#/definitions/dto.FeeParticipantResponse'
+        type: array
+      updatedAt:
+        type: string
+    type: object
+  dto.PresignedExpenseBillRequest:
+    properties:
+      fileName:
+        minLength: 3
+        type: string
+    required:
+    - fileName
+    type: object
+  dto.PresignedExpenseBillResponse:
+    properties:
+      billId:
+        type: string
+      uploadUrl:
+        type: string
+    type: object
+  dto.ProfileResponse:
+    properties:
+      associatedAnonProfileIds:
+        items:
+          type: string
+        type: array
+      avatar:
+        type: string
+      createdAt:
+        type: string
+      currentSubscription:
+        $ref: '#/definitions/dto.SubscriptionResponse'
+      email:
+        type: string
+      homeCurrency:
+        type: string
+      id:
+        type: string
+      isAnonymous:
+        type: boolean
+      isOnboarded:
+        type: boolean
+      name:
+        type: string
+      realProfileId:
+        type: string
+      updatedAt:
+        type: string
+      userId:
+        type: string
+    type: object
+  dto.ProfileTransferMethodResponse:
+    properties:
+      accountName:
+        type: string
+      accountNumber:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      method:
+        $ref: '#/definitions/dto.TransferMethodResponse'
+      updatedAt:
+        type: string
+    type: object
+  dto.PushSubscriptionKeys:
+    properties:
+      auth:
+        type: string
+      p256dh:
+        type: string
+    required:
+    - auth
+    - p256dh
+    type: object
+  dto.PushSubscriptionRequest:
+    properties:
+      endpoint:
+        type: string
+      keys:
+        $ref: '#/definitions/dto.PushSubscriptionKeys'
+      userAgent:
+        type: string
+    required:
+    - endpoint
+    - keys
+    type: object
+  dto.PushUnsubscribeRequest:
+    properties:
+      endpoint:
+        type: string
+    required:
+    - endpoint
+    type: object
+  dto.RefreshTokenRequest:
+    properties:
+      refreshToken:
+        type: string
+    required:
+    - refreshToken
+    type: object
+  dto.ResetPasswordRequest:
+    properties:
+      password:
+        type: string
+      passwordConfirmation:
+        type: string
+      token:
+        minLength: 3
+        type: string
+    required:
+    - password
+    - passwordConfirmation
+    - token
+    type: object
+  dto.SendPasswordResetRequest:
+    properties:
+      email:
+        minLength: 3
+        type: string
+    required:
+    - email
+    type: object
+  dto.SimpleProfile:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: string
+      isUser:
+        type: boolean
+      name:
+        type: string
+    type: object
+  dto.SubscriptionResponse:
+    properties:
+      limits:
+        $ref: '#/definitions/dto.Limits'
+      plan:
+        type: string
+    type: object
+  dto.SyncItemParticipantsRequest:
+    properties:
+      participants:
+        items:
+          $ref: '#/definitions/dto.ItemParticipantRequest'
+        type: array
+    type: object
+  dto.TokenResponse:
+    properties:
+      refreshToken:
+        type: string
+      token:
+        type: string
+      type:
+        type: string
+    type: object
+  dto.TransferMethodResponse:
+    properties:
+      createdAt:
+        type: string
+      display:
+        type: string
+      iconUrl:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      parentId:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  dto.UpdateExpenseItemRequest:
+    properties:
+      amount:
+        type: number
+      name:
+        minLength: 3
+        type: string
+      quantity:
+        minimum: 1
+        type: integer
+    required:
+    - amount
+    - name
+    - quantity
+    type: object
+  dto.UpdateOtherFeeRequest:
+    properties:
+      amount:
+        type: number
+      calculationMethod:
+        $ref: '#/definitions/expenses.FeeCalculationMethod'
+      name:
+        minLength: 3
+        type: string
+    required:
+    - amount
+    - calculationMethod
+    - name
+    type: object
+  dto.UpdateProfileRequest:
+    properties:
+      homeCurrency:
+        type: string
+      name:
+        maxLength: 255
+        minLength: 3
+        type: string
+    required:
+    - homeCurrency
+    - name
+    type: object
+  dto.UploadLimit:
+    properties:
+      canUpload:
+        type: boolean
+      limit:
+        type: integer
+      remaining:
+        type: integer
+      resetAt:
+        type: string
+      used:
+        type: integer
+    type: object
+  dto.UploadLimits:
+    properties:
+      canUpload:
+        type: boolean
+      daily:
+        $ref: '#/definitions/dto.UploadLimit'
+      monthly:
+        $ref: '#/definitions/dto.UploadLimit'
+    type: object
+  expenses.FeeCalculationMethod:
+    enum:
+    - EQUAL_SPLIT
+    - ITEMIZED_SPLIT
+    type: string
+    x-enum-varnames:
+    - EqualSplitFee
+    - ItemizedSplitFee
+  map_string_dto.FriendBalance:
+    additionalProperties:
+      $ref: '#/definitions/dto.FriendBalance'
+    type: object
+  monetization.MidtransNotificationPayload:
+    properties:
+      gross_amount:
+        type: string
+      order_id:
+        type: string
+      signature_key:
+        type: string
+      status_code:
+        type: string
+      status_message:
+        type: string
+    required:
+    - gross_amount
+    - order_id
+    - signature_key
+    - status_code
+    type: object
+  monetization.PaymentResponse:
+    properties:
+      amount:
+        type: number
+      createdAt:
+        type: string
+      currency:
+        type: string
+      endsAt:
+        type: string
+      expiredAt:
+        type: string
+      failureReason:
+        type: string
+      gateway:
+        type: string
+      gatewayEventId:
+        type: string
+      gatewaySubscriptionId:
+        type: string
+      gatewayTransactionId:
+        type: string
+      id:
+        type: string
+      paidAt:
+        type: string
+      startsAt:
+        type: string
+      status:
+        type: string
+      subscriptionId:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  monetization.PlanVersionResponse:
+    properties:
+      billUploadsDaily:
+        type: integer
+      billUploadsMonthly:
+        type: integer
+      billingInterval:
+        type: string
+      createdAt:
+        type: string
+      effectiveFrom:
+        type: string
+      effectiveTo:
+        type: string
+      id:
+        type: string
+      isDefault:
+        type: boolean
+      planId:
+        type: string
+      planName:
+        type: string
+      priceAmount:
+        type: number
+      priceCurrency:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  monetization.SubscriptionResponse:
+    properties:
+      autoRenew:
+        type: boolean
+      billUploadsDaily:
+        type: integer
+      billUploadsMonthly:
+        type: integer
+      canceledAt:
+        type: string
+      createdAt:
+        type: string
+      currentPeriodEnd:
+        type: string
+      currentPeriodStart:
+        type: string
+      endsAt:
+        type: string
+      id:
+        type: string
+      paymentDueDays:
+        type: integer
+      planName:
+        type: string
+      planVersionId:
+        type: string
+      profileId:
+        type: string
+      profileName:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  response.JSONResponse-array_dto_DebtTransactionResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/dto.DebtTransactionResponse'
+        type: array
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-array_dto_FeeCalculationMethodInfo:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/dto.FeeCalculationMethodInfo'
+        type: array
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-array_dto_FriendshipRequestResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/dto.FriendshipRequestResponse'
+        type: array
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-array_dto_FriendshipResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/dto.FriendshipResponse'
+        type: array
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-array_dto_GroupExpenseResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/dto.GroupExpenseResponse'
+        type: array
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-array_dto_NotificationResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/dto.NotificationResponse'
+        type: array
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-array_dto_ProfileResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/dto.ProfileResponse'
+        type: array
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-array_dto_ProfileTransferMethodResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/dto.ProfileTransferMethodResponse'
+        type: array
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-array_dto_TransferMethodResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/dto.TransferMethodResponse'
+        type: array
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-array_monetization_PlanVersionResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/monetization.PlanVersionResponse'
+        type: array
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-dto_DebtTransactionResponse:
+    properties:
+      data:
+        $ref: '#/definitions/dto.DebtTransactionResponse'
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-dto_ExpenseConfirmationResponse:
+    properties:
+      data:
+        $ref: '#/definitions/dto.ExpenseConfirmationResponse'
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-dto_FriendDetailsResponse:
+    properties:
+      data:
+        $ref: '#/definitions/dto.FriendDetailsResponse'
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-dto_FriendshipResponse:
+    properties:
+      data:
+        $ref: '#/definitions/dto.FriendshipResponse'
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-dto_GroupExpenseResponse:
+    properties:
+      data:
+        $ref: '#/definitions/dto.GroupExpenseResponse'
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-dto_OtherFeeResponse:
+    properties:
+      data:
+        $ref: '#/definitions/dto.OtherFeeResponse'
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-dto_PresignedExpenseBillResponse:
+    properties:
+      data:
+        $ref: '#/definitions/dto.PresignedExpenseBillResponse'
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-dto_ProfileResponse:
+    properties:
+      data:
+        $ref: '#/definitions/dto.ProfileResponse'
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-dto_TokenResponse:
+    properties:
+      data:
+        $ref: '#/definitions/dto.TokenResponse'
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-map_string_dto_FriendBalance:
+    properties:
+      data:
+        $ref: '#/definitions/map_string_dto.FriendBalance'
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-monetization_PaymentResponse:
+    properties:
+      data:
+        $ref: '#/definitions/monetization.PaymentResponse'
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-monetization_SubscriptionResponse:
+    properties:
+      data:
+        $ref: '#/definitions/monetization.SubscriptionResponse'
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.Pagination:
+    properties:
+      currentPage:
+        type: integer
+      hasNextPage:
+        type: boolean
+      hasPrevPage:
+        type: boolean
+      totalData:
+        type: integer
+      totalPages:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Cashback backend API
+  title: Cashback API
+  version: "1.0"
+paths:
+  /auth/{provider}:
+    get:
+      parameters:
+      - description: OAuth provider (e.g. google)
+        in: path
+        name: provider
+        required: true
+        type: string
+      responses:
+        "307":
+          description: Temporary Redirect
+      summary: Initiate OAuth2 login
+      tags:
+      - auth
+  /auth/{provider}/callback:
+    get:
+      parameters:
+      - description: OAuth provider (e.g. google)
+        in: path
+        name: provider
+        required: true
+        type: string
+      - description: Authorization code from provider
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: State token
+        in: query
+        name: state
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_TokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Handle OAuth2 provider callback
+      tags:
+      - auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.InternalLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_TokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Login with email and password
+      tags:
+      - auth
+  /auth/logout:
+    delete:
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Logout current session
+      tags:
+      - auth
+  /auth/password-reset:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Email payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SendPasswordResetRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Send password reset email
+      tags:
+      - auth
+  /auth/refresh:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh token payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_TokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/reset-password:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Reset password payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Reset password using token
+      tags:
+      - auth
+  /auth/verify-registration:
+    get:
+      parameters:
+      - description: Verification token
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_TokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Verify email registration
+      tags:
+      - auth
+  /debts:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-array_dto_DebtTransactionResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all debt transactions
+      tags:
+      - debts
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: New debt transaction payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NewDebtTransactionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_DebtTransactionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Record a new debt transaction
+      tags:
+      - debts
+  /debts/recent:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-array_dto_DebtTransactionResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get recent debt transactions
+      tags:
+      - debts
+  /debts/summary:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-map_string_dto_FriendBalance'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get debt transaction summary
+      tags:
+      - debts
+  /friend-requests/{type}:
+    get:
+      parameters:
+      - description: 'Request type: sent or received'
+        in: path
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-array_dto_FriendshipRequestResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all friend requests (sent or received)
+      tags:
+      - friend-requests
+  /friend-requests/received/{requestId}:
+    delete:
+      parameters:
+      - description: Friend request ID
+        in: path
+        name: requestId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Ignore a received friend request
+      tags:
+      - friend-requests
+    patch:
+      parameters:
+      - description: Friend request ID
+        in: path
+        name: requestId
+        required: true
+        type: string
+      - description: 'Command: block or unblock'
+        in: query
+        name: command
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Block or unblock a friend request sender
+      tags:
+      - friend-requests
+    post:
+      parameters:
+      - description: Friend request ID
+        in: path
+        name: requestId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_FriendshipResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Accept a received friend request
+      tags:
+      - friend-requests
+  /friend-requests/sent/{requestId}:
+    delete:
+      parameters:
+      - description: Friend request ID
+        in: path
+        name: requestId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Cancel a sent friend request
+      tags:
+      - friend-requests
+  /friendships:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-array_dto_FriendshipResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all friendships
+      tags:
+      - friendships
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: New anonymous friendship payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NewAnonymousFriendshipRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_FriendshipResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create an anonymous friendship
+      tags:
+      - friendships
+  /friendships/{friendshipId}:
+    get:
+      parameters:
+      - description: Friendship ID
+        in: path
+        name: friendshipId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_FriendDetailsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get friendship details
+      tags:
+      - friendships
+  /group-expenses:
+    get:
+      parameters:
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: 'Filter by ownership (default: owned)'
+        in: query
+        name: ownership
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-array_dto_GroupExpenseResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all group expenses
+      tags:
+      - group-expenses
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: New draft payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NewDraftRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_GroupExpenseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a draft group expense
+      tags:
+      - group-expenses
+  /group-expenses/{groupExpenseId}:
+    delete:
+      parameters:
+      - description: Group expense ID
+        in: path
+        name: groupExpenseId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a group expense
+      tags:
+      - group-expenses
+    get:
+      parameters:
+      - description: Group expense ID
+        in: path
+        name: groupExpenseId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_GroupExpenseResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get group expense details
+      tags:
+      - group-expenses
+  /group-expenses/{groupExpenseId}/bills:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Group expense ID
+        in: path
+        name: groupExpenseId
+        required: true
+        type: string
+      - description: Presigned bill payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PresignedExpenseBillRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_PresignedExpenseBillResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get a presigned URL to upload an expense bill
+      tags:
+      - expense-bills
+  /group-expenses/{groupExpenseId}/bills/{expenseBillId}:
+    put:
+      parameters:
+      - description: Group expense ID
+        in: path
+        name: groupExpenseId
+        required: true
+        type: string
+      - description: Expense bill ID
+        in: path
+        name: expenseBillId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Trigger parsing of an uploaded expense bill
+      tags:
+      - expense-bills
+  /group-expenses/{groupExpenseId}/confirmed:
+    patch:
+      parameters:
+      - description: Group expense ID
+        in: path
+        name: groupExpenseId
+        required: true
+        type: string
+      - description: Set to true for dry run
+        in: query
+        name: dry-run
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_ExpenseConfirmationResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Confirm a draft group expense
+      tags:
+      - group-expenses
+  /group-expenses/{groupExpenseId}/fees:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Group expense ID
+        in: path
+        name: groupExpenseId
+        required: true
+        type: string
+      - description: New fee payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NewOtherFeeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_OtherFeeResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add a fee to a group expense
+      tags:
+      - other-fees
+  /group-expenses/{groupExpenseId}/fees/{otherFeeId}:
+    delete:
+      parameters:
+      - description: Group expense ID
+        in: path
+        name: groupExpenseId
+        required: true
+        type: string
+      - description: Fee ID
+        in: path
+        name: otherFeeId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove a fee from a group expense
+      tags:
+      - other-fees
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Group expense ID
+        in: path
+        name: groupExpenseId
+        required: true
+        type: string
+      - description: Fee ID
+        in: path
+        name: otherFeeId
+        required: true
+        type: string
+      - description: Update fee payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateOtherFeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_OtherFeeResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a fee on a group expense
+      tags:
+      - other-fees
+  /group-expenses/{groupExpenseId}/items:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Group expense ID
+        in: path
+        name: groupExpenseId
+        required: true
+        type: string
+      - description: New expense item payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NewExpenseItemRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add an item to a group expense
+      tags:
+      - expense-items
+  /group-expenses/{groupExpenseId}/items/{expenseItemId}:
+    delete:
+      parameters:
+      - description: Group expense ID
+        in: path
+        name: groupExpenseId
+        required: true
+        type: string
+      - description: Expense item ID
+        in: path
+        name: expenseItemId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove an expense item
+      tags:
+      - expense-items
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Group expense ID
+        in: path
+        name: groupExpenseId
+        required: true
+        type: string
+      - description: Expense item ID
+        in: path
+        name: expenseItemId
+        required: true
+        type: string
+      - description: Update expense item payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateExpenseItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update an expense item
+      tags:
+      - expense-items
+  /group-expenses/{groupExpenseId}/items/{expenseItemId}/participants:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Group expense ID
+        in: path
+        name: groupExpenseId
+        required: true
+        type: string
+      - description: Expense item ID
+        in: path
+        name: expenseItemId
+        required: true
+        type: string
+      - description: Participants payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SyncItemParticipantsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Sync participants of an expense item
+      tags:
+      - expense-items
+  /group-expenses/{groupExpenseId}/participants:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Group expense ID
+        in: path
+        name: groupExpenseId
+        required: true
+        type: string
+      - description: Participants payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ExpenseParticipantsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Sync participants of a group expense
+      tags:
+      - group-expenses
+  /group-expenses/fee-calculation-methods:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-array_dto_FeeCalculationMethodInfo'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get available fee calculation methods
+      tags:
+      - other-fees
+  /group-expenses/recent:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-array_dto_GroupExpenseResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get recent group expenses
+      tags:
+      - group-expenses
+  /notifications:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-array_dto_NotificationResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get unread notifications
+      tags:
+      - notifications
+    patch:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark all notifications as read
+      tags:
+      - notifications
+  /notifications/{notificationId}:
+    patch:
+      parameters:
+      - description: Notification ID
+        in: path
+        name: notificationId
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark a notification as read
+      tags:
+      - notifications
+  /payments/midtrans/notifications:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Midtrans notification payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/monetization.MidtransNotificationPayload'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Handle Midtrans payment notification
+      tags:
+      - payments
+  /plans:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-array_monetization_PlanVersionResponse'
+      summary: Get active subscription plans
+      tags:
+      - plans
+  /plans/{planId}/versions/{planVersionId}/subscriptions:
+    post:
+      parameters:
+      - description: Plan ID
+        in: path
+        name: planId
+        required: true
+        type: string
+      - description: Plan version ID
+        in: path
+        name: planVersionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.JSONResponse-monetization_PaymentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a subscription purchase
+      tags:
+      - subscriptions
+  /profile:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_ProfileResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get current user's profile
+      tags:
+      - profile
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Update profile payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-dto_ProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update current user's profile
+      tags:
+      - profile
+  /profile/associate:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Associate payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AssociateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Associate anonymous profile with real profile
+      tags:
+      - profile
+  /profile/subscription:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-monetization_SubscriptionResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get current subscription details
+      tags:
+      - subscriptions
+  /profile/transfer-methods:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-array_dto_ProfileTransferMethodResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all transfer methods owned by current profile
+      tags:
+      - profile-transfer-methods
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: New profile transfer method payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.NewProfileTransferMethodRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add a transfer method to profile
+      tags:
+      - profile-transfer-methods
+  /profiles:
+    get:
+      parameters:
+      - description: Search query
+        in: query
+        name: q
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-array_dto_ProfileResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Search profiles
+      tags:
+      - profile
+  /profiles/{profileId}/friend-requests:
+    post:
+      parameters:
+      - description: Target profile ID
+        in: path
+        name: profileId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Send a friend request
+      tags:
+      - friend-requests
+  /profiles/{profileId}/transfer-methods:
+    get:
+      parameters:
+      - description: Friend profile ID
+        in: path
+        name: profileId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-array_dto_ProfileTransferMethodResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all transfer methods of a friend profile
+      tags:
+      - profile-transfer-methods
+  /push/subscribe:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Push subscription payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PushSubscriptionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Subscribe to push notifications
+      tags:
+      - push
+  /push/unsubscribe:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Push unsubscribe payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PushUnsubscribeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Unsubscribe from push notifications
+      tags:
+      - push
+  /subscriptions/{subscriptionId}:
+    post:
+      parameters:
+      - description: Subscription ID
+        in: path
+        name: subscriptionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.JSONResponse-monetization_PaymentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Make a payment for a subscription
+      tags:
+      - payments
+  /transfer-methods:
+    get:
+      parameters:
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.JSONResponse-array_dto_TransferMethodResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all transfer methods
+      tags:
+      - transfer-methods
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

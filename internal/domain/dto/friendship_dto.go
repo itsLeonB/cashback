@@ -2,7 +2,6 @@ package dto
 
 import (
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/shopspring/decimal"
 )
 
@@ -13,10 +12,10 @@ type NewAnonymousFriendshipRequest struct {
 
 type FriendshipResponse struct {
 	BaseDTO
-	Type          users.FriendshipType `json:"type"`
-	ProfileID     uuid.UUID            `json:"profileId"`
-	ProfileName   string               `json:"profileName"`
-	ProfileAvatar string               `json:"profileAvatar"`
+	Type          string    `json:"type"`
+	ProfileID     uuid.UUID `json:"profileId"`
+	ProfileName   string    `json:"profileName"`
+	ProfileAvatar string    `json:"profileAvatar"`
 }
 
 type FriendshipWithProfile struct {
@@ -27,14 +26,14 @@ type FriendshipWithProfile struct {
 
 type FriendDetails struct {
 	BaseDTO
-	ProfileID  uuid.UUID            `json:"profileId"`
-	Name       string               `json:"name"`
-	Type       users.FriendshipType `json:"type"`
-	Email      string               `json:"email,omitempty"`
-	Phone      string               `json:"phone,omitempty"`
-	Avatar     string               `json:"avatar,omitempty"`
-	ProfileID1 uuid.UUID            `json:"profileId1"`
-	ProfileID2 uuid.UUID            `json:"profileId2"`
+	ProfileID  uuid.UUID `json:"profileId"`
+	Name       string    `json:"name"`
+	Type       string    `json:"type"`
+	Email      string    `json:"email,omitempty"`
+	Phone      string    `json:"phone,omitempty"`
+	Avatar     string    `json:"avatar,omitempty"`
+	ProfileID1 uuid.UUID `json:"profileId1"`
+	ProfileID2 uuid.UUID `json:"profileId2"`
 }
 
 type FriendBalance struct {

@@ -12,7 +12,7 @@ type NotificationResponse struct {
 	Type       string         `json:"type"`
 	EntityType string         `json:"entityType"`
 	EntityID   uuid.UUID      `json:"entityId"`
-	Metadata   datatypes.JSON `json:"metadata"`
+	Metadata   datatypes.JSON `json:"metadata" swaggertype:"object"`
 	ReadAt     time.Time      `json:"readAt,omitzero"`
 	CreatedAt  time.Time      `json:"createdAt"`
 	Title      string         `json:"title"`

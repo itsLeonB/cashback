@@ -34,7 +34,7 @@ func OtherFeeToResponse(fee expenses.OtherFee, userProfileID uuid.UUID) dto.Othe
 		BaseDTO:           BaseToDTO(fee.BaseEntity),
 		Name:              fee.Name,
 		Amount:            fee.Amount,
-		CalculationMethod: fee.CalculationMethod,
+		CalculationMethod: string(fee.CalculationMethod),
 		Participants:      ezutil.MapSlice(fee.Participants, getFeeParticipantSimpleMapper(userProfileID)),
 	}
 }

@@ -2,7 +2,6 @@ package dto
 
 import (
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 )
 
 type NewExpenseBillRequest struct {
@@ -16,8 +15,8 @@ type NewExpenseBillRequest struct {
 
 type ExpenseBillResponse struct {
 	BaseDTO
-	ImageURL string              `json:"imageUrl"`
-	Status   expenses.BillStatus `json:"status"`
+	ImageURL string `json:"imageUrl"`
+	Status   string `json:"status"`
 }
 
 type PresignedExpenseBillRequest struct {

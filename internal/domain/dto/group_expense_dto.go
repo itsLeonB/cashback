@@ -2,7 +2,6 @@ package dto
 
 import (
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/shopspring/decimal"
 )
 
@@ -18,13 +17,13 @@ type NewGroupExpenseRequest struct {
 
 type GroupExpenseResponse struct {
 	BaseDTO
-	Currency         string                 `json:"currency"`
-	TotalAmount      decimal.Decimal        `json:"totalAmount"`
-	ItemsTotalAmount decimal.Decimal        `json:"itemsTotalAmount"`
-	FeesTotalAmount  decimal.Decimal        `json:"feesTotalAmount"`
-	Description      string                 `json:"description"`
-	Status           expenses.ExpenseStatus `json:"status"`
-	IsPreviewable    bool                   `json:"isPreviewable"`
+	Currency         string          `json:"currency"`
+	TotalAmount      decimal.Decimal `json:"totalAmount"`
+	ItemsTotalAmount decimal.Decimal `json:"itemsTotalAmount"`
+	FeesTotalAmount  decimal.Decimal `json:"feesTotalAmount"`
+	Description      string          `json:"description"`
+	Status           string          `json:"status"`
+	IsPreviewable    bool            `json:"isPreviewable"`
 
 	// Relationships
 	Payer        SimpleProfile                `json:"payer"`

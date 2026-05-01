@@ -12,6 +12,7 @@ test-coverage-html \
 test-clean \
 build \
 build-all \
+docs \
 install-pre-push-hook \
 uninstall-pre-push-hook
 
@@ -30,6 +31,7 @@ help:
 	@echo "  make test-clean              - Clean test cache and run tests"
 	@echo "  make build                   - Build HTTP server for production"
 	@echo "  make build-all               - Build all programs for production"
+	@echo "  make docs                    - Generate Swagger + Markdown docs"
 	@echo "  make install-pre-push-hook   - Install git pre-push hook for linting and testing"
 	@echo "  make uninstall-pre-push-hook - Uninstall git pre-push hook"
 
@@ -87,8 +89,18 @@ build-all:
 	@echo "Build success! Binaries are located in bin/"
 	@ls -lh bin/
 
+docs:
+	@echo "Generating Swagger docs..."
+	swag init \
+		--generalInfo main.go \
+		--dir cmd/http,internal/adapters/http/handler,internal/domain/dto,internal/domain/dto/monetization,internal/domain/entity/users,internal/domain/entity/expenses,internal/domain/entity/debts \
+		--output docs \
+		--outputTypes go,json,yaml \
+		--parseDependency \
+		--parseInternal
+	@echo "Docs generated: docs/swagger.json, docs/swagger.yaml, docs/docs.go"
+
 install-pre-push-hook:
-	@echo "Installing pre-push git hook..."
 	@mkdir -p .git/hooks
 	@cp scripts/git-pre-push.sh .git/hooks/pre-push
 	@chmod +x .git/hooks/pre-push

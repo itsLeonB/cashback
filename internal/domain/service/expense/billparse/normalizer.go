@@ -59,11 +59,16 @@ func applyHeuristics(cleaned string) string {
 		return cleaned
 	}
 
-	// Both dot and comma present (e.g., 15.500,50)
+	// Both dot and comma present (e.g., 15.500,50 or 1,500.50)
 	if dots == 1 && commas == 1 {
-		// Typical ID: . is thousands, , is decimal
-		cleaned = strings.ReplaceAll(cleaned, ".", "")
-		cleaned = strings.ReplaceAll(cleaned, ",", ".")
+		if strings.LastIndex(cleaned, ".") > strings.LastIndex(cleaned, ",") {
+			// Dot is decimal (e.g., 1,500.50)
+			cleaned = strings.ReplaceAll(cleaned, ",", "")
+		} else {
+			// Comma is decimal (e.g., 15.500,50)
+			cleaned = strings.ReplaceAll(cleaned, ".", "")
+			cleaned = strings.ReplaceAll(cleaned, ",", ".")
+		}
 		return cleaned
 	}
 

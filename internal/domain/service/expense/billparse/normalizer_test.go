@@ -83,6 +83,11 @@ func TestNormalize(t *testing.T) {
 			input:    "1,500,000.50",
 			expected: "1500000.50",
 		},
+		{
+			name:     "mixed separators US format",
+			input:    "1,500.50",
+			expected: "1500.50",
+		},
 	}
 
 	for _, tt := range tests {

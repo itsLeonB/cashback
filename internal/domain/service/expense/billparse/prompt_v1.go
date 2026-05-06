@@ -31,6 +31,10 @@ var ActiveBillParsePrompt = BillParsePrompt{
 	Variables:  []string{"not_detected_bill_string", "text_to_parse"},
 }
 
+// NOTE: When updating the Langfuse prompt "parse-bill", ensure to include the following instruction:
+// "All numeric values in the provided text have been pre-processed into canonical form
+// (thousands separators removed, decimal separator is '.'). Do not reformat or re-interpret these numbers."
+
 func (p BillParsePrompt) GetOptions() langfuse.GetPromptOptions {
 	return langfuse.GetPromptOptions{Version: &p.Version}
 }

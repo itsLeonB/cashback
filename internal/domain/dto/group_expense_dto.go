@@ -45,7 +45,9 @@ type ExpenseParticipantResponse struct {
 }
 
 type NewDraftRequest struct {
-	Description string `json:"description"`
+	UserProfileID uuid.UUID `json:"-"`
+	Description   string    `json:"description"`
+	Currency      string    `json:"currency" binding:"len=3"`
 }
 
 type ExpenseParticipantsRequest struct {

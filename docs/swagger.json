@@ -2177,7 +2177,7 @@
                     {
                         "type": "string",
                         "description": "Search query",
-                        "name": "q",
+                        "name": "query",
                         "in": "query"
                     }
                 ],
@@ -3093,6 +3093,9 @@
         "dto.NewDraftRequest": {
             "type": "object",
             "properties": {
+                "currency": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 }

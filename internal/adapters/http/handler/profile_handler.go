@@ -78,7 +78,7 @@ func (ph *ProfileHandler) HandleUpdate() gin.HandlerFunc {
 // @Tags         profile
 // @Security     BearerAuth
 // @Produce      json
-// @Param        q query string false "Search query"
+// @Param        query query string false "Search query"
 // @Success      200  {object}  response.JSONResponse[[]dto.ProfileResponse]
 // @Failure      401  {object}  map[string]any
 // @Router       /profiles [get]

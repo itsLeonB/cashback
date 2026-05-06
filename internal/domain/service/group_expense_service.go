@@ -584,6 +584,9 @@ func (ges *groupExpenseServiceImpl) validate(request dto.NewGroupExpenseRequest)
 func (ges *groupExpenseServiceImpl) parseExpenseBillTextToExpenseRequest(
 	ctx context.Context, text string,
 ) (dto.NewGroupExpenseRequest, error) {
+	// 1. Pre-process and normalize numeric strings
+	normalizedText := billparse.Normalize(text)
+
 	p := billparse.ActiveBillParsePrompt
 
 	prompt, err := ges.langfuseClient.GetPrompt(ctx, p.PromptName, p.GetOptions())
@@ -591,7 +594,7 @@ func (ges *groupExpenseServiceImpl) parseExpenseBillTextToExpenseRequest(
 		return dto.NewGroupExpenseRequest{}, err
 	}
 
-	msgs, err := prompt.Compile(p.CompileVars(string(expenses.NotDetectedBill), text))
+	msgs, err := prompt.Compile(p.CompileVars(string(expenses.NotDetectedBill), normalizedText))
 	if err != nil {
 		return dto.NewGroupExpenseRequest{}, err
 	}

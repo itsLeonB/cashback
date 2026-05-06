@@ -2183,7 +2183,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Search query",
-                        "name": "q",
+                        "name": "query",
                         "in": "query"
                     }
                 ],
@@ -3099,6 +3099,9 @@ const docTemplate = `{
         "dto.NewDraftRequest": {
             "type": "object",
             "properties": {
+                "currency": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 }

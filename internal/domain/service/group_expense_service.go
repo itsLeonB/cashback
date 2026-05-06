@@ -30,7 +30,6 @@ import (
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 	"github.com/shopspring/decimal"
-	"golang.org/x/text/currency"
 )
 
 type groupExpenseServiceImpl struct {
@@ -45,6 +44,7 @@ type groupExpenseServiceImpl struct {
 	imageSvc              storage.ImageService
 	taskQueue             queue.TaskQueue
 	langfuseClient        langfuse.Client
+	profileSvc            ProfileService
 }
 
 func NewGroupExpenseService(
@@ -58,6 +58,7 @@ func NewGroupExpenseService(
 	imageSvc storage.ImageService,
 	taskQueue queue.TaskQueue,
 	langfuseClient langfuse.Client,
+	profileSvc ProfileService,
 ) GroupExpenseService {
 	return &groupExpenseServiceImpl{
 		friendshipService,
@@ -71,18 +72,29 @@ func NewGroupExpenseService(
 		imageSvc,
 		taskQueue,
 		langfuseClient,
+		profileSvc,
 	}
 }
 
-func (ges *groupExpenseServiceImpl) CreateDraft(ctx context.Context, userProfileID uuid.UUID, description string) (dto.GroupExpenseResponse, error) {
+func (ges *groupExpenseServiceImpl) CreateDraft(ctx context.Context, req dto.NewDraftRequest) (dto.GroupExpenseResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.CreateDraft")
 	defer span.End()
 
+	profile, err := ges.profileSvc.GetEntityByID(ctx, req.UserProfileID)
+	if err != nil {
+		return dto.GroupExpenseResponse{}, err
+	}
+
+	currency := req.Currency
+	if currency == "" {
+		currency = profile.HomeCurrency
+	}
+
 	newDraftExpense := expenses.GroupExpense{
-		CreatorProfileID: userProfileID,
-		Description:      description,
+		CreatorProfileID: req.UserProfileID,
+		Description:      req.Description,
 		Status:           expenses.DraftExpense,
-		Currency:         currency.IDR.String(),
+		Currency:         currency,
 	}
 
 	insertedDraftExpense, err := ges.expenseRepo.Insert(ctx, newDraftExpense)
@@ -90,7 +102,7 @@ func (ges *groupExpenseServiceImpl) CreateDraft(ctx context.Context, userProfile
 		return dto.GroupExpenseResponse{}, err
 	}
 
-	return mapper.GroupExpenseToResponse(insertedDraftExpense, userProfileID, "", false), nil
+	return mapper.GroupExpenseToResponse(insertedDraftExpense, req.UserProfileID, "", false), nil
 }
 
 func (ges *groupExpenseServiceImpl) GetAll(ctx context.Context, userProfileID uuid.UUID, ownership expenses.ExpenseOwnership, status expenses.ExpenseStatus) ([]dto.GroupExpenseResponse, error) {

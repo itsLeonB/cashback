@@ -48,7 +48,9 @@ func (geh *groupExpenseHandler) HandleCreateDraft() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return geh.groupExpenseService.CreateDraft(ctx.Request.Context(), userProfileID, req.Description)
+		req.UserProfileID = userProfileID
+
+		return geh.groupExpenseService.CreateDraft(ctx.Request.Context(), req)
 	})
 }
 

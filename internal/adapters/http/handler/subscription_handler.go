@@ -55,6 +55,25 @@ func (sh *SubscriptionHandler) HandleCreatePurchase() gin.HandlerFunc {
 	})
 }
 
+// HandlePortalSession godoc
+// @Summary      Create a Stripe billing portal session
+// @Tags         subscriptions
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {object}  response.JSONResponse[monetization.PortalSessionResponse]
+// @Failure      401  {object}  map[string]any
+// @Router       /subscriptions/portal [post]
+func (sh *SubscriptionHandler) HandlePortalSession() gin.HandlerFunc {
+	return server.Handler("SubscriptionHandler.HandlePortalSession", http.StatusOK, func(ctx *gin.Context) (any, error) {
+		profileID, err := getProfileID(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return sh.paymentSvc.CreatePortalSession(ctx.Request.Context(), profileID)
+	})
+}
+
 // HandleGetSubscribedDetails godoc
 // @Summary      Get current subscription details
 // @Tags         subscriptions

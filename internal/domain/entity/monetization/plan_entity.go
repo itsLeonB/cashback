@@ -34,6 +34,7 @@ type PlanVersion struct {
 	EffectiveFrom      time.Time
 	EffectiveTo        sql.NullTime
 	IsDefault          bool
+	StripePriceID      sql.NullString
 
 	// Relationships
 	Plan Plan

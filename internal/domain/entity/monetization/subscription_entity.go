@@ -20,14 +20,15 @@ const (
 
 type Subscription struct {
 	crud.BaseEntity
-	ProfileID          uuid.UUID
-	PlanVersionID      uuid.UUID
-	EndsAt             sql.NullTime
-	CanceledAt         sql.NullTime
-	AutoRenew          bool
-	Status             SubscriptionStatus
-	CurrentPeriodStart sql.NullTime
-	CurrentPeriodEnd   sql.NullTime
+	ProfileID              uuid.UUID
+	PlanVersionID          uuid.UUID
+	EndsAt                 sql.NullTime
+	CanceledAt             sql.NullTime
+	AutoRenew              bool
+	Status                 SubscriptionStatus
+	CurrentPeriodStart     sql.NullTime
+	CurrentPeriodEnd       sql.NullTime
+	GatewaySubscriptionID  sql.NullString
 
 	// Relationships
 	Profile     users.UserProfile

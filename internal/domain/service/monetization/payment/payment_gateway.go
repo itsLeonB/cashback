@@ -1,25 +1,39 @@
 package payment
 
 import (
-	"context"
+	"time"
 
-	"github.com/itsLeonB/cashback/internal/core/config"
-	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
+	"github.com/google/uuid"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
-	"github.com/itsLeonB/ungerr"
 )
 
 type Gateway interface {
-	Provider() string
-	CreateTransaction(ctx context.Context, payment entity.Payment) (entity.Payment, error)
-	CheckStatus(ctx context.Context, req dto.MidtransNotificationPayload) (entity.PaymentStatus, error)
+	CreateCheckoutSession(params CheckoutParams) (CheckoutResult, error)
+	HandleWebhook(payload []byte, signature string) (*WebhookEvent, error)
+	CreatePortalSession(customerID string, returnURL string) (string, error)
 }
 
-func NewGateway(cfg config.Payment) (Gateway, error) {
-	switch cfg.Gateway {
-	case "midtrans":
-		return newMidtransGateway(cfg)
-	default:
-		return nil, ungerr.Unknownf("unsupported payment gateway: %s", cfg.Gateway)
-	}
+type CheckoutParams struct {
+	Payment      entity.Payment
+	PlanVersion  entity.PlanVersion
+	CustomerID   string
+	ProfileEmail string
+	ProfileID    uuid.UUID
+	SuccessURL   string
+	CancelURL    string
+}
+
+type CheckoutResult struct {
+	CheckoutURL       string
+	GatewayCustomerID string
+	GatewaySessionID  string
+}
+
+type WebhookEvent struct {
+	Type           string // "payment_success", "payment_failed", "subscription_canceled"
+	GatewayEventID string
+	SubscriptionID uuid.UUID
+	GatewaySubID   string
+	PeriodStart    time.Time
+	PeriodEnd      time.Time
 }

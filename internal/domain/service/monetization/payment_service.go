@@ -8,11 +8,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/config"
-	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
-	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
+	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	mapper "github.com/itsLeonB/cashback/internal/domain/mapper/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization/payment"
 	"github.com/itsLeonB/ezutil/v2"
@@ -22,8 +21,8 @@ import (
 
 type PaymentService interface {
 	NewPurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error)
-	HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error
-	MakePayment(ctx context.Context, subscriptionID uuid.UUID) (dto.PaymentResponse, error)
+	HandleWebhook(ctx context.Context, payload []byte, signature string) error
+	CreatePortalSession(ctx context.Context, profileID uuid.UUID) (dto.PortalSessionResponse, error)
 
 	// Admin
 	GetList(ctx context.Context) ([]dto.PaymentResponse, error)
@@ -36,23 +35,31 @@ func NewPaymentService(
 	gateway payment.Gateway,
 	transactor crud.Transactor,
 	paymentRepo crud.Repository[entity.Payment],
-	taskQueue queue.TaskQueue,
+	profileRepo crud.Repository[users.UserProfile],
+	userGetter UserGetter,
 	subscriptionSvc SubscriptionService,
 ) *paymentService {
 	return &paymentService{
-		gateway,
-		transactor,
-		paymentRepo,
-		taskQueue,
-		subscriptionSvc,
+		gateway:         gateway,
+		transactor:      transactor,
+		paymentRepo:     paymentRepo,
+		profileRepo:     profileRepo,
+		userGetter:      userGetter,
+		subscriptionSvc: subscriptionSvc,
 	}
+}
+
+// UserGetter retrieves a user by ID (avoids circular import with service package).
+type UserGetter interface {
+	GetByID(ctx context.Context, id uuid.UUID) (users.User, error)
 }
 
 type paymentService struct {
 	gateway         payment.Gateway
 	transactor      crud.Transactor
 	paymentRepo     crud.Repository[entity.Payment]
-	taskQueue       queue.TaskQueue
+	profileRepo     crud.Repository[users.UserProfile]
+	userGetter      UserGetter
 	subscriptionSvc SubscriptionService
 }
 
@@ -76,219 +83,232 @@ func (ps *paymentService) NewPurchase(ctx context.Context, req dto.PurchaseSubsc
 
 	var resp dto.PaymentResponse
 	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		paymentRequest, err := ps.subscriptionSvc.CreateNew(ctx, req)
+		paymentRequest, planVersion, err := ps.subscriptionSvc.CreateNew(ctx, req)
 		if err != nil {
 			return err
 		}
 
-		resp, err = ps.create(ctx, paymentRequest)
-		return err
-	})
-	return resp, err
-}
-
-func (ps *paymentService) create(ctx context.Context, req dto.NewPaymentRequest) (dto.PaymentResponse, error) {
-	newPayment := entity.Payment{
-		SubscriptionID: req.SubscriptionID,
-		Amount:         req.Amount,
-		Currency:       req.Currency,
-		Status:         entity.PendingPayment,
-		Gateway:        ps.gateway.Provider(),
-		ExpiredAt: sql.NullTime{
-			Time:  time.Now().Add(24 * time.Hour),
-			Valid: true,
-		},
-	}
-
-	pendingPayment, err := ps.paymentRepo.Insert(ctx, newPayment)
-	if err != nil {
-		return dto.PaymentResponse{}, err
-	}
-
-	requestedPayment, err := ps.gateway.CreateTransaction(ctx, pendingPayment)
-	if err != nil {
-		return dto.PaymentResponse{}, err
-	}
-
-	requestedPayment, err = ps.paymentRepo.Update(ctx, requestedPayment)
-	if err != nil {
-		return dto.PaymentResponse{}, err
-	}
-
-	return mapper.PaymentToResponse(requestedPayment), nil
-}
-
-func (ps *paymentService) HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error {
-	ctx, span := otel.Tracer.Start(ctx, "PaymentService.HandleNotification")
-	defer span.End()
-
-	if err := ps.isReady(); err != nil {
-		return err
-	}
-
-	newStatus, statusErr := ps.gateway.CheckStatus(ctx, req)
-	if statusErr != nil {
-		if newStatus == "" {
-			return statusErr
+		// Get profile for email and stripe customer ID
+		profileSpec := crud.Specification[users.UserProfile]{}
+		profileSpec.Model.ID = req.ProfileID
+		profile, err := ps.profileRepo.FindFirst(ctx, profileSpec)
+		if err != nil {
+			return err
 		}
-		logger.Error(statusErr)
-	}
+		if profile.IsZero() {
+			return ungerr.NotFoundError(fmt.Sprintf("profile ID %s is not found", req.ProfileID))
+		}
 
-	return ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		id, err := ezutil.Parse[uuid.UUID](req.OrderID)
+		// Look up user email via profile's user
+		if !profile.UserID.Valid {
+			return ungerr.ForbiddenError("anonymous profiles cannot make purchases")
+		}
+		user, err := ps.userGetter.GetByID(ctx, profile.UserID.UUID)
 		if err != nil {
 			return err
 		}
 
-		// 1. Fetch payment to extract SubscriptionID (no lock)
-		specInfo := crud.Specification[entity.Payment]{}
-		specInfo.Model.ID = id
-		specInfo.Model.Gateway = ps.gateway.Provider()
-		paymentInfo, err := ps.paymentRepo.FindFirst(ctx, specInfo)
-		if err != nil {
-			return err
-		}
-		if paymentInfo.IsZero() {
-			return ungerr.NotFoundError(fmt.Sprintf("payment with ID %s is not found", id))
+		newPayment := entity.Payment{
+			SubscriptionID: paymentRequest.SubscriptionID,
+			Amount:         paymentRequest.Amount,
+			Currency:       paymentRequest.Currency,
+			Status:         entity.PendingPayment,
+			Gateway:        "stripe",
 		}
 
-		// 2. Lock Subscription FIRST to prevent deadlocks with MakePayment
-		subs, err := ps.subscriptionSvc.GetByID(ctx, paymentInfo.SubscriptionID, true)
+		pendingPayment, err := ps.paymentRepo.Insert(ctx, newPayment)
 		if err != nil {
 			return err
 		}
 
-		// 3. Lock Payment
-		specUpdate := specInfo
-		specUpdate.ForUpdate = true
-		payment, err := ps.paymentRepo.FindFirst(ctx, specUpdate)
-		if err != nil {
-			return err
-		}
-		if !payment.IsSettleable() || newStatus == payment.Status {
-			return nil
-		}
-
-		startsAt, endsAt := subs.ContinuedPeriods()
-
-		if err = ps.updatePaymentStatus(ctx, payment, newStatus, statusErr, startsAt, endsAt); err != nil {
-			return err
-		}
-
-		return ps.updateSubscriptionStatus(ctx, subs, newStatus, startsAt, endsAt)
-	})
-}
-
-func (ps *paymentService) updateSubscriptionStatus(
-	ctx context.Context,
-	subs entity.Subscription,
-	newStatus entity.PaymentStatus,
-	startsAt, endsAt time.Time,
-) error {
-	switch newStatus {
-	case entity.PaidPayment:
-		subs.Status = entity.SubscriptionActive
-		subs.CurrentPeriodStart = sql.NullTime{Time: startsAt, Valid: true}
-		subs.CurrentPeriodEnd = sql.NullTime{Time: endsAt, Valid: true}
-		return ps.subscriptionSvc.Save(ctx, subs)
-	case entity.ErrorPayment, entity.CanceledPayment, entity.ExpiredPayment:
-		if subs.Status == entity.SubscriptionIncompletePayment {
-			subs.Status = entity.SubscriptionCanceled
-			return ps.subscriptionSvc.Save(ctx, subs)
-		}
-	}
-	return nil
-}
-
-func (ps *paymentService) MakePayment(ctx context.Context, subscriptionID uuid.UUID) (dto.PaymentResponse, error) {
-	ctx, span := otel.Tracer.Start(ctx, "PaymentService.MakePayment")
-	defer span.End()
-
-	if err := ps.isReady(); err != nil {
-		return dto.PaymentResponse{}, err
-	}
-
-	var resp dto.PaymentResponse
-	err := ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		subscription, err := ps.subscriptionSvc.GetByID(ctx, subscriptionID, true)
+		result, err := ps.gateway.CreateCheckoutSession(payment.CheckoutParams{
+			Payment:      pendingPayment,
+			PlanVersion:  planVersion,
+			CustomerID:   profile.StripeCustomerID.String,
+			ProfileEmail: user.Email,
+			ProfileID:    req.ProfileID,
+			SuccessURL:   config.Global.SuccessURL,
+			CancelURL:    config.Global.CancelURL,
+		})
 		if err != nil {
 			return err
 		}
 
-		if subscription.Status == entity.SubscriptionCanceled {
-			return ungerr.ForbiddenError("cannot make payment for canceled subscription")
-		}
-
-		// Check for existing pending/processing payments
-		spec := crud.Specification[entity.Payment]{}
-		spec.Model.SubscriptionID = subscriptionID
-		payments, err := ps.paymentRepo.FindAll(ctx, spec)
+		pendingPayment.GatewayTransactionID = sql.NullString{String: result.GatewaySessionID, Valid: true}
+		pendingPayment, err = ps.paymentRepo.Update(ctx, pendingPayment)
 		if err != nil {
 			return err
 		}
 
-		for _, p := range payments {
-			if p.Status == entity.PendingPayment || p.Status == entity.ProcessingPayment {
-				// We found an incomplete payment
-				if p.ExpiredAt.Valid && p.ExpiredAt.Time.Before(time.Now()) {
-					// It's expired, mark it as such to free up the unique constraint
-					p.Status = entity.ExpiredPayment
-					if _, err := ps.paymentRepo.Update(ctx, p); err != nil {
-						return err
-					}
-				} else {
-					// It's still valid, return idempotently
-					resp = mapper.PaymentToResponse(p)
-					return nil
-				}
+		// Persist stripe customer ID if new
+		if !profile.StripeCustomerID.Valid && result.GatewayCustomerID != "" {
+			profile.StripeCustomerID = sql.NullString{String: result.GatewayCustomerID, Valid: true}
+			if _, err := ps.profileRepo.Update(ctx, profile); err != nil {
+				return err
 			}
 		}
 
-		req := dto.NewPaymentRequest{
-			SubscriptionID: subscriptionID,
-			Currency:       subscription.PlanVersion.PriceCurrency,
-			Amount:         subscription.PlanVersion.PriceAmount,
-		}
-
-		resp, err = ps.create(ctx, req)
-		return err
+		paymentResp := mapper.PaymentToResponse(pendingPayment)
+		paymentResp.CheckoutURL = result.CheckoutURL
+		resp = paymentResp
+		return nil
 	})
 	return resp, err
 }
 
-func (ps *paymentService) updatePaymentStatus(
-	ctx context.Context,
-	payment entity.Payment,
-	newStatus entity.PaymentStatus,
-	statusErr error,
-	startsAt, endsAt time.Time,
-) error {
-	payment.Status = newStatus
+func (ps *paymentService) HandleWebhook(ctx context.Context, payload []byte, signature string) error {
+	ctx, span := otel.Tracer.Start(ctx, "PaymentService.HandleWebhook")
+	defer span.End()
 
-	if newStatus == entity.ErrorPayment && statusErr != nil {
-		payment.FailureReason = sql.NullString{
-			String: statusErr.Error(),
-			Valid:  true,
+	event, err := ps.gateway.HandleWebhook(payload, signature)
+	if err != nil {
+		return err
+	}
+	if event == nil {
+		return nil
+	}
+
+	// Idempotency check
+	spec := crud.Specification[entity.Payment]{}
+	spec.Model.GatewayEventID = sql.NullString{String: event.GatewayEventID, Valid: true}
+	existing, err := ps.paymentRepo.FindFirst(ctx, spec)
+	if err != nil {
+		return err
+	}
+	if !existing.IsZero() {
+		return nil
+	}
+
+	return ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		switch event.Type {
+		case "payment_success":
+			return ps.handlePaymentSuccess(ctx, event)
+		case "payment_failed":
+			return ps.handlePaymentFailed(ctx, event)
+		case "subscription_canceled":
+			return ps.handleSubscriptionCanceled(ctx, event)
+		}
+		return nil
+	})
+}
+
+func (ps *paymentService) handlePaymentSuccess(ctx context.Context, event *payment.WebhookEvent) error {
+	ctx, span := otel.Tracer.Start(ctx, "PaymentService.handlePaymentSuccess")
+	defer span.End()
+
+	sub, err := ps.subscriptionSvc.GetByID(ctx, event.SubscriptionID, true)
+	if err != nil {
+		return err
+	}
+
+	// Find pending payment for this subscription
+	spec := crud.Specification[entity.Payment]{}
+	spec.Model.SubscriptionID = event.SubscriptionID
+	spec.Model.Status = entity.PendingPayment
+	spec.ForUpdate = true
+	p, err := ps.paymentRepo.FindFirst(ctx, spec)
+	if err != nil {
+		return err
+	}
+	if p.IsZero() {
+		// No pending payment, might be a renewal — create a record
+		p = entity.Payment{
+			SubscriptionID: event.SubscriptionID,
+			Amount:         sub.PlanVersion.PriceAmount,
+			Currency:       sub.PlanVersion.PriceCurrency,
+			Gateway:        "stripe",
+		}
+		p, err = ps.paymentRepo.Insert(ctx, p)
+		if err != nil {
+			return err
 		}
 	}
 
-	if newStatus == entity.PaidPayment {
-		payment.PaidAt = sql.NullTime{
-			Time:  time.Now(),
-			Valid: true,
-		}
-		payment.StartsAt = sql.NullTime{
-			Time:  startsAt,
-			Valid: true,
-		}
-		payment.EndsAt = sql.NullTime{
-			Time:  endsAt,
-			Valid: true,
-		}
+	now := time.Now()
+	p.Status = entity.PaidPayment
+	p.PaidAt = sql.NullTime{Time: now, Valid: true}
+	p.GatewayEventID = sql.NullString{String: event.GatewayEventID, Valid: true}
+	p.GatewaySubscriptionID = sql.NullString{String: event.GatewaySubID, Valid: true}
+
+	periodStart := event.PeriodStart
+	periodEnd := event.PeriodEnd
+	if periodStart.IsZero() {
+		periodStart = now
+	}
+	if periodEnd.IsZero() {
+		_, periodEnd = sub.ContinuedPeriods()
 	}
 
-	_, err := ps.paymentRepo.Update(ctx, payment)
-	return err
+	p.StartsAt = sql.NullTime{Time: periodStart, Valid: true}
+	p.EndsAt = sql.NullTime{Time: periodEnd, Valid: true}
+
+	if _, err := ps.paymentRepo.Update(ctx, p); err != nil {
+		return err
+	}
+
+	sub.Status = entity.SubscriptionActive
+	sub.CurrentPeriodStart = sql.NullTime{Time: periodStart, Valid: true}
+	sub.CurrentPeriodEnd = sql.NullTime{Time: periodEnd, Valid: true}
+
+	if event.GatewaySubID != "" {
+		sub.GatewaySubscriptionID = sql.NullString{String: event.GatewaySubID, Valid: true}
+	}
+
+	return ps.subscriptionSvc.Save(ctx, sub)
+}
+
+func (ps *paymentService) handlePaymentFailed(ctx context.Context, event *payment.WebhookEvent) error {
+	ctx, span := otel.Tracer.Start(ctx, "PaymentService.handlePaymentFailed")
+	defer span.End()
+
+	sub, err := ps.subscriptionSvc.GetByID(ctx, event.SubscriptionID, true)
+	if err != nil {
+		return err
+	}
+
+	sub.Status = entity.SubscriptionPastDuePayment
+
+	return ps.subscriptionSvc.Save(ctx, sub)
+}
+
+func (ps *paymentService) handleSubscriptionCanceled(ctx context.Context, event *payment.WebhookEvent) error {
+	ctx, span := otel.Tracer.Start(ctx, "PaymentService.handleSubscriptionCanceled")
+	defer span.End()
+
+	sub, err := ps.subscriptionSvc.GetByID(ctx, event.SubscriptionID, true)
+	if err != nil {
+		return err
+	}
+
+	sub.Status = entity.SubscriptionCanceled
+	sub.CanceledAt = sql.NullTime{Time: time.Now(), Valid: true}
+
+	return ps.subscriptionSvc.Save(ctx, sub)
+}
+
+func (ps *paymentService) CreatePortalSession(ctx context.Context, profileID uuid.UUID) (dto.PortalSessionResponse, error) {
+	ctx, span := otel.Tracer.Start(ctx, "PaymentService.CreatePortalSession")
+	defer span.End()
+
+	profileSpec := crud.Specification[users.UserProfile]{}
+	profileSpec.Model.ID = profileID
+	profile, err := ps.profileRepo.FindFirst(ctx, profileSpec)
+	if err != nil {
+		return dto.PortalSessionResponse{}, err
+	}
+	if profile.IsZero() {
+		return dto.PortalSessionResponse{}, ungerr.NotFoundError(fmt.Sprintf("profile ID %s not found", profileID))
+	}
+	if !profile.StripeCustomerID.Valid {
+		return dto.PortalSessionResponse{}, ungerr.NotFoundError("no stripe customer found for this profile")
+	}
+
+	url, err := ps.gateway.CreatePortalSession(profile.StripeCustomerID.String, config.Global.SuccessURL)
+	if err != nil {
+		return dto.PortalSessionResponse{}, err
+	}
+
+	return dto.PortalSessionResponse{PortalURL: url}, nil
 }
 
 func (ps *paymentService) GetList(ctx context.Context) ([]dto.PaymentResponse, error) {

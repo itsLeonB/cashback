@@ -10,11 +10,12 @@ import (
 
 type UserProfile struct {
 	crud.BaseEntity
-	UserID       uuid.NullUUID
-	Name         string
-	Avatar       string
-	HomeCurrency string
-	OnboardedAt  sql.NullTime
+	UserID           uuid.NullUUID
+	Name             string
+	Avatar           string
+	HomeCurrency     string
+	OnboardedAt      sql.NullTime
+	StripeCustomerID sql.NullString
 
 	// Relationships
 	RelatedRealProfile  RelatedProfile                `gorm:"foreignKey:AnonProfileID"`

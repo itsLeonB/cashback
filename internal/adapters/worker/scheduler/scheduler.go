@@ -7,20 +7,18 @@ import (
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	"github.com/itsLeonB/cashback/internal/domain/service/monetization"
 	"github.com/itsLeonB/cashback/internal/provider"
 	"github.com/itsLeonB/ungerr"
 	"github.com/robfig/cron/v3"
 )
 
 type Scheduler struct {
-	billSvc         service.ExpenseBillService
-	subscriptionSvc monetization.SubscriptionService
-	cron            *cron.Cron
+	billSvc service.ExpenseBillService
+	cron    *cron.Cron
 }
 
 func Setup(providers *provider.Providers) (*Scheduler, error) {
-	s := &Scheduler{providers.Services.ExpenseBill, providers.Services.Subscription, cron.New()}
+	s := &Scheduler{providers.Services.ExpenseBill, cron.New()}
 	schedules := s.getSchedules()
 
 	var err error

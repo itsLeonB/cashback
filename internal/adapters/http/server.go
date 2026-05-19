@@ -23,7 +23,7 @@ func Setup(configs config.Config) (*httpserver.Server, func(), error) {
 		}
 	}
 
-	gin.SetMode(configs.App.Env)
+	gin.SetMode(configs.Env)
 	r := gin.New()
 	r.HandleMethodNotAllowed = true
 

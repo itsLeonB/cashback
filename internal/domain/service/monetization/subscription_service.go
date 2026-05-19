@@ -8,14 +8,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
-	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	mapper "github.com/itsLeonB/cashback/internal/domain/mapper/monetization"
-	"github.com/itsLeonB/cashback/internal/domain/message"
-	repository "github.com/itsLeonB/cashback/internal/domain/repository/monetization"
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
@@ -35,31 +31,26 @@ type SubscriptionService interface {
 	// Internal
 	AttachDefaultSubscription(ctx context.Context, profileID uuid.UUID) error
 	GetCurrentSubscription(ctx context.Context, profileID uuid.UUID, isActive bool) (entity.Subscription, error)
-	CreateNew(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.NewPaymentRequest, error)
+	CreateNew(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.NewPaymentRequest, entity.PlanVersion, error)
 	GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (entity.Subscription, error)
-	UpdatePastDues(ctx context.Context) error
-	PublishSubscriptionDueNotifications(ctx context.Context) error
 	Save(ctx context.Context, sub entity.Subscription) error
 }
 
 type subscriptionService struct {
 	transactor       crud.Transactor
-	subscriptionRepo repository.SubscriptionRepository
+	subscriptionRepo crud.Repository[entity.Subscription]
 	planVersionRepo  crud.Repository[entity.PlanVersion]
-	taskQueue        queue.TaskQueue
 }
 
 func NewSubscriptionService(
 	transactor crud.Transactor,
-	repo repository.SubscriptionRepository,
+	repo crud.Repository[entity.Subscription],
 	planVersionRepo crud.Repository[entity.PlanVersion],
-	taskQueue queue.TaskQueue,
 ) *subscriptionService {
 	return &subscriptionService{
 		transactor,
 		repo,
 		planVersionRepo,
-		taskQueue,
 	}
 }
 
@@ -250,16 +241,18 @@ func (ss *subscriptionService) GetCurrentSubscription(ctx context.Context, profi
 	return entity.Subscription{}, nil
 }
 
-func (ss *subscriptionService) CreateNew(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.NewPaymentRequest, error) {
+func (ss *subscriptionService) CreateNew(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.NewPaymentRequest, entity.PlanVersion, error) {
 	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.CreateNew")
 	defer span.End()
 
 	var resp dto.NewPaymentRequest
+	var planVersion entity.PlanVersion
 	err := ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		planVerSpec := crud.Specification[entity.PlanVersion]{}
 		planVerSpec.Model.ID = req.PlanVersionID
 		planVerSpec.Model.PlanID = req.PlanID
-		planVersion, err := ss.planVersionRepo.FindFirst(ctx, planVerSpec)
+		var err error
+		planVersion, err = ss.planVersionRepo.FindFirst(ctx, planVerSpec)
 		if err != nil {
 			return err
 		}
@@ -308,7 +301,7 @@ func (ss *subscriptionService) CreateNew(ctx context.Context, req dto.PurchaseSu
 
 		return nil
 	})
-	return resp, err
+	return resp, planVersion, err
 }
 
 func (ss *subscriptionService) GetSubscribedDetails(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error) {
@@ -339,40 +332,6 @@ func (ss *subscriptionService) GetByID(ctx context.Context, id uuid.UUID, forUpd
 		return entity.Subscription{}, ungerr.NotFoundError("subscription is not found")
 	}
 	return subscription, nil
-}
-
-func (ss *subscriptionService) UpdatePastDues(ctx context.Context) error {
-	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.UpdatePastDues")
-	defer span.End()
-
-	return ss.subscriptionRepo.UpdatePastDues(ctx)
-}
-
-func (ss *subscriptionService) PublishSubscriptionDueNotifications(ctx context.Context) error {
-	ctx, span := otel.Tracer.Start(ctx, "SubscriptionService.PublishSubscriptionDueNotifications")
-	defer span.End()
-
-	subscriptions, err := ss.subscriptionRepo.FindNearingDueDate(ctx)
-	if err != nil {
-		return err
-	}
-
-	userIDs := ezutil.MapSlice(subscriptions, func(sub entity.Subscription) uuid.UUID {
-		return sub.Profile.UserID.UUID
-	})
-
-	if len(userIDs) == 0 {
-		logger.Infof("no subscriptions nearing payment due date")
-		return nil
-	}
-
-	logger.Infof("%d subscriptions nearing payment due date", len(userIDs))
-
-	msg := message.SubscriptionNearingDue{
-		UserIDs: userIDs,
-	}
-
-	return ss.taskQueue.Enqueue(ctx, msg)
 }
 
 func (ss *subscriptionService) Save(ctx context.Context, sub entity.Subscription) error {

@@ -15,15 +15,5 @@ func (s *Scheduler) getSchedules() []scheduleConfig {
 			jobFn:    s.billSvc.Cleanup,
 			jobName:  "expense bill cleanup",
 		},
-		{
-			cronSpec: "0 12 * * *",
-			jobFn:    s.subscriptionSvc.UpdatePastDues,
-			jobName:  "past-due subscription updates",
-		},
-		{
-			cronSpec: "0 12 * * *",
-			jobFn:    s.subscriptionSvc.PublishSubscriptionDueNotifications,
-			jobName:  "publish nearing due-date subscription notification",
-		},
 	}
 }

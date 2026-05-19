@@ -5,7 +5,6 @@ import (
 
 	appembed "github.com/itsLeonB/cashback"
 	"github.com/itsLeonB/cashback/internal/core/config"
-	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/cashback/internal/domain/service/fee"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization"
@@ -60,19 +59,17 @@ func ProvideServices(
 	appConfig := config.Global.App
 	paymentConfig := config.Global.Payment
 
-	paymentGateway, err := payment.NewGateway(paymentConfig)
-	if err != nil {
-		logger.Error(err)
-	}
+	paymentGateway := payment.NewGateway(paymentConfig)
 
-	subs := monetization.NewSubscriptionService(repos.Transactor, repos.Subscription, repos.PlanVersion, coreSvc.Queue)
-	payment := monetization.NewPaymentService(paymentGateway, repos.Transactor, repos.Payment, coreSvc.Queue, subs)
+	subs := monetization.NewSubscriptionService(repos.Transactor, repos.Subscription, repos.PlanVersion)
 	subsLimit := service.NewSubscriptionLimitService(subs, repos.ExpenseBill)
 
 	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)
 	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile, subs, subsLimit)
 	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken, coreSvc.Mail)
 	session := service.NewSessionService(jwt, user, repos.Transactor, repos.Session, repos.RefreshToken)
+
+	paymentSvc := monetization.NewPaymentService(paymentGateway, repos.Transactor, repos.Payment, repos.Profile, user, subs)
 
 	friendship := service.NewFriendshipService(repos.Transactor, repos.Friendship, profile)
 	friendReq := service.NewFriendshipRequestService(repos.Transactor, friendship, profile, repos.FriendshipRequest, coreSvc.Queue)
@@ -107,7 +104,7 @@ func ProvideServices(
 		Plan:         monetization.NewPlanService(repos.Transactor, repos.Plan, repos.PlanVersion),
 		PlanVersion:  monetization.NewPlanVersionService(repos.Transactor, repos.PlanVersion),
 		Subscription: subs,
-		Payment:      payment,
+		Payment:      paymentSvc,
 
 		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense, coreSvc.Queue),
 		PushNotification: pushNotification,

@@ -1,9 +1,10 @@
 package config
 
 type Payment struct {
-	Gateway   string `default:"midtrans"`
-	ServerKey string `split_words:"true" required:"true"`
-	Env       string `default:"sandbox"`
+	ServerKey     string `split_words:"true" required:"true"`
+	WebhookSecret string `split_words:"true" required:"true"`
+	SuccessURL    string `split_words:"true" required:"true"`
+	CancelURL     string `split_words:"true" required:"true"`
 }
 
 func (Payment) Prefix() string {

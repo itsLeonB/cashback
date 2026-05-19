@@ -29,14 +29,11 @@ type PaymentResponse struct {
 	GatewayEventID        string          `json:"gatewayEventId,omitzero"`
 	PaidAt                time.Time       `json:"paidAt,omitzero"`
 	ExpiredAt             time.Time       `json:"expiredAt,omitzero"`
+	CheckoutURL           string          `json:"checkoutUrl,omitempty"`
 }
 
-type MidtransNotificationPayload struct {
-	OrderID       string `json:"order_id" binding:"required"`
-	StatusCode    string `json:"status_code" binding:"required"`
-	GrossAmount   string `json:"gross_amount" binding:"required"`
-	SignatureKey  string `json:"signature_key" binding:"required"`
-	StatusMessage string `json:"status_message"`
+type PortalSessionResponse struct {
+	PortalURL string `json:"portalUrl"`
 }
 
 type UpdatePaymentRequest struct {

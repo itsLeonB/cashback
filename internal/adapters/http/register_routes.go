@@ -4,12 +4,12 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/itsLeonB/cashback/docs"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler"
 	adminHandler "github.com/itsLeonB/cashback/internal/adapters/http/handler/admin"
 	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
 	"github.com/itsLeonB/cashback/internal/adapters/http/routes"
 	"github.com/itsLeonB/cashback/internal/core/config"
-	_ "github.com/itsLeonB/cashback/docs"
 	"github.com/itsLeonB/cashback/internal/provider"
 	"github.com/itsLeonB/cashback/internal/provider/admin"
 	"github.com/kroma-labs/sentinel-go/httpserver"
@@ -27,7 +27,7 @@ func RegisterRoutes(router *gin.Engine, configs config.Config, services *provide
 
 	sentinelGin.RegisterHealth(router, httpserver.NewHealthHandler())
 
-	if configs.App.Env != "release" {
+	if configs.Env != "release" {
 		sentinelGin.RegisterPprof(router, httpserver.DefaultPprofConfig())
 		routes.RegisterTestRoutes(router)
 	}

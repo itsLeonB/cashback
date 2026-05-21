@@ -172,38 +172,61 @@ func (ps *paymentService) HandleWebhook(ctx context.Context, payload []byte, sig
 		return nil
 	}
 
-	// Idempotency check
-	spec := crud.Specification[entity.Payment]{}
-	spec.Model.GatewayEventID = sql.NullString{String: event.GatewayEventID, Valid: true}
-	existing, err := ps.paymentRepo.FindFirst(ctx, spec)
-	if err != nil {
-		return err
-	}
-	if !existing.IsZero() {
-		return nil
+	// Idempotency check (only for payment-related events)
+	if event.Type == "payment_success" || event.Type == "payment_failed" || event.Type == "subscription_canceled" {
+		spec := crud.Specification[entity.Payment]{}
+		spec.Model.GatewayEventID = sql.NullString{String: event.GatewayEventID, Valid: true}
+		existing, err := ps.paymentRepo.FindFirst(ctx, spec)
+		if err != nil {
+			return err
+		}
+		if !existing.IsZero() {
+			return nil
+		}
 	}
 
+	return ps.updateSubscriptionByEvent(ctx, event)
+}
+
+func (ps *paymentService) updateSubscriptionByEvent(ctx context.Context, event *payment.WebhookEvent) error {
 	return ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		sub, err := ps.subscriptionSvc.GetByID(ctx, event.SubscriptionID, true)
+		if err != nil {
+			return err
+		}
+
 		switch event.Type {
 		case "payment_success":
-			return ps.handlePaymentSuccess(ctx, event)
+			sub, err = ps.handlePaymentSuccess(ctx, event, sub)
 		case "payment_failed":
-			return ps.handlePaymentFailed(ctx, event)
+			sub.Status = entity.SubscriptionPastDuePayment
+
 		case "subscription_canceled":
-			return ps.handleSubscriptionCanceled(ctx, event)
+			sub.Status = entity.SubscriptionCanceled
+			if !sub.CanceledAt.Valid {
+				sub.CanceledAt = sql.NullTime{Time: time.Now(), Valid: true}
+			}
+
+		case "subscription_scheduled_cancel":
+			sub.CanceledAt = sql.NullTime{Time: event.CancelAt, Valid: true}
+			sub.EndsAt = sql.NullTime{Time: event.CancelAt, Valid: true}
+
+		case "subscription_reactivated":
+			sub.CanceledAt = sql.NullTime{}
+			sub.EndsAt = sql.NullTime{}
+
 		}
-		return nil
+		if err != nil {
+			return err
+		}
+
+		return ps.subscriptionSvc.Save(ctx, sub)
 	})
 }
 
-func (ps *paymentService) handlePaymentSuccess(ctx context.Context, event *payment.WebhookEvent) error {
+func (ps *paymentService) handlePaymentSuccess(ctx context.Context, event *payment.WebhookEvent, sub entity.Subscription) (entity.Subscription, error) {
 	ctx, span := otel.Tracer.Start(ctx, "PaymentService.handlePaymentSuccess")
 	defer span.End()
-
-	sub, err := ps.subscriptionSvc.GetByID(ctx, event.SubscriptionID, true)
-	if err != nil {
-		return err
-	}
 
 	// Find pending payment for this subscription
 	spec := crud.Specification[entity.Payment]{}
@@ -212,7 +235,7 @@ func (ps *paymentService) handlePaymentSuccess(ctx context.Context, event *payme
 	spec.ForUpdate = true
 	p, err := ps.paymentRepo.FindFirst(ctx, spec)
 	if err != nil {
-		return err
+		return entity.Subscription{}, err
 	}
 	if p.IsZero() {
 		// No pending payment, might be a renewal — create a record
@@ -224,7 +247,7 @@ func (ps *paymentService) handlePaymentSuccess(ctx context.Context, event *payme
 		}
 		p, err = ps.paymentRepo.Insert(ctx, p)
 		if err != nil {
-			return err
+			return entity.Subscription{}, err
 		}
 	}
 
@@ -247,7 +270,7 @@ func (ps *paymentService) handlePaymentSuccess(ctx context.Context, event *payme
 	p.EndsAt = sql.NullTime{Time: periodEnd, Valid: true}
 
 	if _, err := ps.paymentRepo.Update(ctx, p); err != nil {
-		return err
+		return entity.Subscription{}, err
 	}
 
 	sub.Status = entity.SubscriptionActive
@@ -258,36 +281,7 @@ func (ps *paymentService) handlePaymentSuccess(ctx context.Context, event *payme
 		sub.GatewaySubscriptionID = sql.NullString{String: event.GatewaySubID, Valid: true}
 	}
 
-	return ps.subscriptionSvc.Save(ctx, sub)
-}
-
-func (ps *paymentService) handlePaymentFailed(ctx context.Context, event *payment.WebhookEvent) error {
-	ctx, span := otel.Tracer.Start(ctx, "PaymentService.handlePaymentFailed")
-	defer span.End()
-
-	sub, err := ps.subscriptionSvc.GetByID(ctx, event.SubscriptionID, true)
-	if err != nil {
-		return err
-	}
-
-	sub.Status = entity.SubscriptionPastDuePayment
-
-	return ps.subscriptionSvc.Save(ctx, sub)
-}
-
-func (ps *paymentService) handleSubscriptionCanceled(ctx context.Context, event *payment.WebhookEvent) error {
-	ctx, span := otel.Tracer.Start(ctx, "PaymentService.handleSubscriptionCanceled")
-	defer span.End()
-
-	sub, err := ps.subscriptionSvc.GetByID(ctx, event.SubscriptionID, true)
-	if err != nil {
-		return err
-	}
-
-	sub.Status = entity.SubscriptionCanceled
-	sub.CanceledAt = sql.NullTime{Time: time.Now(), Valid: true}
-
-	return ps.subscriptionSvc.Save(ctx, sub)
+	return sub, nil
 }
 
 func (ps *paymentService) CreatePortalSession(ctx context.Context, profileID uuid.UUID) (dto.PortalSessionResponse, error) {

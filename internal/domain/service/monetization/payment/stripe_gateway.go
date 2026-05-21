@@ -91,6 +91,8 @@ func (sg *stripeGateway) HandleWebhook(payload []byte, signature string) (*Webho
 		return sg.handleInvoicePaymentFailed(event)
 	case "customer.subscription.deleted":
 		return sg.handleCustomerSubscriptionCanceled(event)
+	case "customer.subscription.updated":
+		return sg.handleCustomerSubscriptionUpdated(event)
 	default:
 		return nil, ungerr.Unknownf("Stripe webhook event: %s is unhandled", event.Type)
 	}
@@ -127,6 +129,42 @@ func (sg *stripeGateway) handleCustomerSubscriptionCanceled(event stripe.Event) 
 		SubscriptionID: subID,
 		GatewaySubID:   sub.ID,
 	}, nil
+}
+
+func (sg *stripeGateway) handleCustomerSubscriptionUpdated(event stripe.Event) (*WebhookEvent, error) {
+	sub, err := ezutil.Unmarshal[stripe.Subscription](event.Data.Raw)
+	if err != nil {
+		return nil, ungerr.Wrap(err, "error parsing subscription")
+	}
+
+	subID, err := ezutil.Parse[uuid.UUID](sub.Metadata["subscription_id"])
+	if err != nil {
+		return nil, err
+	}
+
+	if sub.CancelAtPeriodEnd {
+		cancelAt := time.Unix(sub.CancelAt, 0)
+		return &WebhookEvent{
+			Type:           "subscription_scheduled_cancel",
+			GatewayEventID: event.ID,
+			SubscriptionID: subID,
+			GatewaySubID:   sub.ID,
+			CancelAt:       cancelAt,
+		}, nil
+	}
+
+	// Reactivation: cancel_at_period_end transitioned from true to false
+	if prev, ok := event.Data.PreviousAttributes["cancel_at_period_end"].(bool); ok && prev && !sub.CancelAtPeriodEnd {
+		return &WebhookEvent{
+			Type:           "subscription_reactivated",
+			GatewayEventID: event.ID,
+			SubscriptionID: subID,
+			GatewaySubID:   sub.ID,
+		}, nil
+	}
+
+	// Other subscription updates we don't care about
+	return nil, nil
 }
 
 func (sg *stripeGateway) handleInvoicePaymentFailed(event stripe.Event) (*WebhookEvent, error) {

@@ -30,10 +30,11 @@ type CheckoutResult struct {
 }
 
 type WebhookEvent struct {
-	Type           string // "payment_success", "payment_failed", "subscription_canceled"
+	Type           string // "payment_success", "payment_failed", "subscription_canceled", "subscription_scheduled_cancel", "subscription_reactivated"
 	GatewayEventID string
 	SubscriptionID uuid.UUID
 	GatewaySubID   string
 	PeriodStart    time.Time
 	PeriodEnd      time.Time
+	CancelAt       time.Time
 }

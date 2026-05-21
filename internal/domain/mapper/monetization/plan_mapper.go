@@ -28,5 +28,6 @@ func PlanVersionToResponse(pv entity.PlanVersion) dto.PlanVersionResponse {
 		EffectiveFrom:      pv.EffectiveFrom,
 		EffectiveTo:        pv.EffectiveTo.Time,
 		IsDefault:          pv.IsDefault,
+		StripePriceID:      pv.StripePriceID.String,
 	}
 }

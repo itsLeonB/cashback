@@ -729,28 +729,12 @@ definitions:
     additionalProperties:
       $ref: '#/definitions/dto.FriendBalance'
     type: object
-  monetization.MidtransNotificationPayload:
-    properties:
-      gross_amount:
-        type: string
-      order_id:
-        type: string
-      signature_key:
-        type: string
-      status_code:
-        type: string
-      status_message:
-        type: string
-    required:
-    - gross_amount
-    - order_id
-    - signature_key
-    - status_code
-    type: object
   monetization.PaymentResponse:
     properties:
       amount:
         type: number
+      checkoutUrl:
+        type: string
       createdAt:
         type: string
       currency:
@@ -808,7 +792,14 @@ definitions:
         type: number
       priceCurrency:
         type: string
+      stripePriceId:
+        type: string
       updatedAt:
+        type: string
+    type: object
+  monetization.PortalSessionResponse:
+    properties:
+      portalUrl:
         type: string
     type: object
   monetization.SubscriptionResponse:
@@ -1070,6 +1061,16 @@ definitions:
     properties:
       data:
         $ref: '#/definitions/monetization.PaymentResponse'
+      errors:
+        items: {}
+        type: array
+      pagination:
+        $ref: '#/definitions/response.Pagination'
+    type: object
+  response.JSONResponse-monetization_PortalSessionResponse:
+    properties:
+      data:
+        $ref: '#/definitions/monetization.PortalSessionResponse'
       errors:
         items: {}
         type: array
@@ -2256,33 +2257,6 @@ paths:
       summary: Mark a notification as read
       tags:
       - notifications
-  /payments/midtrans/notifications:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Midtrans notification payload
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/monetization.MidtransNotificationPayload'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Handle Midtrans payment notification
-      tags:
-      - payments
   /plans:
     get:
       produces:
@@ -2639,26 +2613,15 @@ paths:
       summary: Unsubscribe from push notifications
       tags:
       - push
-  /subscriptions/{subscriptionId}:
+  /subscriptions/portal:
     post:
-      parameters:
-      - description: Subscription ID
-        in: path
-        name: subscriptionId
-        required: true
-        type: string
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           schema:
-            $ref: '#/definitions/response.JSONResponse-monetization_PaymentResponse'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/response.JSONResponse-monetization_PortalSessionResponse'
         "401":
           description: Unauthorized
           schema:
@@ -2666,9 +2629,9 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Make a payment for a subscription
+      summary: Create a Stripe billing portal session
       tags:
-      - payments
+      - subscriptions
   /transfer-methods:
     get:
       parameters:

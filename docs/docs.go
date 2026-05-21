@@ -1804,47 +1804,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/payments/midtrans/notifications": {
-            "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "payments"
-                ],
-                "summary": "Handle Midtrans payment notification",
-                "parameters": [
-                    {
-                        "description": "Midtrans notification payload",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/monetization.MidtransNotificationPayload"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
         "/plans": {
             "get": {
                 "produces": [
@@ -2405,7 +2364,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/subscriptions/{subscriptionId}": {
+        "/subscriptions/portal": {
             "post": {
                 "security": [
                     {
@@ -2416,30 +2375,14 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payments"
+                    "subscriptions"
                 ],
-                "summary": "Make a payment for a subscription",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Subscription ID",
-                        "name": "subscriptionId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
+                "summary": "Create a Stripe billing portal session",
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/response.JSONResponse-monetization_PaymentResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.JSONResponse-monetization_PortalSessionResponse"
                         }
                     },
                     "401": {
@@ -3595,37 +3538,14 @@ const docTemplate = `{
                 "$ref": "#/definitions/dto.FriendBalance"
             }
         },
-        "monetization.MidtransNotificationPayload": {
-            "type": "object",
-            "required": [
-                "gross_amount",
-                "order_id",
-                "signature_key",
-                "status_code"
-            ],
-            "properties": {
-                "gross_amount": {
-                    "type": "string"
-                },
-                "order_id": {
-                    "type": "string"
-                },
-                "signature_key": {
-                    "type": "string"
-                },
-                "status_code": {
-                    "type": "string"
-                },
-                "status_message": {
-                    "type": "string"
-                }
-            }
-        },
         "monetization.PaymentResponse": {
             "type": "object",
             "properties": {
                 "amount": {
                     "type": "number"
+                },
+                "checkoutUrl": {
+                    "type": "string"
                 },
                 "createdAt": {
                     "type": "string"
@@ -3713,7 +3633,18 @@ const docTemplate = `{
                 "priceCurrency": {
                     "type": "string"
                 },
+                "stripePriceId": {
+                    "type": "string"
+                },
                 "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "monetization.PortalSessionResponse": {
+            "type": "object",
+            "properties": {
+                "portalUrl": {
                     "type": "string"
                 }
             }
@@ -4106,6 +4037,21 @@ const docTemplate = `{
             "properties": {
                 "data": {
                     "$ref": "#/definitions/monetization.PaymentResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {}
+                },
+                "pagination": {
+                    "$ref": "#/definitions/response.Pagination"
+                }
+            }
+        },
+        "response.JSONResponse-monetization_PortalSessionResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/monetization.PortalSessionResponse"
                 },
                 "errors": {
                     "type": "array",

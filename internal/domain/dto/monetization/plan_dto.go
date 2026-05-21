@@ -37,6 +37,7 @@ type NewPlanVersionRequest struct {
 	EffectiveFrom      time.Time       `json:"effectiveFrom" binding:"required"`
 	EffectiveTo        time.Time       `json:"effectiveTo"`
 	IsDefault          bool            `json:"isDefault"`
+	StripePriceID      string          `json:"stripePriceId"`
 }
 
 type PlanVersionResponse struct {
@@ -51,6 +52,7 @@ type PlanVersionResponse struct {
 	EffectiveFrom      time.Time       `json:"effectiveFrom"`
 	EffectiveTo        time.Time       `json:"effectiveTo,omitzero"`
 	IsDefault          bool            `json:"isDefault"`
+	StripePriceID      string          `json:"stripePriceId"`
 }
 
 type UpdatePlanVersionRequest struct {
@@ -64,4 +66,5 @@ type UpdatePlanVersionRequest struct {
 	EffectiveFrom      time.Time       `json:"effectiveFrom" binding:"required"`
 	EffectiveTo        time.Time       `json:"effectiveTo"`
 	IsDefault          bool            `json:"isDefault"`
+	StripePriceID      string          `json:"stripePriceId"`
 }

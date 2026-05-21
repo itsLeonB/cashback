@@ -59,6 +59,10 @@ func (pvs *planVersionService) Create(ctx context.Context, req dto.NewPlanVersio
 		IsDefault:          req.IsDefault,
 	}
 
+	if req.StripePriceID != "" {
+		newPlanVersion.StripePriceID = sql.NullString{String: req.StripePriceID, Valid: true}
+	}
+
 	if !req.EffectiveTo.IsZero() {
 		newPlanVersion.EffectiveTo = sql.NullTime{
 			Time:  req.EffectiveTo,
@@ -123,6 +127,11 @@ func (pvs *planVersionService) Update(ctx context.Context, req dto.UpdatePlanVer
 		planVersion.EffectiveTo = sql.NullTime{
 			Time:  req.EffectiveTo,
 			Valid: !req.EffectiveTo.IsZero(),
+		}
+
+		planVersion.StripePriceID = sql.NullString{
+			String: req.StripePriceID,
+			Valid:  req.StripePriceID != "",
 		}
 
 		updatedPlanVersion, err := pvs.planVersionRepo.Update(ctx, planVersion)

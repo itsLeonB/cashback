@@ -16,6 +16,9 @@ type PaymentHandler struct {
 
 func (ph *PaymentHandler) HandleWebhook() gin.HandlerFunc {
 	return server.Handler("PaymentHandler.HandleWebhook", http.StatusOK, func(ctx *gin.Context) (any, error) {
+		const maxWebhookBodyBytes int64 = 1 << 20 // 1 MiB
+		ctx.Request.Body = http.MaxBytesReader(ctx.Writer, ctx.Request.Body, maxWebhookBodyBytes)
+
 		payload, err := io.ReadAll(ctx.Request.Body)
 		if err != nil {
 			return nil, ungerr.Wrap(err, "error reading request body")

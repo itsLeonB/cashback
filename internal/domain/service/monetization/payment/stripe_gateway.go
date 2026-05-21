@@ -158,14 +158,27 @@ func (sg *stripeGateway) handleInvoicePaid(event stripe.Event) (*WebhookEvent, e
 		return nil, err
 	}
 
+	periodStart, periodEnd := sg.parseInvoicePeriod(inv)
+
 	return &WebhookEvent{
 		Type:           "payment_success",
 		GatewayEventID: event.ID,
 		SubscriptionID: subID,
 		GatewaySubID:   gatewaySubID,
-		PeriodStart:    time.Unix(inv.PeriodStart, 0),
-		PeriodEnd:      time.Unix(inv.PeriodEnd, 0),
+		PeriodStart:    periodStart,
+		PeriodEnd:      periodEnd,
 	}, nil
+}
+
+func (sg *stripeGateway) parseInvoicePeriod(inv stripe.Invoice) (time.Time, time.Time) {
+	if inv.Lines != nil && len(inv.Lines.Data) > 0 {
+		line := inv.Lines.Data[0]
+		if line.Period != nil && line.Period.Start > 0 && line.Period.End > 0 {
+			return time.Unix(line.Period.Start, 0), time.Unix(line.Period.End, 0)
+		}
+	}
+	// Fallback to invoice-level period
+	return time.Unix(inv.PeriodStart, 0), time.Unix(inv.PeriodEnd, 0)
 }
 
 func (sg *stripeGateway) handleCheckoutSessionCompleted(event stripe.Event) (*WebhookEvent, error) {
@@ -197,18 +210,29 @@ func (sg *stripeGateway) parseInvoiceIDs(inv stripe.Invoice) (uuid.UUID, string,
 	var err error
 
 	if inv.Parent != nil && inv.Parent.SubscriptionDetails != nil {
-		if inv.Parent.SubscriptionDetails.Subscription != nil {
-			subID, err = ezutil.Parse[uuid.UUID](inv.Parent.SubscriptionDetails.Subscription.Metadata["subscription_id"])
-			if err != nil {
-				return uuid.Nil, "", err
+		sd := inv.Parent.SubscriptionDetails
+
+		// Try expanded subscription metadata first (only if metadata is populated)
+		if sd.Subscription != nil && sd.Subscription.ID != "" {
+			gatewaySubID = sd.Subscription.ID
+			if len(sd.Subscription.Metadata) > 0 {
+				if raw := sd.Subscription.Metadata["subscription_id"]; raw != "" {
+					subID, err = ezutil.Parse[uuid.UUID](raw)
+					if err != nil {
+						return uuid.Nil, "", err
+					}
+				}
 			}
-			gatewaySubID = inv.Parent.SubscriptionDetails.Subscription.ID
-		} else if inv.Parent.SubscriptionDetails.Metadata != nil {
-			subID, err = ezutil.Parse[uuid.UUID](inv.Parent.SubscriptionDetails.Metadata["subscription_id"])
-			if err != nil {
-				return uuid.Nil, "", err
+		}
+
+		// Fallback to SubscriptionDetails.Metadata if subID still not resolved
+		if subID == uuid.Nil && len(sd.Metadata) > 0 {
+			if raw := sd.Metadata["subscription_id"]; raw != "" {
+				subID, err = ezutil.Parse[uuid.UUID](raw)
+				if err != nil {
+					return uuid.Nil, "", err
+				}
 			}
-			// gatewaySubID not available from metadata-only path
 		}
 	}
 

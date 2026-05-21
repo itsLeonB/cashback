@@ -160,6 +160,10 @@ func (ps *paymentService) HandleWebhook(ctx context.Context, payload []byte, sig
 	ctx, span := otel.Tracer.Start(ctx, "PaymentService.HandleWebhook")
 	defer span.End()
 
+	if ps.gateway == nil {
+		return ungerr.Unknown("payment gateway is uninitialized")
+	}
+
 	event, err := ps.gateway.HandleWebhook(payload, signature)
 	if err != nil {
 		return err
@@ -289,6 +293,10 @@ func (ps *paymentService) handleSubscriptionCanceled(ctx context.Context, event 
 func (ps *paymentService) CreatePortalSession(ctx context.Context, profileID uuid.UUID) (dto.PortalSessionResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "PaymentService.CreatePortalSession")
 	defer span.End()
+
+	if ps.gateway == nil {
+		return dto.PortalSessionResponse{}, ungerr.Unknown("payment gateway is uninitialized")
+	}
 
 	profileSpec := crud.Specification[users.UserProfile]{}
 	profileSpec.Model.ID = profileID

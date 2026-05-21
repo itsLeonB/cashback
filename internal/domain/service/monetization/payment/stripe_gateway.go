@@ -83,7 +83,8 @@ func (sg *stripeGateway) HandleWebhook(payload []byte, signature string) (*Webho
 
 	switch event.Type {
 	case "checkout.session.completed":
-		return sg.handleCheckoutSessionCompleted(event)
+		// Ignored — invoice.paid handles payment confirmation to avoid duplicate payments
+		return nil, nil
 	case "invoice.paid":
 		return sg.handleInvoicePaid(event)
 	case "invoice.payment_failed":
@@ -179,29 +180,6 @@ func (sg *stripeGateway) parseInvoicePeriod(inv stripe.Invoice) (time.Time, time
 	}
 	// Fallback to invoice-level period
 	return time.Unix(inv.PeriodStart, 0), time.Unix(inv.PeriodEnd, 0)
-}
-
-func (sg *stripeGateway) handleCheckoutSessionCompleted(event stripe.Event) (*WebhookEvent, error) {
-	sess, err := ezutil.Unmarshal[stripe.CheckoutSession](event.Data.Raw)
-	if err != nil {
-		return nil, ungerr.Wrap(err, "error parsing checkout session")
-	}
-
-	subID, err := ezutil.Parse[uuid.UUID](sess.Metadata["subscription_id"])
-	if err != nil {
-		return nil, err
-	}
-
-	if sess.Subscription == nil {
-		return nil, ungerr.Unknown("checkout session missing subscription data")
-	}
-
-	return &WebhookEvent{
-		Type:           "payment_success",
-		GatewayEventID: event.ID,
-		SubscriptionID: subID,
-		GatewaySubID:   sess.Subscription.ID,
-	}, nil
 }
 
 func (sg *stripeGateway) parseInvoiceIDs(inv stripe.Invoice) (uuid.UUID, string, error) {

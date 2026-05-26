@@ -15,6 +15,7 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 		{
 			v1.POST("/payments/midtrans/notifications", handlers.Payment.HandleNotification())
 			v1.GET("/plans", handlers.Plan.HandleGetActive())
+			v1.GET("/public/profiles/:slug", handlers.Public.HandleGetPublicProfile())
 
 			authRoutes := v1.Group("/auth")
 			{

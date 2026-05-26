@@ -58,6 +58,7 @@ type ProfileService interface {
 	GetRealProfileID(ctx context.Context, anonProfileID uuid.UUID) (uuid.UUID, error)
 	GetEntityByID(ctx context.Context, id uuid.UUID) (users.UserProfile, error)
 	GetAssociatedIDs(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error)
+	FindBySlug(ctx context.Context, slug string) (users.UserProfile, error)
 }
 
 type FriendshipService interface {
@@ -86,6 +87,7 @@ type FriendshipRequestService interface {
 
 type FriendDetailsService interface {
 	GetDetails(ctx context.Context, profileID, friendshipID uuid.UUID) (dto.FriendDetailsResponse, error)
+	GetDetailsBySlug(ctx context.Context, slug string) (dto.FriendDetailsResponse, error)
 }
 
 type DebtService interface {

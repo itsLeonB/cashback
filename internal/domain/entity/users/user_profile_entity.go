@@ -15,6 +15,7 @@ type UserProfile struct {
 	Avatar       string
 	HomeCurrency string
 	OnboardedAt  sql.NullTime
+	Slug         sql.NullString
 
 	// Relationships
 	RelatedRealProfile  RelatedProfile                `gorm:"foreignKey:AnonProfileID"`

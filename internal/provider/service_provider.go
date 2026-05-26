@@ -85,7 +85,7 @@ func ProvideServices(
 	pushNotification := service.NewPushNotificationService(repos.PushSubscription, repos.Notification, repos.Transactor, coreSvc.WebPush)
 
 	return &Services{
-		Auth:    service.NewAuthService(jwt, repos.Transactor, user, coreSvc.Mail, appConfig.RegisterVerificationUrl, appConfig.ResetPasswordUrl, authConfig.HashCost, pushNotification, session),
+		Auth:    service.NewAuthService(jwt, repos.Transactor, user, coreSvc.Mail, appConfig.RegisterVerificationUrl, appConfig.ResetPasswordUrl, authConfig.HashCost, pushNotification, session, profile, friendship),
 		OAuth:   service.NewOAuthService(repos.Transactor, repos.OAuthAccount, coreSvc.State, user, http.DefaultClient, session),
 		Session: session,
 

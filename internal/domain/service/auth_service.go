@@ -29,6 +29,8 @@ type authServiceImpl struct {
 	resetPasswordURL string
 	pushSvc          PushNotificationService
 	sessionSvc       SessionService
+	profileSvc       ProfileService
+	friendshipSvc    FriendshipService
 }
 
 func NewAuthService(
@@ -41,6 +43,8 @@ func NewAuthService(
 	hashCost int,
 	pushSvc PushNotificationService,
 	sessionSvc SessionService,
+	profileSvc ProfileService,
+	friendshipSvc FriendshipService,
 ) AuthService {
 	return &authServiceImpl{
 		sekure.NewHashService(hashCost),
@@ -52,6 +56,8 @@ func NewAuthService(
 		resetPasswordURL,
 		pushSvc,
 		sessionSvc,
+		profileSvc,
+		friendshipSvc,
 	}
 }
 
@@ -105,16 +111,19 @@ func (as *authServiceImpl) executeRegistration(ctx context.Context, request dto.
 			return nil
 		}
 
-		return as.sendVerificationMail(ctx, user, as.verificationURL)
+		return as.sendVerificationMail(ctx, user, as.verificationURL, request.Slug)
 	})
 	return isVerified, err
 }
 
-func (as *authServiceImpl) sendVerificationMail(ctx context.Context, user users.User, verificationURL string) error {
+func (as *authServiceImpl) sendVerificationMail(ctx context.Context, user users.User, verificationURL string, slug string) error {
 	claims := map[string]any{
 		"id":    user.ID,
 		"email": user.Email,
 		"exp":   time.Now().Add(30 * time.Minute).Unix(),
+	}
+	if slug != "" {
+		claims["slug"] = slug
 	}
 
 	token, err := as.jwtService.CreateToken(claims)
@@ -247,10 +256,44 @@ func (as *authServiceImpl) VerifyRegistration(ctx context.Context, token string)
 			return err
 		}
 
+		// Handle slug-based profile association
+		if slug, ok := claims.Data["slug"].(string); ok && slug != "" {
+			if err := as.associateBySlug(ctx, user.Profile.ID, slug); err != nil {
+				return err
+			}
+		}
+
 		response, err = as.sessionSvc.CreateTokenAndSession(ctx, user)
 		return err
 	})
 	return response, err
+}
+
+func (as *authServiceImpl) associateBySlug(ctx context.Context, newProfileID uuid.UUID, slug string) error {
+	anonProfile, err := as.profileSvc.FindBySlug(ctx, slug)
+	if err != nil {
+		return err
+	}
+
+	// Find the owner of the anonymous profile via friendship
+	friendships, err := as.friendshipSvc.GetAll(ctx, anonProfile.ID)
+	if err != nil {
+		return err
+	}
+	if len(friendships) == 0 {
+		return fmt.Errorf("no friendship found for slug %s", slug)
+	}
+
+	ownerProfileID := friendships[0].ProfileID
+
+	// Create RelatedProfile association
+	if err := as.profileSvc.Associate(ctx, ownerProfileID, newProfileID, anonProfile.ID); err != nil {
+		return err
+	}
+
+	// Create real friendship between owner and new user
+	_, err = as.friendshipSvc.CreateReal(ctx, ownerProfileID, newProfileID)
+	return err
 }
 
 func (as *authServiceImpl) SendPasswordReset(ctx context.Context, email string) error {

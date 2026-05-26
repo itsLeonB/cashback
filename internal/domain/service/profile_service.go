@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -82,6 +83,14 @@ func (ps *profileServiceImpl) Create(ctx context.Context, request dto.NewProfile
 		insertedProfile, err := ps.profileRepo.Insert(ctx, newProfile)
 		if err != nil {
 			return err
+		}
+
+		if request.GenerateSlug {
+			insertedProfile.Slug = sql.NullString{String: util.GenerateSlug(request.Name, insertedProfile.ID), Valid: true}
+			insertedProfile, err = ps.profileRepo.Update(ctx, insertedProfile)
+			if err != nil {
+				return err
+			}
 		}
 
 		if request.UserID != uuid.Nil {
@@ -457,4 +466,20 @@ func (ps *profileServiceImpl) GetByIDs(ctx context.Context, ids []uuid.UUID) (ma
 	}
 
 	return profileMap, nil
+}
+
+func (ps *profileServiceImpl) FindBySlug(ctx context.Context, slug string) (users.UserProfile, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileService.FindBySlug")
+	defer span.End()
+
+	spec := crud.Specification[users.UserProfile]{}
+	spec.Model.Slug = sql.NullString{String: slug, Valid: true}
+	profile, err := ps.profileRepo.FindFirst(ctx, spec)
+	if err != nil {
+		return users.UserProfile{}, err
+	}
+	if profile.IsZero() {
+		return users.UserProfile{}, ungerr.NotFoundError("profile not found")
+	}
+	return profile, nil
 }

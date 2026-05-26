@@ -32,6 +32,7 @@ type FriendDetails struct {
 	Email      string    `json:"email,omitempty"`
 	Phone      string    `json:"phone,omitempty"`
 	Avatar     string    `json:"avatar,omitempty"`
+	Slug       string    `json:"slug,omitempty"`
 	ProfileID1 uuid.UUID `json:"profileId1"`
 	ProfileID2 uuid.UUID `json:"profileId2"`
 }

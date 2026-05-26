@@ -84,12 +84,19 @@ func MapToFriendDetails(userProfileID uuid.UUID, friendship users.Friendship) (d
 
 	friendProfile := friendshipWithProfile.FriendProfile
 
+	// Get slug from the entity directly
+	_, friendEntity, err := SelectProfiles(userProfileID, friendship)
+	if err != nil {
+		return dto.FriendDetails{}, err
+	}
+
 	return dto.FriendDetails{
 		BaseDTO:    friendProfile.BaseDTO,
 		ProfileID:  friendProfile.ID,
 		Name:       friendProfile.Name,
 		Email:      friendProfile.Email,
 		Avatar:     friendProfile.Avatar,
+		Slug:       friendEntity.Slug.String,
 		Type:       string(friendship.Type),
 		ProfileID1: friendship.ProfileID1,
 		ProfileID2: friendship.ProfileID2,

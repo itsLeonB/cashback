@@ -21,6 +21,7 @@ type Handlers struct {
 	Subscription          *SubscriptionHandler
 	Payment               *PaymentHandler
 	Plan                  *PlanHandler
+	Public                *PublicHandler
 }
 
 func ProvideHandlers(services *provider.Services) *Handlers {
@@ -41,5 +42,6 @@ func ProvideHandlers(services *provider.Services) *Handlers {
 		&SubscriptionHandler{services.Subscription, services.Payment},
 		&PaymentHandler{services.Payment},
 		&PlanHandler{services.PlanVersion},
+		NewPublicHandler(services.FriendDetails),
 	}
 }

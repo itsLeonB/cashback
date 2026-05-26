@@ -45,4 +45,5 @@ type NewProfileRequest struct {
 	Name         string `validate:"required,min=1,max=255"`
 	Avatar       string
 	HomeCurrency string `validate:"required,len=3"`
+	GenerateSlug bool
 }

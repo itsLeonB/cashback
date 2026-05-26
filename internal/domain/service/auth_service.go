@@ -286,14 +286,14 @@ func (as *authServiceImpl) associateBySlug(ctx context.Context, newProfileID uui
 
 	ownerProfileID := friendships[0].ProfileID
 
-	// Create RelatedProfile association
-	if err := as.profileSvc.Associate(ctx, ownerProfileID, newProfileID, anonProfile.ID); err != nil {
+	// Create real friendship between owner and new user
+	_, err = as.friendshipSvc.CreateReal(ctx, ownerProfileID, newProfileID)
+	if err != nil {
 		return err
 	}
 
-	// Create real friendship between owner and new user
-	_, err = as.friendshipSvc.CreateReal(ctx, ownerProfileID, newProfileID)
-	return err
+	// Create RelatedProfile association
+	return as.profileSvc.Associate(ctx, ownerProfileID, newProfileID, anonProfile.ID)
 }
 
 func (as *authServiceImpl) SendPasswordReset(ctx context.Context, email string) error {

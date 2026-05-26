@@ -120,9 +120,12 @@ func (us *userServiceImpl) Verify(ctx context.Context, id uuid.UUID, email strin
 			HomeCurrency: currency.IDR.String(),
 		}
 
-		if _, err = us.profileSvc.Create(ctx, profile); err != nil {
+		createdProfile, err := us.profileSvc.Create(ctx, profile)
+		if err != nil {
 			return users.User{}, err
 		}
+
+		user.Profile.ID = createdProfile.ID
 	}
 
 	user.VerifiedAt = sql.NullTime{

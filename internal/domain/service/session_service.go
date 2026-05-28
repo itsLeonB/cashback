@@ -175,6 +175,9 @@ func (ss *sessionService) createSession(ctx context.Context, userID uuid.UUID, d
 
 // createRefreshToken issues a new refresh token for a session
 func (ss *sessionService) createRefreshToken(ctx context.Context, sessionID uuid.UUID, expiresAt time.Time) (string, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SessionService.createRefreshToken")
+	defer span.End()
+
 	token, tokenHash, err := ss.generateRefreshToken()
 	if err != nil {
 		return "", err
@@ -228,6 +231,9 @@ func (ss *sessionService) findSessionByID(ctx context.Context, id uuid.UUID) (us
 
 // rotateRefreshToken safely rotates a refresh token with reuse detection
 func (ss *sessionService) rotateRefreshToken(ctx context.Context, oldToken string) (string, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SessionService.rotateRefreshToken")
+	defer span.End()
+
 	var newToken string
 
 	err := ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -236,11 +242,12 @@ func (ss *sessionService) rotateRefreshToken(ctx context.Context, oldToken strin
 			return err
 		}
 
-		// Check if token is expired
+		// Reject expired tokens
 		if time.Now().After(oldRefreshToken.ExpiresAt) {
 			return ungerr.UnauthorizedError("refresh token expired")
 		}
 
+		// Token is still valid — rotate it
 		session, err := ss.GetByID(ctx, oldRefreshToken.SessionID)
 		if err != nil {
 			return err
@@ -271,6 +278,9 @@ func (ss *sessionService) rotateRefreshToken(ctx context.Context, oldToken strin
 }
 
 func (ss *sessionService) getRefreshToken(ctx context.Context, token string) (users.RefreshToken, error) {
+	ctx, span := otel.Tracer.Start(ctx, "SessionService.getRefreshToken")
+	defer span.End()
+
 	spec := crud.Specification[users.RefreshToken]{}
 	spec.Model.TokenHash = ss.hashToken(token)
 	refreshToken, err := ss.refreshTokenRepo.FindFirst(ctx, spec)

@@ -12,10 +12,11 @@ type NewAnonymousFriendshipRequest struct {
 
 type FriendshipResponse struct {
 	BaseDTO
-	Type          string    `json:"type"`
-	ProfileID     uuid.UUID `json:"profileId"`
-	ProfileName   string    `json:"profileName"`
-	ProfileAvatar string    `json:"profileAvatar"`
+	Type                string                     `json:"type"`
+	ProfileID           uuid.UUID                  `json:"profileId"`
+	ProfileName         string                     `json:"profileName"`
+	ProfileAvatar       string                     `json:"profileAvatar"`
+	BalancesPerCurrency map[string]decimal.Decimal `json:"balancesPerCurrency,omitempty"`
 }
 
 type FriendshipWithProfile struct {

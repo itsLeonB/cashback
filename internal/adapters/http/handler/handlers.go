@@ -27,7 +27,7 @@ type Handlers struct {
 func ProvideHandlers(services *provider.Services) *Handlers {
 	return &Handlers{
 		NewAuthHandler(services.Auth, services.OAuth, services.Session),
-		NewFriendshipHandler(services.Friendship, services.FriendDetails),
+		NewFriendshipHandler(services.Friendship, services.FriendDetails, services.Debt),
 		NewFriendshipRequestHandler(services.FriendshipRequest),
 		NewProfileHandler(services.Profile),
 		NewTransferMethodHandler(services.TransferMethod),

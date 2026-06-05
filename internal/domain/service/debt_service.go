@@ -19,6 +19,7 @@ import (
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
+	"github.com/shopspring/decimal"
 	"gorm.io/datatypes"
 )
 
@@ -182,6 +183,65 @@ func (ds *debtServiceImpl) GetAllByProfileIDs(ctx context.Context, userProfileID
 
 	transactions, err := ds.debtTransactionRepository.FindAllByMultipleProfileIDs(ctx, userIDs, friendIDs)
 	return transactions, userIDs, err
+}
+
+func (ds *debtServiceImpl) GetNetBalancesByFriend(ctx context.Context, profileID uuid.UUID) (map[uuid.UUID]map[string]decimal.Decimal, error) {
+	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetNetBalancesByFriend")
+	defer span.End()
+
+	profileIDs, err := ds.profileService.GetAssociatedIDs(ctx, profileID)
+	if err != nil {
+		return nil, err
+	}
+
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs, -1, false)
+	if err != nil {
+		return nil, err
+	}
+
+	raw := mapper.NetBalanceByFriend(transactions, profileIDs)
+
+	// Consolidate anon profile IDs to their real profiles
+	counterpartyIDs := make([]uuid.UUID, 0, len(raw))
+	for id := range raw {
+		counterpartyIDs = append(counterpartyIDs, id)
+	}
+	if len(counterpartyIDs) == 0 {
+		return raw, nil
+	}
+
+	profiles, err := ds.profileService.GetByIDs(ctx, counterpartyIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	consolidated := make(map[uuid.UUID]map[string]decimal.Decimal, len(raw))
+	for cpID, currencies := range raw {
+		canonicalID := cpID
+		if p, ok := profiles[cpID]; ok && p.RealProfileID != uuid.Nil {
+			canonicalID = p.RealProfileID
+		}
+		if consolidated[canonicalID] == nil {
+			consolidated[canonicalID] = make(map[string]decimal.Decimal)
+		}
+		for cur, amt := range currencies {
+			consolidated[canonicalID][cur] = consolidated[canonicalID][cur].Add(amt)
+		}
+	}
+
+	// Remove zero-balance currencies
+	for id, currencies := range consolidated {
+		for cur, amt := range currencies {
+			if amt.IsZero() {
+				delete(consolidated[id], cur)
+			}
+		}
+		if len(currencies) == 0 {
+			delete(consolidated, id)
+		}
+	}
+
+	return consolidated, nil
 }
 
 func (ds *debtServiceImpl) GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {

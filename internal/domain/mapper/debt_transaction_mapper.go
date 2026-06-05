@@ -37,34 +37,25 @@ func calculateBalances(userAssociatedIDs []uuid.UUID, transactions []debts.DebtT
 	totalLent, totalBorrowed := decimal.Zero, decimal.Zero
 	history := make([]dto.FriendTransactionItem, 0, len(transactions))
 
-	// Create a map for quick lookup of user's associated IDs
-	userIDMap := make(map[uuid.UUID]struct{}, len(userAssociatedIDs))
-	for _, id := range userAssociatedIDs {
-		userIDMap[id] = struct{}{}
-	}
+	userIDMap := buildIDSet(userAssociatedIDs)
 
 	for _, tx := range transactions {
+		dir := classifyTransaction(tx, userIDMap)
+		if dir == 0 {
+			logger.Errorf("orphaned transaction %s", tx.ID)
+			continue
+		}
+
 		var transactionType string
 		var amount decimal.Decimal
-
-		// Check if user (or their associated profiles) is the lender or borrower
-		_, userIsLender := userIDMap[tx.LenderProfileID]
-		_, userIsBorrower := userIDMap[tx.BorrowerProfileID]
-
-		if userIsLender && !userIsBorrower {
-			// User is the lender
+		if dir > 0 {
 			transactionType = "LENT"
 			amount = tx.Amount
 			totalLent = totalLent.Add(tx.Amount)
-		} else if userIsBorrower && !userIsLender {
-			// User is the borrower
+		} else {
 			transactionType = "BORROWED"
 			amount = tx.Amount
 			totalBorrowed = totalBorrowed.Add(tx.Amount)
-		} else {
-			// Skip transactions where user is both or neither (shouldn't happen)
-			logger.Errorf("orphaned transaction %s. userIsLender: %t. userIsBorrower: %t", tx.ID, userIsLender, userIsBorrower)
-			continue
 		}
 
 		history = append(history, dto.FriendTransactionItem{
@@ -77,6 +68,29 @@ func calculateBalances(userAssociatedIDs []uuid.UUID, transactions []debts.DebtT
 	}
 
 	return totalLent, totalBorrowed, history
+}
+
+// buildIDSet creates a set for fast lookup.
+func buildIDSet(ids []uuid.UUID) map[uuid.UUID]struct{} {
+	s := make(map[uuid.UUID]struct{}, len(ids))
+	for _, id := range ids {
+		s[id] = struct{}{}
+	}
+	return s
+}
+
+// classifyTransaction returns +1 if user is lender, -1 if borrower, 0 if ambiguous.
+func classifyTransaction(tx debts.DebtTransaction, userIDSet map[uuid.UUID]struct{}) int {
+	_, userIsLender := userIDSet[tx.LenderProfileID]
+	_, userIsBorrower := userIDSet[tx.BorrowerProfileID]
+	switch {
+	case userIsLender && !userIsBorrower:
+		return 1
+	case userIsBorrower && !userIsLender:
+		return -1
+	default:
+		return 0
+	}
 }
 
 func DebtTransactionToResponse(userProfileID uuid.UUID, transaction debts.DebtTransaction, profilesByID map[uuid.UUID]dto.ProfileResponse) dto.DebtTransactionResponse {
@@ -113,4 +127,35 @@ func DebtTransactionSimpleMapper(userProfileID uuid.UUID, profilesByID map[uuid.
 	return func(transaction debts.DebtTransaction) dto.DebtTransactionResponse {
 		return DebtTransactionToResponse(userProfileID, transaction, profilesByID)
 	}
+}
+
+// NetBalanceByFriend groups transactions by counterparty and computes net balance per currency.
+// Returns map[counterpartyProfileID]map[currency]netBalance.
+func NetBalanceByFriend(transactions []debts.DebtTransaction, userAssociatedIDs []uuid.UUID) map[uuid.UUID]map[string]decimal.Decimal {
+	userIDSet := buildIDSet(userAssociatedIDs)
+
+	result := make(map[uuid.UUID]map[string]decimal.Decimal)
+	for _, tx := range transactions {
+		dir := classifyTransaction(tx, userIDSet)
+		if dir == 0 {
+			continue
+		}
+
+		var counterparty uuid.UUID
+		var amount decimal.Decimal
+		if dir > 0 {
+			counterparty = tx.BorrowerProfileID
+			amount = tx.Amount
+		} else {
+			counterparty = tx.LenderProfileID
+			amount = tx.Amount.Neg()
+		}
+
+		if result[counterparty] == nil {
+			result[counterparty] = make(map[string]decimal.Decimal)
+		}
+		result[counterparty][tx.Currency] = result[counterparty][tx.Currency].Add(amount)
+	}
+
+	return result
 }

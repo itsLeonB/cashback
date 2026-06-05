@@ -2808,6 +2808,9 @@ const docTemplate = `{
                 "profileId2": {
                     "type": "string"
                 },
+                "slug": {
+                    "type": "string"
+                },
                 "type": {
                     "type": "string"
                 },
@@ -2900,6 +2903,12 @@ const docTemplate = `{
         "dto.FriendshipResponse": {
             "type": "object",
             "properties": {
+                "balancesPerCurrency": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    }
+                },
                 "createdAt": {
                     "type": "string"
                 },

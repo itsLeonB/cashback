@@ -2802,6 +2802,9 @@
                 "profileId2": {
                     "type": "string"
                 },
+                "slug": {
+                    "type": "string"
+                },
                 "type": {
                     "type": "string"
                 },
@@ -2894,6 +2897,12 @@
         "dto.FriendshipResponse": {
             "type": "object",
             "properties": {
+                "balancesPerCurrency": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    }
+                },
                 "createdAt": {
                     "type": "string"
                 },

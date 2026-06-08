@@ -12,10 +12,6 @@ import (
 
 func withLogging[T queue.TaskMessage](taskType string, handler func(context.Context, T) error) jetstream.MessageHandler {
 	return func(msg jetstream.Msg) {
-		var tmsg T
-		ctx, span := otel.Tracer.Start(context.Background(), tmsg.Type())
-		defer span.End()
-
 		logger.Infof("received new task %s", taskType)
 
 		parsed, err := ezutil.Unmarshal[T](msg.Data())
@@ -24,6 +20,9 @@ func withLogging[T queue.TaskMessage](taskType string, handler func(context.Cont
 			_ = msg.Nak()
 			return
 		}
+
+		ctx, span := otel.Tracer.Start(context.Background(), parsed.Type())
+		defer span.End()
 
 		if err := handler(ctx, parsed); err != nil {
 			logger.Errorf("error processing %s task: %v", taskType, err)

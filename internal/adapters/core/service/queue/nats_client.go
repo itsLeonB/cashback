@@ -3,13 +3,13 @@ package queue
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/ungerr"
 	"github.com/nats-io/nats.go/jetstream"
-	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -44,15 +44,17 @@ func (nc *natsClient) Shutdown() error {
 }
 
 func (nc *natsClient) AsyncEnqueue(ctx context.Context, msg queue.TaskMessage) {
-	detached := context.Background()
-	if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
-		detached = trace.ContextWithSpan(detached, span)
-	}
+	parentSpanCtx := trace.SpanContextFromContext(ctx)
+	go func() {
+		detached, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
-	if err := nc.Enqueue(detached, msg); err != nil {
-		span := trace.SpanFromContext(detached)
-		span.SetStatus(codes.Error, "asynchronous error")
-		span.RecordError(err)
-		logger.Error(err)
-	}
+		if parentSpanCtx.IsValid() {
+			detached = trace.ContextWithSpanContext(detached, parentSpanCtx)
+		}
+
+		if err := nc.Enqueue(detached, msg); err != nil {
+			logger.Error(err)
+		}
+	}()
 }

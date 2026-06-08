@@ -45,8 +45,8 @@ func (cs *CoreServices) Shutdown() error {
 	if e := cs.Langfuse.Shutdown(); e != nil {
 		errs = errors.Join(errs, e)
 	}
-	if cs.NATSConn != nil {
-		cs.NATSConn.Close()
+	if e := cs.NATSConn.Drain(); e != nil {
+		errs = errors.Join(errs, e)
 	}
 	return errs
 }

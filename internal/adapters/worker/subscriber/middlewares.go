@@ -3,33 +3,35 @@ package subscriber
 import (
 	"context"
 
-	"github.com/hibiken/asynq"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/queue"
 	"github.com/itsLeonB/ezutil/v2"
+	"github.com/nats-io/nats.go/jetstream"
 )
 
-func withLogging[T queue.TaskMessage](taskType string, handler func(context.Context, T) error) asynq.Handler {
-	return asynq.HandlerFunc(func(ctx context.Context, t *asynq.Task) error {
+func withLogging[T queue.TaskMessage](taskType string, handler func(context.Context, T) error) jetstream.MessageHandler {
+	return func(msg jetstream.Msg) {
 		var tmsg T
-		ctx, span := otel.Tracer.Start(ctx, tmsg.Type())
+		ctx, span := otel.Tracer.Start(context.Background(), tmsg.Type())
 		defer span.End()
 
 		logger.Infof("received new task %s", taskType)
 
-		msg, err := ezutil.Unmarshal[T](t.Payload())
+		parsed, err := ezutil.Unmarshal[T](msg.Data())
 		if err != nil {
 			logger.Errorf("error processing %s task: %v", taskType, err)
-			return err
+			_ = msg.Nak()
+			return
 		}
 
-		if err := handler(ctx, msg); err != nil {
+		if err := handler(ctx, parsed); err != nil {
 			logger.Errorf("error processing %s task: %v", taskType, err)
-			return err
+			_ = msg.Nak()
+			return
 		}
 
 		logger.Infof("success processing %s task", taskType)
-		return nil
-	})
+		_ = msg.Ack()
+	}
 }

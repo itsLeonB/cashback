@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/itsLeonB/cashback/internal/adapters/core/service/store"
-	"github.com/itsLeonB/cashback/internal/core/config"
-	"github.com/itsLeonB/ungerr"
 )
 
 type StateStore interface {
@@ -15,13 +13,6 @@ type StateStore interface {
 	Shutdown() error
 }
 
-func NewStateStore() (StateStore, error) {
-	switch config.Global.StateStore {
-	case "inmemory":
-		return store.NewInMemoryStateStore(), nil
-	case "valkey":
-		return store.NewValkeyStateStore(config.Global.Valkey)
-	default:
-		return nil, ungerr.Unknownf("unimplemented state store: %s", config.Global.StateStore)
-	}
+func NewStateStore() StateStore {
+	return store.NewInMemoryStateStore()
 }

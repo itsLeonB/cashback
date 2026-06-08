@@ -21,7 +21,7 @@ type Config struct {
 	Mail
 	OAuthProviders
 	Push
-	Valkey
+	NATS
 	GoogleCreds *google.Credentials
 	Payment
 	Flag
@@ -43,8 +43,8 @@ func Load() error {
 		errs = errors.Join(errs, err)
 	}
 
-	var valkey Valkey
-	if err := envconfig.Process("VALKEY", &valkey); err != nil {
+	var nats NATS
+	if err := envconfig.Process("NATS", &nats); err != nil {
 		errs = errors.Join(errs, err)
 	}
 
@@ -119,7 +119,7 @@ func Load() error {
 		mail,
 		oAuthProviders,
 		push,
-		valkey,
+		nats,
 		googleCreds,
 		payment,
 		flag,

@@ -57,8 +57,6 @@ func ProvideCoreServices() (*CoreServices, error) {
 		return nil, err
 	}
 
-	stateStore := store.NewStateStore()
-
 	ocrClient, err := ocr.NewOCRClient()
 	if err != nil {
 		return nil, err
@@ -73,6 +71,12 @@ func ProvideCoreServices() (*CoreServices, error) {
 	if err != nil {
 		nc.Close()
 		return nil, ungerr.Wrap(err, "error creating JetStream context")
+	}
+
+	stateStore, err := store.NewStateStore(js)
+	if err != nil {
+		nc.Close()
+		return nil, err
 	}
 
 	taskQueue := adapters.NewNATSTaskQueue(js)

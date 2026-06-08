@@ -3,6 +3,8 @@ package scheduler
 import (
 	"context"
 	"errors"
+	"fmt"
+	"runtime/debug"
 
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
@@ -11,6 +13,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/provider"
 	"github.com/itsLeonB/ungerr"
 	"github.com/robfig/cron/v3"
+	"go.opentelemetry.io/otel/codes"
 )
 
 type Scheduler struct {
@@ -40,6 +43,16 @@ func (s *Scheduler) jobWrapper(jobName string, jobFn func(context.Context) error
 	return func() {
 		ctx, span := otel.Tracer.Start(context.Background(), jobName)
 		defer span.End()
+
+		defer func() {
+			if r := recover(); r != nil {
+				stack := debug.Stack()
+				err := fmt.Errorf("panic in job %s: %v\n%s", jobName, r, stack)
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "panic recovered")
+				logger.Errorf("panic in job %s: %v\n%s", jobName, r, stack)
+			}
+		}()
 
 		logger.Infof("starting %s...", jobName)
 		if err := jobFn(ctx); err != nil {

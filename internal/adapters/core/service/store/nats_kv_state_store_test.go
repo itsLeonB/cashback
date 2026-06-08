@@ -29,13 +29,20 @@ func (m *mockKV) Get(ctx context.Context, key string) (jetstream.KeyValueEntry, 
 	if _, ok := m.entries[key]; !ok {
 		return nil, jetstream.ErrKeyNotFound
 	}
-	return nil, nil
+	return &mockEntry{revision: 1}, nil
 }
 
 func (m *mockKV) Delete(ctx context.Context, key string, opts ...jetstream.KVDeleteOpt) error {
 	delete(m.entries, key)
 	return nil
 }
+
+type mockEntry struct {
+	jetstream.KeyValueEntry
+	revision uint64
+}
+
+func (e *mockEntry) Revision() uint64 { return e.revision }
 
 func TestNATSKVStateStore_Store(t *testing.T) {
 	kv := newMockKV()

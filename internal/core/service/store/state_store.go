@@ -17,7 +17,8 @@ type StateStore interface {
 }
 
 func NewStateStore(js jetstream.JetStream) (StateStore, error) {
-	if config.Global.StateStore == "nats" {
+	switch config.Global.StateStore {
+	case "nats":
 		ctx := context.Background()
 		kv, err := js.CreateOrUpdateKeyValue(ctx, jetstream.KeyValueConfig{
 			Bucket:         config.Global.StateStoreBucket,
@@ -28,7 +29,9 @@ func NewStateStore(js jetstream.JetStream) (StateStore, error) {
 			return nil, ungerr.Wrap(err, "error creating NATS KV state store bucket")
 		}
 		return store.NewNATSKVStateStore(kv), nil
+	case "inmemory":
+		return store.NewInMemoryStateStore(), nil
+	default:
+		return nil, ungerr.Unknownf("unsupported AUTH_STATE_STORE value: %q", config.Global.StateStore)
 	}
-
-	return store.NewInMemoryStateStore(), nil
 }

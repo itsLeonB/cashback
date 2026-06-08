@@ -28,7 +28,7 @@ func (s *natsKVStateStore) Store(ctx context.Context, state string, expiry time.
 
 func (s *natsKVStateStore) VerifyAndDelete(ctx context.Context, state string) error {
 	key := s.constructKey(state)
-	_, err := s.kv.Get(ctx, key)
+	entry, err := s.kv.Get(ctx, key)
 	if err != nil {
 		if errors.Is(err, jetstream.ErrKeyNotFound) {
 			return ungerr.BadRequestError("invalid state")
@@ -36,8 +36,8 @@ func (s *natsKVStateStore) VerifyAndDelete(ctx context.Context, state string) er
 		return ungerr.Wrap(err, "error verifying state in NATS KV")
 	}
 
-	if err := s.kv.Delete(ctx, key); err != nil {
-		return ungerr.Wrap(err, "error deleting state from NATS KV")
+	if err := s.kv.Delete(ctx, key, jetstream.LastRevision(entry.Revision())); err != nil {
+		return ungerr.BadRequestError("invalid state")
 	}
 	return nil
 }

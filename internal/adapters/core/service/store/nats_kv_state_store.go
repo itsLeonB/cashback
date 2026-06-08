@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/ungerr"
 	"github.com/nats-io/nats.go/jetstream"
 )
@@ -19,14 +20,21 @@ func NewNATSKVStateStore(kv jetstream.KeyValue) *natsKVStateStore {
 }
 
 func (s *natsKVStateStore) Store(ctx context.Context, state string, expiry time.Duration) error {
+	ctx, span := otel.Tracer.Start(ctx, "natsKVStateStore.Store")
+	defer span.End()
+
 	_, err := s.kv.Create(ctx, s.constructKey(state), []byte(state), jetstream.KeyTTL(expiry))
 	if err != nil {
 		return ungerr.Wrap(err, "error storing state in NATS KV")
 	}
+
 	return nil
 }
 
 func (s *natsKVStateStore) VerifyAndDelete(ctx context.Context, state string) error {
+	ctx, span := otel.Tracer.Start(ctx, "natsKVStateStore.VerifyAndDelete")
+	defer span.End()
+
 	key := s.constructKey(state)
 	entry, err := s.kv.Get(ctx, key)
 	if err != nil {
@@ -39,6 +47,7 @@ func (s *natsKVStateStore) VerifyAndDelete(ctx context.Context, state string) er
 	if err := s.kv.Delete(ctx, key, jetstream.LastRevision(entry.Revision())); err != nil {
 		return ungerr.BadRequestError("invalid state")
 	}
+
 	return nil
 }
 

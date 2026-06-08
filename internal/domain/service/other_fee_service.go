@@ -46,8 +46,8 @@ func (ofs *otherFeeServiceImpl) Add(ctx context.Context, req dto.NewOtherFeeRequ
 
 	var response dto.OtherFeeResponse
 
-	if !req.Amount.IsPositive() {
-		return dto.OtherFeeResponse{}, ungerr.UnprocessableEntityError(appconstant.ErrNonPositiveAmount)
+	if req.Amount.IsZero() {
+		return dto.OtherFeeResponse{}, ungerr.UnprocessableEntityError(appconstant.ErrAmountZero)
 	}
 
 	err := ofs.transactor.WithinTransaction(ctx, func(ctx context.Context) error {

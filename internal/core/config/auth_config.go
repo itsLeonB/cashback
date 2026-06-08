@@ -7,7 +7,6 @@ type Auth struct {
 	TokenDuration time.Duration `split_words:"true" default:"24h"`
 	Issuer        string        `default:"cashback"`
 	HashCost      int           `split_words:"true" default:"10"`
-	StateStore    string        `split_words:"true" default:"inmemory"`
 }
 
 func (Auth) Prefix() string {

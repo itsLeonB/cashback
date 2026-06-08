@@ -57,17 +57,14 @@ func ProvideCoreServices() (*CoreServices, error) {
 		return nil, err
 	}
 
-	stateStore, err := store.NewStateStore()
-	if err != nil {
-		return nil, err
-	}
+	stateStore := store.NewStateStore()
 
 	ocrClient, err := ocr.NewOCRClient()
 	if err != nil {
 		return nil, err
 	}
 
-	nc, err := nats.Connect(config.Global.NATS.URL)
+	nc, err := nats.Connect(config.Global.Url)
 	if err != nil {
 		return nil, ungerr.Wrap(err, "error connecting to NATS")
 	}

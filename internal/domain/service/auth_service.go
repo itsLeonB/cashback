@@ -9,6 +9,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
+	"github.com/itsLeonB/cashback/internal/core/service/cache"
 	"github.com/itsLeonB/cashback/internal/core/service/mail"
 	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
@@ -31,6 +32,7 @@ type authServiceImpl struct {
 	sessionSvc       SessionService
 	profileSvc       ProfileService
 	friendshipSvc    FriendshipService
+	sessionCache     cache.Cache[uuid.UUID]
 }
 
 func NewAuthService(
@@ -45,6 +47,7 @@ func NewAuthService(
 	sessionSvc SessionService,
 	profileSvc ProfileService,
 	friendshipSvc FriendshipService,
+	sessionCache cache.Cache[uuid.UUID],
 ) AuthService {
 	return &authServiceImpl{
 		sekure.NewHashService(hashCost),
@@ -58,6 +61,7 @@ func NewAuthService(
 		sessionSvc,
 		profileSvc,
 		friendshipSvc,
+		sessionCache,
 	}
 }
 
@@ -205,8 +209,18 @@ func (as *authServiceImpl) VerifyToken(ctx context.Context, token string) (bool,
 		return false, nil, err
 	}
 
-	if _, err = as.sessionSvc.GetByID(ctx, sessionID); err != nil {
+	cachedUserID, hit := as.sessionCache.Get(sessionID.String(), func(_ string) (uuid.UUID, bool) {
+		session, err := as.sessionSvc.GetByID(ctx, sessionID)
+		if err != nil {
+			return uuid.Nil, false
+		}
+		return session.UserID, true
+	})
+	if !hit {
 		return false, nil, ungerr.UnauthorizedError("session is not found")
+	}
+	if cachedUserID != userID {
+		return false, nil, ungerr.UnauthorizedError("session does not belong to user")
 	}
 
 	user, err := as.userSvc.GetByID(ctx, userID)
@@ -395,6 +409,12 @@ func (as *authServiceImpl) Logout(ctx context.Context, sessionID uuid.UUID) erro
 		logger.Error(err)
 	}
 
+	as.sessionCache.Delete(sessionID.String())
+
 	// Revoke session and refresh tokens
 	return as.sessionSvc.RevokeSession(ctx, sessionID)
+}
+
+func (as *authServiceImpl) Shutdown() error {
+	return as.sessionCache.Shutdown()
 }

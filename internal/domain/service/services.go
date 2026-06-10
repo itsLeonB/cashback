@@ -32,6 +32,7 @@ type AuthService interface {
 	SendPasswordReset(ctx context.Context, email string) error
 	ResetPassword(ctx context.Context, token, newPassword string) (dto.TokenResponse, error)
 	Logout(ctx context.Context, sessionID uuid.UUID) error
+	Shutdown() error
 }
 
 type OAuthService interface {

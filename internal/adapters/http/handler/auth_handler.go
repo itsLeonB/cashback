@@ -1,10 +1,13 @@
 package handler
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/adapters/http/cookie"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
@@ -18,18 +21,33 @@ type AuthHandler struct {
 	authService    service.AuthService
 	oAuthService   service.OAuthService
 	sessionService service.SessionService
+	cookieCfg      cookie.Config
 }
 
 func NewAuthHandler(
 	authService service.AuthService,
 	oAuthService service.OAuthService,
 	sessionService service.SessionService,
+	cookieCfg cookie.Config,
 ) *AuthHandler {
 	return &AuthHandler{
-		authService,
-		oAuthService,
-		sessionService,
+		authService:    authService,
+		oAuthService:   oAuthService,
+		sessionService: sessionService,
+		cookieCfg:      cookieCfg,
 	}
+}
+
+func (ah *AuthHandler) setTokenCookies(ctx *gin.Context, tokenResp dto.TokenResponse) {
+	cookie.SetAccessToken(ctx, ah.cookieCfg, tokenResp.Token)
+	cookie.SetRefreshToken(ctx, ah.cookieCfg, tokenResp.RefreshToken)
+	ah.setCSRFCookie(ctx)
+}
+
+func (ah *AuthHandler) setCSRFCookie(ctx *gin.Context) {
+	b := make([]byte, 16)
+	rand.Read(b)
+	cookie.SetCSRFToken(ctx, ah.cookieCfg, hex.EncodeToString(b))
 }
 
 // HandleRegister godoc
@@ -59,7 +77,7 @@ func (ah *AuthHandler) HandleRegister() gin.HandlerFunc {
 // @Accept       json
 // @Produce      json
 // @Param        body body dto.InternalLoginRequest true "Login payload"
-// @Success      200  {object}  response.JSONResponse[dto.TokenResponse]
+// @Success      200  {object}  response.JSONResponse[map[string]string]
 // @Failure      400  {object}  map[string]any
 // @Failure      401  {object}  map[string]any
 // @Router       /auth/login [post]
@@ -70,7 +88,13 @@ func (ah *AuthHandler) HandleInternalLogin() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return ah.authService.InternalLogin(ctx.Request.Context(), request)
+		tokenResp, err := ah.authService.InternalLogin(ctx.Request.Context(), request)
+		if err != nil {
+			return nil, err
+		}
+
+		ah.setTokenCookies(ctx, tokenResp)
+		return map[string]string{"message": "ok"}, nil
 	})
 }
 
@@ -109,7 +133,7 @@ func (ah *AuthHandler) HandleOAuth2Login() gin.HandlerFunc {
 // @Param        provider path  string true "OAuth provider (e.g. google)"
 // @Param        code     query string true "Authorization code from provider"
 // @Param        state    query string true "State token"
-// @Success      200  {object}  response.JSONResponse[dto.TokenResponse]
+// @Success      200  {object}  response.JSONResponse[map[string]string]
 // @Failure      400  {object}  map[string]any
 // @Router       /auth/{provider}/callback [get]
 func (ah *AuthHandler) HandleOAuth2Callback() gin.HandlerFunc {
@@ -125,7 +149,13 @@ func (ah *AuthHandler) HandleOAuth2Callback() gin.HandlerFunc {
 			State:    ctx.Query("state"),
 		}
 
-		return ah.oAuthService.HandleOAuthCallback(ctx.Request.Context(), request)
+		tokenResp, err := ah.oAuthService.HandleOAuthCallback(ctx.Request.Context(), request)
+		if err != nil {
+			return nil, err
+		}
+
+		ah.setTokenCookies(ctx, tokenResp)
+		return map[string]string{"message": "ok"}, nil
 	})
 }
 
@@ -134,7 +164,7 @@ func (ah *AuthHandler) HandleOAuth2Callback() gin.HandlerFunc {
 // @Tags         auth
 // @Produce      json
 // @Param        token query string true "Verification token"
-// @Success      200  {object}  response.JSONResponse[dto.TokenResponse]
+// @Success      200  {object}  response.JSONResponse[map[string]string]
 // @Failure      400  {object}  map[string]any
 // @Router       /auth/verify-registration [get]
 func (ah *AuthHandler) HandleVerifyRegistration() gin.HandlerFunc {
@@ -144,7 +174,13 @@ func (ah *AuthHandler) HandleVerifyRegistration() gin.HandlerFunc {
 			return nil, ungerr.BadRequestError("missing token")
 		}
 
-		return ah.authService.VerifyRegistration(ctx.Request.Context(), token)
+		tokenResp, err := ah.authService.VerifyRegistration(ctx.Request.Context(), token)
+		if err != nil {
+			return nil, err
+		}
+
+		ah.setTokenCookies(ctx, tokenResp)
+		return map[string]string{"message": "ok"}, nil
 	})
 }
 
@@ -174,7 +210,7 @@ func (ah *AuthHandler) HandleSendPasswordReset() gin.HandlerFunc {
 // @Accept       json
 // @Produce      json
 // @Param        body body dto.ResetPasswordRequest true "Reset password payload"
-// @Success      200  {object}  map[string]any
+// @Success      200  {object}  response.JSONResponse[map[string]string]
 // @Failure      400  {object}  map[string]any
 // @Router       /auth/reset-password [patch]
 func (ah *AuthHandler) HandleResetPassword() gin.HandlerFunc {
@@ -184,28 +220,37 @@ func (ah *AuthHandler) HandleResetPassword() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return ah.authService.ResetPassword(ctx.Request.Context(), request.Token, request.Password)
+		tokenResp, err := ah.authService.ResetPassword(ctx.Request.Context(), request.Token, request.Password)
+		if err != nil {
+			return nil, err
+		}
+
+		ah.setTokenCookies(ctx, tokenResp)
+		return map[string]string{"message": "ok"}, nil
 	})
 }
 
 // HandleRefreshToken godoc
 // @Summary      Refresh access token
 // @Tags         auth
-// @Accept       json
 // @Produce      json
-// @Param        body body dto.RefreshTokenRequest true "Refresh token payload"
-// @Success      200  {object}  response.JSONResponse[dto.TokenResponse]
-// @Failure      400  {object}  map[string]any
+// @Success      200  {object}  response.JSONResponse[map[string]string]
 // @Failure      401  {object}  map[string]any
 // @Router       /auth/refresh [put]
 func (ah *AuthHandler) HandleRefreshToken() gin.HandlerFunc {
 	return server.Handler("AuthHandler.HandleRefreshToken", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		request, err := server.BindJSON[dto.RefreshTokenRequest](ctx)
+		refreshToken, err := ctx.Cookie(cookie.RefreshTokenName)
+		if err != nil {
+			return nil, ungerr.UnauthorizedError("missing refresh token")
+		}
+
+		tokenResp, err := ah.sessionService.RefreshToken(ctx.Request.Context(), dto.RefreshTokenRequest{RefreshToken: refreshToken})
 		if err != nil {
 			return nil, err
 		}
 
-		return ah.sessionService.RefreshToken(ctx.Request.Context(), request)
+		ah.setTokenCookies(ctx, tokenResp)
+		return map[string]string{"message": "ok"}, nil
 	})
 }
 
@@ -231,6 +276,11 @@ func (ah *AuthHandler) HandleLogout() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return nil, ah.authService.Logout(ctx.Request.Context(), sessionID)
+		if err := ah.authService.Logout(ctx.Request.Context(), sessionID); err != nil {
+			return nil, err
+		}
+
+		cookie.ClearTokens(ctx, ah.cookieCfg)
+		return nil, nil
 	})
 }

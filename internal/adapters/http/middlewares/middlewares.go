@@ -16,16 +16,12 @@ type Middlewares struct {
 }
 
 func Provide(configs config.App, authSvc service.AuthService, adminAuthSvc admin.AuthService) *Middlewares {
-	tokenCheckFunc := func(ctx *gin.Context, token string) (bool, map[string]any, error) {
-		return authSvc.VerifyToken(ctx.Request.Context(), token)
-	}
-
 	adminTokenCheckFunc := func(ctx *gin.Context, token string) (bool, map[string]any, error) {
 		return adminAuthSvc.VerifyToken(ctx.Request.Context(), token)
 	}
 
 	middlewareProvider := middleware.NewMiddlewareProvider(logger.Global)
-	authMiddleware := middlewareProvider.NewAuthMiddleware("Bearer", tokenCheckFunc)
+	authMiddleware := newCookieAuthMiddleware(authSvc)
 	adminAuthMiddleware := middlewareProvider.NewAuthMiddleware("Bearer", adminTokenCheckFunc)
 	errorMiddleware := middlewareProvider.NewErrorMiddleware()
 

@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/itsLeonB/cashback/internal/adapters/http/cookie"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler"
 	adminHandler "github.com/itsLeonB/cashback/internal/adapters/http/handler/admin"
 	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
@@ -19,11 +20,18 @@ import (
 )
 
 func RegisterRoutes(router *gin.Engine, configs config.Config, services *provider.Services, adminServices *admin.Services) {
-	handlers := handler.ProvideHandlers(services)
-	adminHandlers := adminHandler.ProvideHandlers(adminServices, services)
-	middlewares := middlewares.Provide(configs.App, services.Auth, adminServices.Auth)
+	cookieCfg := cookie.Config{
+		Domain:     configs.CookieDomain,
+		Secure:     configs.CookieSecure,
+		AccessTTL:  configs.TokenDuration,
+		RefreshTTL: configs.RefreshTokenDuration,
+	}
 
-	router.Use(middlewares.Err)
+	handlers := handler.ProvideHandlers(services, cookieCfg)
+	adminHandlers := adminHandler.ProvideHandlers(adminServices, services)
+	mw := middlewares.Provide(configs.App, services.Auth, adminServices.Auth)
+
+	router.Use(mw.Err)
 
 	sentinelGin.RegisterHealth(router, httpserver.NewHealthHandler())
 
@@ -46,6 +54,6 @@ func RegisterRoutes(router *gin.Engine, configs config.Config, services *provide
 	})
 
 	routes.RegisterBaseRoutes(router)
-	routes.RegisterAPIRoutes(router, handlers, middlewares.Auth)
-	routes.RegisterAdminRoutes(router, adminHandlers, middlewares.AdminAuth)
+	routes.RegisterAPIRoutes(router, handlers, mw.Auth)
+	routes.RegisterAdminRoutes(router, adminHandlers, mw.AdminAuth)
 }

@@ -6,6 +6,7 @@ packages:
     config:
       filename: "mock_service.go"
     interfaces:
+      AuthService:
       UserService:
       SessionService:
   github.com/itsLeonB/sekure:

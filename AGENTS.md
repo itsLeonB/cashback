@@ -14,7 +14,7 @@ Do not use `go build` or `go test` directly.
 
 ## Project Structure
 
-```
+```text
 cmd/
   http/       → HTTP server entrypoint
   worker/     → Background worker entrypoint
@@ -63,7 +63,7 @@ internal/
 ### Testing
 
 - Tests use `testify/assert`.
-- Test files use `_test` package suffix (e.g., `package expense_test`).
+- Test files use same package (e.g., `package middlewares`) with `_test.go` file suffix.
 - Use `github.com/vektra/mockery` for generating mocks.
 
 ### Dependencies (key libraries)

@@ -96,6 +96,31 @@ func TestVerifyToken_InvalidFingerprint(t *testing.T) {
 	assert.Equal(t, "invalid token fingerprint", appErr.Details())
 }
 
+func TestVerifyToken_MissingFingerprintClaim(t *testing.T) {
+	jwtMock := mocks.NewMockJWTService(t)
+	sessionCache := cache.NewInMemoryCache[uuid.UUID](time.Hour)
+
+	claims := sekure.JWTClaims{
+		Data: map[string]any{
+			appconstant.ContextUserID.String():    uuid.New().String(),
+			appconstant.ContextSessionID.String(): uuid.New().String(),
+		},
+	}
+
+	jwtMock.EXPECT().VerifyToken("token").Return(claims, nil)
+
+	svc := newTestAuthService(jwtMock, nil, nil, sessionCache)
+
+	valid, data, err := svc.VerifyToken(context.Background(), "token", "any-fingerprint")
+
+	assert.Error(t, err)
+	assert.False(t, valid)
+	assert.Nil(t, data)
+	var appErr ungerr.AppError
+	assert.ErrorAs(t, err, &appErr)
+	assert.Equal(t, "missing fingerprint claim", appErr.Details())
+}
+
 func TestVerifyToken_InvalidToken(t *testing.T) {
 	jwtMock := mocks.NewMockJWTService(t)
 	sessionCache := cache.NewInMemoryCache[uuid.UUID](time.Hour)

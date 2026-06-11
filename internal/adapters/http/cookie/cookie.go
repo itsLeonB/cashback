@@ -62,14 +62,14 @@ func SetCSRFToken(c *gin.Context, cfg Config, token string) {
 }
 
 func SetFingerprint(c *gin.Context, cfg Config, value string) {
-	http.SetCookie(c.Writer, &http.Cookie{ // #nosec G124 -- Secure is set from cfg, true in production
+	http.SetCookie(c.Writer, &http.Cookie{ // #nosec G124 -- Secure forced true: __Secure- prefix requires it
 		Name:     FingerprintName,
 		Value:    value,
 		Path:     "/api",
 		Domain:   cfg.Domain,
 		MaxAge:   int(cfg.RefreshTTL.Seconds()),
 		HttpOnly: true,
-		Secure:   cfg.Secure,
+		Secure:   true,
 		SameSite: cfg.SameSite,
 	})
 }
@@ -105,14 +105,14 @@ func ClearTokens(c *gin.Context, cfg Config) {
 		Secure:   cfg.Secure,
 		SameSite: cfg.SameSite,
 	})
-	http.SetCookie(c.Writer, &http.Cookie{ // #nosec G124 -- clearing cookie, Secure from cfg
+	http.SetCookie(c.Writer, &http.Cookie{ // #nosec G124 -- Secure forced true: __Secure- prefix requires it
 		Name:     FingerprintName,
 		Value:    "",
 		Path:     "/api",
 		Domain:   cfg.Domain,
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   cfg.Secure,
+		Secure:   true,
 		SameSite: cfg.SameSite,
 	})
 }

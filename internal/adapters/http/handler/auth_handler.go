@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/adapters/http/cookie"
+	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
@@ -22,6 +23,7 @@ type AuthHandler struct {
 	oAuthService   service.OAuthService
 	sessionService service.SessionService
 	cookieCfg      cookie.Config
+	emailLimiter   *middlewares.ValueLimiter
 }
 
 func NewAuthHandler(
@@ -29,12 +31,14 @@ func NewAuthHandler(
 	oAuthService service.OAuthService,
 	sessionService service.SessionService,
 	cookieCfg cookie.Config,
+	emailLimiter *middlewares.ValueLimiter,
 ) *AuthHandler {
 	return &AuthHandler{
 		authService:    authService,
 		oAuthService:   oAuthService,
 		sessionService: sessionService,
 		cookieCfg:      cookieCfg,
+		emailLimiter:   emailLimiter,
 	}
 }
 
@@ -201,6 +205,10 @@ func (ah *AuthHandler) HandleSendPasswordReset() gin.HandlerFunc {
 		request, err := server.BindJSON[dto.SendPasswordResetRequest](ctx)
 		if err != nil {
 			return nil, err
+		}
+
+		if !ah.emailLimiter.Allow(request.Email) {
+			return nil, ungerr.TooManyRequestsError("too many reset requests for this email")
 		}
 
 		return nil, ah.authService.SendPasswordReset(ctx.Request.Context(), request.Email)

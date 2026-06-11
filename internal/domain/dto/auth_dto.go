@@ -22,6 +22,7 @@ type TokenResponse struct {
 	Type         string `json:"type"`
 	Token        string `json:"token"`
 	RefreshToken string `json:"refreshToken"`
+	Fingerprint  string `json:"-"`
 }
 
 type RegisterResponse struct {
@@ -44,11 +45,12 @@ type OAuthCallbackData struct {
 	State    string `validate:"required,min=1"`
 }
 
-func NewTokenResp(token, refreshToken string) TokenResponse {
+func NewTokenResp(token, refreshToken, fingerprint string) TokenResponse {
 	return TokenResponse{
 		Type:         "Bearer",
 		Token:        token,
 		RefreshToken: refreshToken,
+		Fingerprint:  fingerprint,
 	}
 }
 

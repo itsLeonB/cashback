@@ -11,6 +11,7 @@ const (
 	AccessTokenName  = "access_token"
 	RefreshTokenName = "refresh_token"
 	CSRFTokenName    = "csrf_token"
+	FingerprintName  = "__Secure-Fgp"
 )
 
 type Config struct {
@@ -59,6 +60,19 @@ func SetCSRFToken(c *gin.Context, cfg Config, token string) {
 	})
 }
 
+func SetFingerprint(c *gin.Context, cfg Config, value string) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     FingerprintName,
+		Value:    value,
+		Path:     "/api",
+		Domain:   cfg.Domain,
+		MaxAge:   int(cfg.RefreshTTL.Seconds()),
+		HttpOnly: true,
+		Secure:   cfg.Secure,
+		SameSite: http.SameSiteStrictMode,
+	})
+}
+
 func ClearTokens(c *gin.Context, cfg Config) {
 	http.SetCookie(c.Writer, &http.Cookie{
 		Name:     AccessTokenName,
@@ -87,6 +101,16 @@ func ClearTokens(c *gin.Context, cfg Config) {
 		Domain:   cfg.Domain,
 		MaxAge:   -1,
 		HttpOnly: false,
+		Secure:   cfg.Secure,
+		SameSite: http.SameSiteStrictMode,
+	})
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     FingerprintName,
+		Value:    "",
+		Path:     "/api",
+		Domain:   cfg.Domain,
+		MaxAge:   -1,
+		HttpOnly: true,
 		Secure:   cfg.Secure,
 		SameSite: http.SameSiteStrictMode,
 	})

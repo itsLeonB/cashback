@@ -16,7 +16,9 @@ func newCookieAuthMiddleware(authSvc service.AuthService) gin.HandlerFunc {
 			return
 		}
 
-		exists, data, err := authSvc.VerifyToken(ctx.Request.Context(), tokenStr)
+		fgp, _ := ctx.Cookie(cookie.FingerprintName)
+
+		exists, data, err := authSvc.VerifyToken(ctx.Request.Context(), tokenStr, fgp)
 		if err != nil {
 			_ = ctx.Error(err)
 			ctx.Abort()

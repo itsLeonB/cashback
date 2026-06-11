@@ -986,8 +986,8 @@ func (_c *MockAuthService_VerifyRegistration_Call) RunAndReturn(run func(ctx con
 }
 
 // VerifyToken provides a mock function for the type MockAuthService
-func (_mock *MockAuthService) VerifyToken(ctx context.Context, token string) (bool, map[string]any, error) {
-	ret := _mock.Called(ctx, token)
+func (_mock *MockAuthService) VerifyToken(ctx context.Context, token string, fingerprint string) (bool, map[string]any, error) {
+	ret := _mock.Called(ctx, token, fingerprint)
 
 	if len(ret) == 0 {
 		panic("no return value specified for VerifyToken")
@@ -996,23 +996,23 @@ func (_mock *MockAuthService) VerifyToken(ctx context.Context, token string) (bo
 	var r0 bool
 	var r1 map[string]any
 	var r2 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (bool, map[string]any, error)); ok {
-		return returnFunc(ctx, token)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (bool, map[string]any, error)); ok {
+		return returnFunc(ctx, token, fingerprint)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) bool); ok {
-		r0 = returnFunc(ctx, token)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) bool); ok {
+		r0 = returnFunc(ctx, token, fingerprint)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string) map[string]any); ok {
-		r1 = returnFunc(ctx, token)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) map[string]any); ok {
+		r1 = returnFunc(ctx, token, fingerprint)
 	} else {
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).(map[string]any)
 		}
 	}
-	if returnFunc, ok := ret.Get(2).(func(context.Context, string) error); ok {
-		r2 = returnFunc(ctx, token)
+	if returnFunc, ok := ret.Get(2).(func(context.Context, string, string) error); ok {
+		r2 = returnFunc(ctx, token, fingerprint)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -1027,11 +1027,12 @@ type MockAuthService_VerifyToken_Call struct {
 // VerifyToken is a helper method to define mock.On call
 //   - ctx context.Context
 //   - token string
-func (_e *MockAuthService_Expecter) VerifyToken(ctx interface{}, token interface{}) *MockAuthService_VerifyToken_Call {
-	return &MockAuthService_VerifyToken_Call{Call: _e.mock.On("VerifyToken", ctx, token)}
+//   - fingerprint string
+func (_e *MockAuthService_Expecter) VerifyToken(ctx interface{}, token interface{}, fingerprint interface{}) *MockAuthService_VerifyToken_Call {
+	return &MockAuthService_VerifyToken_Call{Call: _e.mock.On("VerifyToken", ctx, token, fingerprint)}
 }
 
-func (_c *MockAuthService_VerifyToken_Call) Run(run func(ctx context.Context, token string)) *MockAuthService_VerifyToken_Call {
+func (_c *MockAuthService_VerifyToken_Call) Run(run func(ctx context.Context, token string, fingerprint string)) *MockAuthService_VerifyToken_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1041,9 +1042,14 @@ func (_c *MockAuthService_VerifyToken_Call) Run(run func(ctx context.Context, to
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -1054,7 +1060,7 @@ func (_c *MockAuthService_VerifyToken_Call) Return(b bool, stringToV map[string]
 	return _c
 }
 
-func (_c *MockAuthService_VerifyToken_Call) RunAndReturn(run func(ctx context.Context, token string) (bool, map[string]any, error)) *MockAuthService_VerifyToken_Call {
+func (_c *MockAuthService_VerifyToken_Call) RunAndReturn(run func(ctx context.Context, token string, fingerprint string) (bool, map[string]any, error)) *MockAuthService_VerifyToken_Call {
 	_c.Call.Return(run)
 	return _c
 }

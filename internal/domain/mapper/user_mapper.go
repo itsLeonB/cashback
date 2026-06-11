@@ -7,10 +7,11 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 )
 
-func SessionToAuthData(session users.Session) map[string]any {
+func SessionToAuthData(session users.Session, fgpHash string) map[string]any {
 	return map[string]any{
-		appconstant.ContextUserID.String():    session.UserID,
-		appconstant.ContextSessionID.String(): session.ID,
+		appconstant.ContextUserID.String():      session.UserID,
+		appconstant.ContextSessionID.String():   session.ID,
+		appconstant.ContextFingerprint.String(): fgpHash,
 	}
 }
 

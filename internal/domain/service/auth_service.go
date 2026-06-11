@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -173,13 +175,23 @@ func (as *authServiceImpl) InternalLogin(ctx context.Context, req dto.InternalLo
 	return as.sessionSvc.CreateTokenAndSession(ctx, user)
 }
 
-func (as *authServiceImpl) VerifyToken(ctx context.Context, token string) (bool, map[string]any, error) {
+func (as *authServiceImpl) VerifyToken(ctx context.Context, token string, fingerprint string) (bool, map[string]any, error) {
 	ctx, span := otel.Tracer.Start(ctx, "AuthService.VerifyToken")
 	defer span.End()
 
 	claims, err := as.jwtService.VerifyToken(token)
 	if err != nil {
 		return false, nil, err
+	}
+
+	// Verify fingerprint
+	expectedHash, fgpExists := claims.Data[appconstant.ContextFingerprint.String()]
+	if !fgpExists {
+		return false, nil, ungerr.UnauthorizedError("missing fingerprint claim")
+	}
+	hash := sha256.Sum256([]byte(fingerprint))
+	if hex.EncodeToString(hash[:]) != expectedHash {
+		return false, nil, ungerr.UnauthorizedError("invalid token fingerprint")
 	}
 
 	tokenUserId, exists := claims.Data[appconstant.ContextUserID.String()]

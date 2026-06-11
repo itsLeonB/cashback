@@ -41,6 +41,7 @@ func NewAuthHandler(
 func (ah *AuthHandler) setTokenCookies(ctx *gin.Context, tokenResp dto.TokenResponse) {
 	cookie.SetAccessToken(ctx, ah.cookieCfg, tokenResp.Token)
 	cookie.SetRefreshToken(ctx, ah.cookieCfg, tokenResp.RefreshToken)
+	cookie.SetFingerprint(ctx, ah.cookieCfg, tokenResp.Fingerprint)
 	ah.setCSRFCookie(ctx)
 }
 

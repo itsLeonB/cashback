@@ -27,7 +27,7 @@ func setupAuthRouter(authMock *mocks.MockAuthService) *gin.Engine {
 
 func TestCookieAuthMiddleware_Success(t *testing.T) {
 	authMock := mocks.NewMockAuthService(t)
-	authMock.EXPECT().VerifyToken(mock.Anything, "valid-token").Return(true, map[string]any{"profileID": "abc"}, nil)
+	authMock.EXPECT().VerifyToken(mock.Anything, "valid-token", "").Return(true, map[string]any{"profileID": "abc"}, nil)
 
 	r := setupAuthRouter(authMock)
 	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
@@ -55,7 +55,7 @@ func TestCookieAuthMiddleware_NoCookie(t *testing.T) {
 
 func TestCookieAuthMiddleware_InvalidToken(t *testing.T) {
 	authMock := mocks.NewMockAuthService(t)
-	authMock.EXPECT().VerifyToken(mock.Anything, "bad-token").Return(false, nil, errors.New("invalid"))
+	authMock.EXPECT().VerifyToken(mock.Anything, "bad-token", "").Return(false, nil, errors.New("invalid"))
 
 	r := setupAuthRouter(authMock)
 	req := httptest.NewRequest(http.MethodGet, "/protected", nil)

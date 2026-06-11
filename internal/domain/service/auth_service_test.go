@@ -2,6 +2,8 @@ package service_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"testing"
 	"time"
@@ -33,10 +35,15 @@ func TestVerifyToken_Success(t *testing.T) {
 	sessionID := uuid.New()
 	profileID := uuid.New()
 
+	rawFgp := "test-fingerprint"
+	h := sha256.Sum256([]byte(rawFgp))
+	fgpHash := hex.EncodeToString(h[:])
+
 	claims := sekure.JWTClaims{
 		Data: map[string]any{
-			appconstant.ContextUserID.String():    userID.String(),
-			appconstant.ContextSessionID.String(): sessionID.String(),
+			appconstant.ContextUserID.String():      userID.String(),
+			appconstant.ContextSessionID.String():   sessionID.String(),
+			appconstant.ContextFingerprint.String(): fgpHash,
 		},
 	}
 
@@ -52,12 +59,41 @@ func TestVerifyToken_Success(t *testing.T) {
 
 	svc := newTestAuthService(jwtMock, userMock, sessionMock, sessionCache)
 
-	valid, data, err := svc.VerifyToken(context.Background(), "valid-token")
+	valid, data, err := svc.VerifyToken(context.Background(), "valid-token", rawFgp)
 
 	assert.NoError(t, err)
 	assert.True(t, valid)
 	assert.Equal(t, profileID, data[appconstant.ContextProfileID.String()])
 	assert.Equal(t, sessionID, data[appconstant.ContextSessionID.String()])
+}
+
+func TestVerifyToken_InvalidFingerprint(t *testing.T) {
+	jwtMock := mocks.NewMockJWTService(t)
+	sessionCache := cache.NewInMemoryCache[uuid.UUID](time.Hour)
+
+	userID := uuid.New()
+	sessionID := uuid.New()
+
+	claims := sekure.JWTClaims{
+		Data: map[string]any{
+			appconstant.ContextUserID.String():      userID.String(),
+			appconstant.ContextSessionID.String():   sessionID.String(),
+			appconstant.ContextFingerprint.String(): "expected-hash-in-token",
+		},
+	}
+
+	jwtMock.EXPECT().VerifyToken("token").Return(claims, nil)
+
+	svc := newTestAuthService(jwtMock, nil, nil, sessionCache)
+
+	valid, data, err := svc.VerifyToken(context.Background(), "token", "wrong-fingerprint")
+
+	assert.Error(t, err)
+	assert.False(t, valid)
+	assert.Nil(t, data)
+	var appErr ungerr.AppError
+	assert.ErrorAs(t, err, &appErr)
+	assert.Equal(t, "invalid token fingerprint", appErr.Details())
 }
 
 func TestVerifyToken_InvalidToken(t *testing.T) {
@@ -68,7 +104,7 @@ func TestVerifyToken_InvalidToken(t *testing.T) {
 
 	svc := newTestAuthService(jwtMock, nil, nil, sessionCache)
 
-	valid, data, err := svc.VerifyToken(context.Background(), "bad-token")
+	valid, data, err := svc.VerifyToken(context.Background(), "bad-token", "")
 
 	assert.Error(t, err)
 	assert.False(t, valid)
@@ -82,11 +118,15 @@ func TestVerifyToken_SessionNotFound(t *testing.T) {
 
 	userID := uuid.New()
 	sessionID := uuid.New()
+	rawFgp := "fgp"
+	h := sha256.Sum256([]byte(rawFgp))
+	fgpHash := hex.EncodeToString(h[:])
 
 	claims := sekure.JWTClaims{
 		Data: map[string]any{
-			appconstant.ContextUserID.String():    userID.String(),
-			appconstant.ContextSessionID.String(): sessionID.String(),
+			appconstant.ContextUserID.String():      userID.String(),
+			appconstant.ContextSessionID.String():   sessionID.String(),
+			appconstant.ContextFingerprint.String(): fgpHash,
 		},
 	}
 
@@ -95,7 +135,7 @@ func TestVerifyToken_SessionNotFound(t *testing.T) {
 
 	svc := newTestAuthService(jwtMock, nil, sessionMock, sessionCache)
 
-	valid, data, err := svc.VerifyToken(context.Background(), "token")
+	valid, data, err := svc.VerifyToken(context.Background(), "token", rawFgp)
 
 	assert.Error(t, err)
 	assert.False(t, valid)
@@ -113,11 +153,15 @@ func TestVerifyToken_SessionBelongsToDifferentUser(t *testing.T) {
 	attackerUserID := uuid.New()
 	victimUserID := uuid.New()
 	sessionID := uuid.New()
+	rawFgp := "fgp"
+	h := sha256.Sum256([]byte(rawFgp))
+	fgpHash := hex.EncodeToString(h[:])
 
 	claims := sekure.JWTClaims{
 		Data: map[string]any{
-			appconstant.ContextUserID.String():    victimUserID.String(),
-			appconstant.ContextSessionID.String(): sessionID.String(),
+			appconstant.ContextUserID.String():      victimUserID.String(),
+			appconstant.ContextSessionID.String():   sessionID.String(),
+			appconstant.ContextFingerprint.String(): fgpHash,
 		},
 	}
 
@@ -129,7 +173,7 @@ func TestVerifyToken_SessionBelongsToDifferentUser(t *testing.T) {
 
 	svc := newTestAuthService(jwtMock, nil, sessionMock, sessionCache)
 
-	valid, data, err := svc.VerifyToken(context.Background(), "forged-token")
+	valid, data, err := svc.VerifyToken(context.Background(), "forged-token", rawFgp)
 
 	assert.Error(t, err)
 	assert.False(t, valid)
@@ -148,11 +192,15 @@ func TestVerifyToken_CachedSession(t *testing.T) {
 	userID := uuid.New()
 	sessionID := uuid.New()
 	profileID := uuid.New()
+	rawFgp := "fgp"
+	h := sha256.Sum256([]byte(rawFgp))
+	fgpHash := hex.EncodeToString(h[:])
 
 	claims := sekure.JWTClaims{
 		Data: map[string]any{
-			appconstant.ContextUserID.String():    userID.String(),
-			appconstant.ContextSessionID.String(): sessionID.String(),
+			appconstant.ContextUserID.String():      userID.String(),
+			appconstant.ContextSessionID.String():   sessionID.String(),
+			appconstant.ContextFingerprint.String(): fgpHash,
 		},
 	}
 
@@ -169,12 +217,12 @@ func TestVerifyToken_CachedSession(t *testing.T) {
 	svc := newTestAuthService(jwtMock, userMock, sessionMock, sessionCache)
 
 	// First call - hits DB via fallback
-	valid, _, err := svc.VerifyToken(context.Background(), "token")
+	valid, _, err := svc.VerifyToken(context.Background(), "token", rawFgp)
 	assert.NoError(t, err)
 	assert.True(t, valid)
 
 	// Second call - uses cache, no additional GetByID on session
-	valid, _, err = svc.VerifyToken(context.Background(), "token")
+	valid, _, err = svc.VerifyToken(context.Background(), "token", rawFgp)
 	assert.NoError(t, err)
 	assert.True(t, valid)
 }
@@ -183,9 +231,14 @@ func TestVerifyToken_MissingUserID(t *testing.T) {
 	jwtMock := mocks.NewMockJWTService(t)
 	sessionCache := cache.NewInMemoryCache[uuid.UUID](time.Hour)
 
+	rawFgp := "fgp"
+	h := sha256.Sum256([]byte(rawFgp))
+	fgpHash := hex.EncodeToString(h[:])
+
 	claims := sekure.JWTClaims{
 		Data: map[string]any{
-			appconstant.ContextSessionID.String(): uuid.New().String(),
+			appconstant.ContextSessionID.String():   uuid.New().String(),
+			appconstant.ContextFingerprint.String(): fgpHash,
 		},
 	}
 
@@ -193,7 +246,7 @@ func TestVerifyToken_MissingUserID(t *testing.T) {
 
 	svc := newTestAuthService(jwtMock, nil, nil, sessionCache)
 
-	valid, data, err := svc.VerifyToken(context.Background(), "token")
+	valid, data, err := svc.VerifyToken(context.Background(), "token", rawFgp)
 
 	assert.Error(t, err)
 	assert.False(t, valid)
@@ -205,9 +258,14 @@ func TestVerifyToken_MissingSessionID(t *testing.T) {
 	sessionCache := cache.NewInMemoryCache[uuid.UUID](time.Hour)
 
 	userID := uuid.New()
+	rawFgp := "fgp"
+	h := sha256.Sum256([]byte(rawFgp))
+	fgpHash := hex.EncodeToString(h[:])
+
 	claims := sekure.JWTClaims{
 		Data: map[string]any{
-			appconstant.ContextUserID.String(): userID.String(),
+			appconstant.ContextUserID.String():      userID.String(),
+			appconstant.ContextFingerprint.String(): fgpHash,
 		},
 	}
 
@@ -215,7 +273,7 @@ func TestVerifyToken_MissingSessionID(t *testing.T) {
 
 	svc := newTestAuthService(jwtMock, nil, nil, sessionCache)
 
-	valid, data, err := svc.VerifyToken(context.Background(), "token")
+	valid, data, err := svc.VerifyToken(context.Background(), "token", rawFgp)
 
 	assert.Error(t, err)
 	assert.False(t, valid)

@@ -71,14 +71,15 @@ func (ss *sessionService) RefreshToken(ctx context.Context, request dto.RefreshT
 			return err
 		}
 
-		claims := mapper.SessionToAuthData(session)
+		rawFingerprint, fgpHash := ss.generateFingerprint()
+		claims := mapper.SessionToAuthData(session, fgpHash)
 
 		accessToken, err := ss.jwtService.CreateToken(claims)
 		if err != nil {
 			return err
 		}
 
-		response = dto.NewTokenResp(accessToken, newRefreshToken)
+		response = dto.NewTokenResp(accessToken, newRefreshToken, rawFingerprint)
 		return nil
 	})
 
@@ -96,13 +97,14 @@ func (ss *sessionService) CreateTokenAndSession(ctx context.Context, user users.
 	}
 
 	// Create access token
-	authData := mapper.SessionToAuthData(session)
+	rawFingerprint, fgpHash := ss.generateFingerprint()
+	authData := mapper.SessionToAuthData(session, fgpHash)
 	accessToken, err := ss.jwtService.CreateToken(authData)
 	if err != nil {
 		return dto.TokenResponse{}, err
 	}
 
-	return dto.NewTokenResp(accessToken, refreshToken), nil
+	return dto.NewTokenResp(accessToken, refreshToken, rawFingerprint), nil
 }
 
 // revokeSession deletes the session and all associated refresh tokens
@@ -296,4 +298,13 @@ func (ss *sessionService) getRefreshToken(ctx context.Context, token string) (us
 func (sessionService) hashToken(token string) string {
 	hash := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(hash[:])
+}
+
+func (sessionService) generateFingerprint() (raw string, hash string) {
+	b := make([]byte, 32)
+	rand.Read(b) // crypto/rand.Read panics on failure since Go 1.20; error intentionally ignored
+	raw = hex.EncodeToString(b)
+	h := sha256.Sum256([]byte(raw))
+	hash = hex.EncodeToString(h[:])
+	return
 }

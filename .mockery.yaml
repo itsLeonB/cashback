@@ -9,6 +9,19 @@ packages:
       AuthService:
       UserService:
       SessionService:
+      ProfileService:
+      SubscriptionLimitService:
+  github.com/itsLeonB/cashback/internal/domain/repository:
+    config:
+      filename: "mock_repository.go"
+    interfaces:
+      ProfileRepository:
+      FriendshipRepository:
+  github.com/itsLeonB/go-crud:
+    config:
+      filename: "mock_crud.go"
+    interfaces:
+      Transactor:
   github.com/itsLeonB/sekure:
     config:
       filename: "mock_sekure.go"

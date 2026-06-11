@@ -34,7 +34,7 @@ func (h *Handlers) Shutdown() {
 
 func ProvideHandlers(services *provider.Services, cookieCfg cookie.Config) *Handlers {
 	return &Handlers{
-		NewAuthHandler(services.Auth, services.OAuth, services.Session, cookieCfg, middlewares.NewValueLimiter(3.0/3600, 3, time.Hour)),
+		NewAuthHandler(services.Auth, services.OAuth, services.Session, services.Captcha, cookieCfg, middlewares.NewValueLimiter(3.0/3600, 3, time.Hour)),
 		NewFriendshipHandler(services.Friendship, services.FriendDetails, services.Debt),
 		NewFriendshipRequestHandler(services.FriendshipRequest),
 		NewProfileHandler(services.Profile),

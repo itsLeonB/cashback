@@ -30,7 +30,8 @@ type RegisterResponse struct {
 }
 
 type SendPasswordResetRequest struct {
-	Email string `json:"email" binding:"required,email,min=3"`
+	Email        string `json:"email" binding:"required,email,min=3"`
+	CaptchaToken string `json:"captchaToken" binding:"required"`
 }
 
 type ResetPasswordRequest struct {

@@ -22,6 +22,7 @@ type AuthHandler struct {
 	authService    service.AuthService
 	oAuthService   service.OAuthService
 	sessionService service.SessionService
+	captchaService service.CaptchaService
 	cookieCfg      cookie.Config
 	emailLimiter   *middlewares.ValueLimiter
 }
@@ -30,6 +31,7 @@ func NewAuthHandler(
 	authService service.AuthService,
 	oAuthService service.OAuthService,
 	sessionService service.SessionService,
+	captchaService service.CaptchaService,
 	cookieCfg cookie.Config,
 	emailLimiter *middlewares.ValueLimiter,
 ) *AuthHandler {
@@ -37,6 +39,7 @@ func NewAuthHandler(
 		authService:    authService,
 		oAuthService:   oAuthService,
 		sessionService: sessionService,
+		captchaService: captchaService,
 		cookieCfg:      cookieCfg,
 		emailLimiter:   emailLimiter,
 	}
@@ -204,6 +207,10 @@ func (ah *AuthHandler) HandleSendPasswordReset() gin.HandlerFunc {
 	return server.Handler("AuthHandler.HandleSendPasswordReset", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		request, err := server.BindJSON[dto.SendPasswordResetRequest](ctx)
 		if err != nil {
+			return nil, err
+		}
+
+		if err := ah.captchaService.Verify(ctx.Request.Context(), request.CaptchaToken); err != nil {
 			return nil, err
 		}
 

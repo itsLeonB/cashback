@@ -21,6 +21,7 @@ type Services struct {
 	Auth    service.AuthService
 	OAuth   service.OAuthService
 	Session service.SessionService
+	Captcha service.CaptchaService
 
 	// Users
 	User              service.UserService
@@ -93,6 +94,7 @@ func ProvideServices(
 		Auth:    service.NewAuthService(jwt, repos.Transactor, user, coreSvc.Mail, appConfig.RegisterVerificationUrl, appConfig.ResetPasswordUrl, authConfig.HashCost, pushNotification, session, profile, friendship, sessionCache),
 		OAuth:   service.NewOAuthService(repos.Transactor, repos.OAuthAccount, coreSvc.State, user, http.DefaultClient, session),
 		Session: session,
+		Captcha: service.NewTurnstileService(authConfig.TurnstileSecretKey),
 
 		User:              user,
 		Profile:           profile,

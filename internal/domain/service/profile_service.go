@@ -326,7 +326,7 @@ func (ps *profileServiceImpl) Update(ctx context.Context, req dto.UpdateProfileR
 	return response, err
 }
 
-func (ps *profileServiceImpl) Search(ctx context.Context, profileID uuid.UUID, input string) ([]dto.ProfileResponse, error) {
+func (ps *profileServiceImpl) Search(ctx context.Context, profileID uuid.UUID, input string) ([]dto.SearchProfileResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "ProfileService.Search")
 	defer span.End()
 
@@ -336,9 +336,13 @@ func (ps *profileServiceImpl) Search(ctx context.Context, profileID uuid.UUID, i
 			return nil, err
 		}
 		if profile.ID == profileID {
-			return []dto.ProfileResponse{}, nil
+			return []dto.SearchProfileResponse{}, nil
 		}
-		return []dto.ProfileResponse{profile}, nil
+		return []dto.SearchProfileResponse{{
+			ID:     profile.ID,
+			Name:   profile.Name,
+			Avatar: profile.Avatar,
+		}}, nil
 	}
 
 	profiles, err := ps.profileRepo.SearchByName(ctx, input, 10)
@@ -346,10 +350,14 @@ func (ps *profileServiceImpl) Search(ctx context.Context, profileID uuid.UUID, i
 		return nil, err
 	}
 
-	responses := make([]dto.ProfileResponse, 0, len(profiles))
+	responses := make([]dto.SearchProfileResponse, 0, len(profiles))
 	for _, profile := range profiles {
 		if profile.ID != profileID {
-			responses = append(responses, mapper.ProfileToResponse(profile, "", nil, uuid.Nil, dto.SubscriptionResponse{}))
+			responses = append(responses, dto.SearchProfileResponse{
+				ID:     profile.ID,
+				Name:   profile.Name,
+				Avatar: profile.Avatar,
+			})
 		}
 	}
 

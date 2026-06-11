@@ -580,13 +580,6 @@ definitions:
     required:
     - endpoint
     type: object
-  dto.RefreshTokenRequest:
-    properties:
-      refreshToken:
-        type: string
-    required:
-    - refreshToken
-    type: object
   dto.ResetPasswordRequest:
     properties:
       password:
@@ -600,6 +593,15 @@ definitions:
     - password
     - passwordConfirmation
     - token
+    type: object
+  dto.SearchProfileResponse:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
     type: object
   dto.SendPasswordResetRequest:
     properties:
@@ -633,15 +635,6 @@ definitions:
         items:
           $ref: '#/definitions/dto.ItemParticipantRequest'
         type: array
-    type: object
-  dto.TokenResponse:
-    properties:
-      refreshToken:
-        type: string
-      token:
-        type: string
-      type:
-        type: string
     type: object
   dto.TransferMethodResponse:
     properties:
@@ -734,6 +727,10 @@ definitions:
   map_string_dto.FriendBalance:
     additionalProperties:
       $ref: '#/definitions/dto.FriendBalance'
+    type: object
+  map_string_string:
+    additionalProperties:
+      type: string
     type: object
   monetization.MidtransNotificationPayload:
     properties:
@@ -924,11 +921,11 @@ definitions:
       pagination:
         $ref: '#/definitions/response.Pagination'
     type: object
-  response.JSONResponse-array_dto_ProfileResponse:
+  response.JSONResponse-array_dto_ProfileTransferMethodResponse:
     properties:
       data:
         items:
-          $ref: '#/definitions/dto.ProfileResponse'
+          $ref: '#/definitions/dto.ProfileTransferMethodResponse'
         type: array
       errors:
         items: {}
@@ -936,11 +933,11 @@ definitions:
       pagination:
         $ref: '#/definitions/response.Pagination'
     type: object
-  response.JSONResponse-array_dto_ProfileTransferMethodResponse:
+  response.JSONResponse-array_dto_SearchProfileResponse:
     properties:
       data:
         items:
-          $ref: '#/definitions/dto.ProfileTransferMethodResponse'
+          $ref: '#/definitions/dto.SearchProfileResponse'
         type: array
       errors:
         items: {}
@@ -1052,20 +1049,20 @@ definitions:
       pagination:
         $ref: '#/definitions/response.Pagination'
     type: object
-  response.JSONResponse-dto_TokenResponse:
+  response.JSONResponse-map_string_dto_FriendBalance:
     properties:
       data:
-        $ref: '#/definitions/dto.TokenResponse'
+        $ref: '#/definitions/map_string_dto.FriendBalance'
       errors:
         items: {}
         type: array
       pagination:
         $ref: '#/definitions/response.Pagination'
     type: object
-  response.JSONResponse-map_string_dto_FriendBalance:
+  response.JSONResponse-map_string_string:
     properties:
       data:
-        $ref: '#/definitions/map_string_dto.FriendBalance'
+        $ref: '#/definitions/map_string_string'
       errors:
         items: {}
         type: array
@@ -1150,7 +1147,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.JSONResponse-dto_TokenResponse'
+            $ref: '#/definitions/response.JSONResponse-map_string_string'
         "400":
           description: Bad Request
           schema:
@@ -1176,7 +1173,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.JSONResponse-dto_TokenResponse'
+            $ref: '#/definitions/response.JSONResponse-map_string_string'
         "400":
           description: Bad Request
           schema:
@@ -1234,27 +1231,13 @@ paths:
       - auth
   /auth/refresh:
     put:
-      consumes:
-      - application/json
-      parameters:
-      - description: Refresh token payload
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/dto.RefreshTokenRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.JSONResponse-dto_TokenResponse'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/response.JSONResponse-map_string_string'
         "401":
           description: Unauthorized
           schema:
@@ -1280,8 +1263,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/response.JSONResponse-map_string_string'
         "400":
           description: Bad Request
           schema:
@@ -1304,7 +1286,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.JSONResponse-dto_TokenResponse'
+            $ref: '#/definitions/response.JSONResponse-map_string_string'
         "400":
           description: Bad Request
           schema:
@@ -2505,7 +2487,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.JSONResponse-array_dto_ProfileResponse'
+            $ref: '#/definitions/response.JSONResponse-array_dto_SearchProfileResponse'
         "401":
           description: Unauthorized
           schema:

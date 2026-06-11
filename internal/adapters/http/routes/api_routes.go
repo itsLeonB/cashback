@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler"
+	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 )
 
@@ -29,7 +30,7 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 				authRoutes.PATCH("/reset-password", handlers.Auth.HandleResetPassword())
 			}
 
-			protectedRoutes := v1.Group("/", authMiddleware)
+			protectedRoutes := v1.Group("/", authMiddleware, middlewares.CSRF())
 			{
 				protectedRoutes.DELETE("/auth/logout", handlers.Auth.HandleLogout())
 

@@ -47,6 +47,7 @@ func setupSentinel(router *gin.Engine, skipPaths []string, logger zerolog.Logger
 	tracingCfg.SkipPaths = skipPaths
 
 	router.Use(
+		securityHeaders(),
 		sentinelGin.Recovery(logger),
 		sentinelGin.Tracing(tracingCfg),
 		// sentinelGin.RequestID(),
@@ -61,4 +62,13 @@ func setupSentinel(router *gin.Engine, skipPaths []string, logger zerolog.Logger
 	)
 
 	return nil
+}
+
+func securityHeaders() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("X-Frame-Options", "DENY")
+		c.Header("Content-Security-Policy", "frame-ancestors 'none'")
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Next()
+	}
 }

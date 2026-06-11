@@ -1,11 +1,14 @@
 package provider
 
 import (
+	"errors"
 	"net/http"
 
+	"github.com/google/uuid"
 	appembed "github.com/itsLeonB/cashback"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/service/cache"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/cashback/internal/domain/service/fee"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization"
@@ -49,7 +52,7 @@ type Services struct {
 }
 
 func (s *Services) Shutdown() error {
-	return s.TransferMethod.Shutdown()
+	return errors.Join(s.Auth.Shutdown(), s.TransferMethod.Shutdown())
 }
 
 func ProvideServices(
@@ -84,8 +87,10 @@ func ProvideServices(
 
 	pushNotification := service.NewPushNotificationService(repos.PushSubscription, repos.Notification, repos.Transactor, coreSvc.WebPush)
 
+	sessionCache := cache.NewInMemoryCache[uuid.UUID](authConfig.TokenDuration)
+
 	return &Services{
-		Auth:    service.NewAuthService(jwt, repos.Transactor, user, coreSvc.Mail, appConfig.RegisterVerificationUrl, appConfig.ResetPasswordUrl, authConfig.HashCost, pushNotification, session, profile, friendship),
+		Auth:    service.NewAuthService(jwt, repos.Transactor, user, coreSvc.Mail, appConfig.RegisterVerificationUrl, appConfig.ResetPasswordUrl, authConfig.HashCost, pushNotification, session, profile, friendship, sessionCache),
 		OAuth:   service.NewOAuthService(repos.Transactor, repos.OAuthAccount, coreSvc.State, user, http.DefaultClient, session),
 		Session: session,
 

@@ -9,6 +9,7 @@ import (
 
 type Cache[T any] interface {
 	Get(key string, fallbackFunc func(string) (T, bool)) (T, bool)
+	Delete(key string)
 	Shutdown() error
 }
 
@@ -55,6 +56,10 @@ func (c *inmemoryCache[T]) Get(key string, fallbackFunc func(string) (T, bool)) 
 	return fallbackVal, true
 }
 
+func (c *inmemoryCache[T]) Delete(key string) {
+	c.data.Delete(key)
+}
+
 func (c *inmemoryCache[T]) Shutdown() error {
 	close(c.stopCh)
 	c.wg.Wait()
@@ -84,9 +89,7 @@ func (c *inmemoryCache[T]) getValue(key string) (T, bool) {
 }
 
 func (c *inmemoryCache[T]) startCleanup() {
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
+	c.wg.Go(func() {
 		ticker := time.NewTicker(1 * time.Minute)
 		defer ticker.Stop()
 
@@ -98,7 +101,7 @@ func (c *inmemoryCache[T]) startCleanup() {
 				return
 			}
 		}
-	}()
+	})
 }
 
 func (c *inmemoryCache[T]) cleanup() {

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"github.com/itsLeonB/cashback/internal/adapters/http/cookie"
 	"github.com/itsLeonB/cashback/internal/provider"
 )
 
@@ -24,9 +25,9 @@ type Handlers struct {
 	Public                *PublicHandler
 }
 
-func ProvideHandlers(services *provider.Services) *Handlers {
+func ProvideHandlers(services *provider.Services, cookieCfg cookie.Config) *Handlers {
 	return &Handlers{
-		NewAuthHandler(services.Auth, services.OAuth, services.Session),
+		NewAuthHandler(services.Auth, services.OAuth, services.Session, cookieCfg),
 		NewFriendshipHandler(services.Friendship, services.FriendDetails, services.Debt),
 		NewFriendshipRequestHandler(services.FriendshipRequest),
 		NewProfileHandler(services.Profile),

@@ -27,11 +27,12 @@ type UserService interface {
 type AuthService interface {
 	Register(ctx context.Context, request dto.RegisterRequest) (dto.RegisterResponse, error)
 	InternalLogin(ctx context.Context, request dto.InternalLoginRequest) (dto.TokenResponse, error)
-	VerifyToken(ctx context.Context, token string) (bool, map[string]any, error)
+	VerifyToken(ctx context.Context, token string, fingerprint string) (bool, map[string]any, error)
 	VerifyRegistration(ctx context.Context, token string) (dto.TokenResponse, error)
 	SendPasswordReset(ctx context.Context, email string) error
 	ResetPassword(ctx context.Context, token, newPassword string) (dto.TokenResponse, error)
 	Logout(ctx context.Context, sessionID uuid.UUID) error
+	Shutdown() error
 }
 
 type OAuthService interface {

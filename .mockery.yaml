@@ -1,0 +1,16 @@
+template: testify
+dir: "internal/mocks"
+pkgname: "mocks"
+packages:
+  github.com/itsLeonB/cashback/internal/domain/service:
+    config:
+      filename: "mock_service.go"
+    interfaces:
+      AuthService:
+      UserService:
+      SessionService:
+  github.com/itsLeonB/sekure:
+    config:
+      filename: "mock_sekure.go"
+    interfaces:
+      JWTService:

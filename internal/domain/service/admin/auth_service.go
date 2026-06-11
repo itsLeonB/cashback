@@ -95,7 +95,7 @@ func (as *authService) Login(ctx context.Context, req dto.InternalLoginRequest) 
 		return dto.TokenResponse{}, err
 	}
 
-	return dto.NewTokenResp(token, ""), nil
+	return dto.NewTokenResp(token, "", ""), nil
 }
 
 func (as *authService) VerifyToken(ctx context.Context, token string) (bool, map[string]any, error) {

@@ -19,9 +19,10 @@ const (
 	ContextSubscriptionID ctxKey = "subscriptionID"
 	ContextPaymentID      ctxKey = "paymentID"
 
-	ContextSessionID ctxKey = "sessionID"
-	ContextExp       ctxKey = "exp"
-	ContextIat       ctxKey = "iat"
+	ContextSessionID    ctxKey = "sessionID"
+	ContextFingerprint  ctxKey = "fgp"
+	ContextExp          ctxKey = "exp"
+	ContextIat          ctxKey = "iat"
 )
 
 func (c ctxKey) String() string {

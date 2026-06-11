@@ -22,7 +22,7 @@ type Config struct {
 }
 
 func SetAccessToken(c *gin.Context, cfg Config, token string) {
-	http.SetCookie(c.Writer, &http.Cookie{
+	http.SetCookie(c.Writer, &http.Cookie{ // #nosec G402 -- Secure is set from cfg, true in production
 		Name:     AccessTokenName,
 		Value:    token,
 		Path:     "/api",
@@ -35,7 +35,7 @@ func SetAccessToken(c *gin.Context, cfg Config, token string) {
 }
 
 func SetRefreshToken(c *gin.Context, cfg Config, token string) {
-	http.SetCookie(c.Writer, &http.Cookie{
+	http.SetCookie(c.Writer, &http.Cookie{ // #nosec G402 -- Secure is set from cfg, true in production
 		Name:     RefreshTokenName,
 		Value:    token,
 		Path:     "/api/v1/auth",
@@ -48,7 +48,7 @@ func SetRefreshToken(c *gin.Context, cfg Config, token string) {
 }
 
 func SetCSRFToken(c *gin.Context, cfg Config, token string) {
-	http.SetCookie(c.Writer, &http.Cookie{
+	http.SetCookie(c.Writer, &http.Cookie{ // #nosec G402 -- HttpOnly=false intentional: JS reads CSRF token for double-submit
 		Name:     CSRFTokenName,
 		Value:    token,
 		Path:     "/api",
@@ -61,7 +61,7 @@ func SetCSRFToken(c *gin.Context, cfg Config, token string) {
 }
 
 func SetFingerprint(c *gin.Context, cfg Config, value string) {
-	http.SetCookie(c.Writer, &http.Cookie{
+	http.SetCookie(c.Writer, &http.Cookie{ // #nosec G402 -- Secure is set from cfg, true in production
 		Name:     FingerprintName,
 		Value:    value,
 		Path:     "/api",
@@ -74,7 +74,7 @@ func SetFingerprint(c *gin.Context, cfg Config, value string) {
 }
 
 func ClearTokens(c *gin.Context, cfg Config) {
-	http.SetCookie(c.Writer, &http.Cookie{
+	http.SetCookie(c.Writer, &http.Cookie{ // #nosec G402 -- clearing cookie, Secure from cfg
 		Name:     AccessTokenName,
 		Value:    "",
 		Path:     "/api",
@@ -84,7 +84,7 @@ func ClearTokens(c *gin.Context, cfg Config) {
 		Secure:   cfg.Secure,
 		SameSite: http.SameSiteStrictMode,
 	})
-	http.SetCookie(c.Writer, &http.Cookie{
+	http.SetCookie(c.Writer, &http.Cookie{ // #nosec G402 -- clearing cookie, Secure from cfg
 		Name:     RefreshTokenName,
 		Value:    "",
 		Path:     "/api/v1/auth",
@@ -94,7 +94,7 @@ func ClearTokens(c *gin.Context, cfg Config) {
 		Secure:   cfg.Secure,
 		SameSite: http.SameSiteStrictMode,
 	})
-	http.SetCookie(c.Writer, &http.Cookie{
+	http.SetCookie(c.Writer, &http.Cookie{ // #nosec G402 -- clearing cookie, HttpOnly=false matches CSRF set cookie
 		Name:     CSRFTokenName,
 		Value:    "",
 		Path:     "/api",
@@ -104,7 +104,7 @@ func ClearTokens(c *gin.Context, cfg Config) {
 		Secure:   cfg.Secure,
 		SameSite: http.SameSiteStrictMode,
 	})
-	http.SetCookie(c.Writer, &http.Cookie{
+	http.SetCookie(c.Writer, &http.Cookie{ // #nosec G402 -- clearing cookie, Secure from cfg
 		Name:     FingerprintName,
 		Value:    "",
 		Path:     "/api",

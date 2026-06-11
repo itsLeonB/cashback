@@ -38,17 +38,19 @@ func NewAuthHandler(
 	}
 }
 
-func (ah *AuthHandler) setTokenCookies(ctx *gin.Context, tokenResp dto.TokenResponse) {
+func (ah *AuthHandler) setTokenCookies(ctx *gin.Context, tokenResp dto.TokenResponse) string {
 	cookie.SetAccessToken(ctx, ah.cookieCfg, tokenResp.Token)
 	cookie.SetRefreshToken(ctx, ah.cookieCfg, tokenResp.RefreshToken)
 	cookie.SetFingerprint(ctx, ah.cookieCfg, tokenResp.Fingerprint)
-	ah.setCSRFCookie(ctx)
+	return ah.setCSRFCookie(ctx)
 }
 
-func (ah *AuthHandler) setCSRFCookie(ctx *gin.Context) {
+func (ah *AuthHandler) setCSRFCookie(ctx *gin.Context) string {
 	b := make([]byte, 16)
 	rand.Read(b)
-	cookie.SetCSRFToken(ctx, ah.cookieCfg, hex.EncodeToString(b))
+	token := hex.EncodeToString(b)
+	cookie.SetCSRFToken(ctx, ah.cookieCfg, token)
+	return token
 }
 
 // HandleRegister godoc
@@ -94,8 +96,8 @@ func (ah *AuthHandler) HandleInternalLogin() gin.HandlerFunc {
 			return nil, err
 		}
 
-		ah.setTokenCookies(ctx, tokenResp)
-		return map[string]string{"message": "ok"}, nil
+		csrfToken := ah.setTokenCookies(ctx, tokenResp)
+		return map[string]string{"message": "ok", "csrfToken": csrfToken}, nil
 	})
 }
 
@@ -155,8 +157,8 @@ func (ah *AuthHandler) HandleOAuth2Callback() gin.HandlerFunc {
 			return nil, err
 		}
 
-		ah.setTokenCookies(ctx, tokenResp)
-		return map[string]string{"message": "ok"}, nil
+		csrfToken := ah.setTokenCookies(ctx, tokenResp)
+		return map[string]string{"message": "ok", "csrfToken": csrfToken}, nil
 	})
 }
 
@@ -180,8 +182,8 @@ func (ah *AuthHandler) HandleVerifyRegistration() gin.HandlerFunc {
 			return nil, err
 		}
 
-		ah.setTokenCookies(ctx, tokenResp)
-		return map[string]string{"message": "ok"}, nil
+		csrfToken := ah.setTokenCookies(ctx, tokenResp)
+		return map[string]string{"message": "ok", "csrfToken": csrfToken}, nil
 	})
 }
 
@@ -226,8 +228,8 @@ func (ah *AuthHandler) HandleResetPassword() gin.HandlerFunc {
 			return nil, err
 		}
 
-		ah.setTokenCookies(ctx, tokenResp)
-		return map[string]string{"message": "ok"}, nil
+		csrfToken := ah.setTokenCookies(ctx, tokenResp)
+		return map[string]string{"message": "ok", "csrfToken": csrfToken}, nil
 	})
 }
 
@@ -250,8 +252,8 @@ func (ah *AuthHandler) HandleRefreshToken() gin.HandlerFunc {
 			return nil, err
 		}
 
-		ah.setTokenCookies(ctx, tokenResp)
-		return map[string]string{"message": "ok"}, nil
+		csrfToken := ah.setTokenCookies(ctx, tokenResp)
+		return map[string]string{"message": "ok", "csrfToken": csrfToken}, nil
 	})
 }
 

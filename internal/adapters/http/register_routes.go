@@ -23,6 +23,7 @@ func RegisterRoutes(router *gin.Engine, configs config.Config, services *provide
 	cookieCfg := cookie.Config{
 		Domain:     configs.CookieDomain,
 		Secure:     configs.CookieSecure,
+		SameSite:   configs.ParsedSameSite(),
 		AccessTTL:  configs.TokenDuration,
 		RefreshTTL: configs.RefreshTokenDuration,
 	}

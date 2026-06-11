@@ -1,6 +1,9 @@
 package config
 
-import "time"
+import (
+	"net/http"
+	"time"
+)
 
 type Auth struct {
 	SecretKey             string        `split_words:"true" default:"thisissecret"`
@@ -11,6 +14,18 @@ type Auth struct {
 	StateStore            string        `split_words:"true" default:"inmemory"`
 	CookieDomain          string        `split_words:"true" default:"localhost"`
 	CookieSecure          bool          `split_words:"true" default:"false"`
+	CookieSameSite        string        `split_words:"true" default:"strict"`
+}
+
+func (a Auth) ParsedSameSite() http.SameSite {
+	switch a.CookieSameSite {
+	case "none":
+		return http.SameSiteNoneMode
+	case "lax":
+		return http.SameSiteLaxMode
+	default:
+		return http.SameSiteStrictMode
+	}
 }
 
 func (Auth) Prefix() string {

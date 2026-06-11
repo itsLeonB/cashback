@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -210,12 +211,13 @@ func (ah *AuthHandler) HandleSendPasswordReset() gin.HandlerFunc {
 			return nil, err
 		}
 
-		if err := ah.captchaService.Verify(ctx.Request.Context(), request.CaptchaToken); err != nil {
-			return nil, err
+		emailKey := strings.ToLower(strings.TrimSpace(request.Email))
+		if !ah.emailLimiter.Allow(emailKey) {
+			return nil, ungerr.TooManyRequestsError("too many reset requests for this email")
 		}
 
-		if !ah.emailLimiter.Allow(request.Email) {
-			return nil, ungerr.TooManyRequestsError("too many reset requests for this email")
+		if err := ah.captchaService.Verify(ctx.Request.Context(), request.CaptchaToken); err != nil {
+			return nil, err
 		}
 
 		return nil, ah.authService.SendPasswordReset(ctx.Request.Context(), request.Email)

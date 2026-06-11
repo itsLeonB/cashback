@@ -51,3 +51,14 @@ func TestTurnstileService_Verify_NetworkError(t *testing.T) {
 	err := svc.Verify(context.Background(), "token")
 	assert.Error(t, err)
 }
+
+func TestTurnstileService_Verify_NonOKStatus(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	svc := service.NewTurnstileServiceWithURL("test-secret", srv.URL)
+	err := svc.Verify(context.Background(), "token")
+	assert.Error(t, err)
+}

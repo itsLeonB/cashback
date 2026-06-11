@@ -3388,9 +3388,13 @@ const docTemplate = `{
         "dto.SendPasswordResetRequest": {
             "type": "object",
             "required": [
+                "captchaToken",
                 "email"
             ],
             "properties": {
+                "captchaToken": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string",
                     "minLength": 3

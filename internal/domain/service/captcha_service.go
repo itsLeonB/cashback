@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -52,6 +53,10 @@ func (ts *turnstileService) Verify(ctx context.Context, token string) error {
 		return ungerr.Wrap(err, "captcha verification failed")
 	}
 	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return ungerr.Wrap(fmt.Errorf("unexpected status code: %d", resp.StatusCode), "captcha verification failed")
+	}
 
 	var result struct {
 		Success bool `json:"success"`

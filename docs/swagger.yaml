@@ -605,10 +605,13 @@ definitions:
     type: object
   dto.SendPasswordResetRequest:
     properties:
+      captchaToken:
+        type: string
       email:
         minLength: 3
         type: string
     required:
+    - captchaToken
     - email
     type: object
   dto.SimpleProfile:

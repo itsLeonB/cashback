@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"time"
+
 	"github.com/itsLeonB/cashback/internal/adapters/http/cookie"
+	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
 	"github.com/itsLeonB/cashback/internal/provider"
 )
 
@@ -25,9 +28,13 @@ type Handlers struct {
 	Public                *PublicHandler
 }
 
+func (h *Handlers) Shutdown() {
+	h.Auth.emailLimiter.Stop()
+}
+
 func ProvideHandlers(services *provider.Services, cookieCfg cookie.Config) *Handlers {
 	return &Handlers{
-		NewAuthHandler(services.Auth, services.OAuth, services.Session, cookieCfg),
+		NewAuthHandler(services.Auth, services.OAuth, services.Session, cookieCfg, middlewares.NewValueLimiter(3.0/3600, 3, time.Hour)),
 		NewFriendshipHandler(services.Friendship, services.FriendDetails, services.Debt),
 		NewFriendshipRequestHandler(services.FriendshipRequest),
 		NewProfileHandler(services.Profile),

@@ -24,6 +24,7 @@ type sessionService struct {
 	transactor       crud.Transactor
 	sessionRepo      crud.Repository[users.Session]
 	refreshTokenRepo crud.Repository[users.RefreshToken]
+	claimsBuilder    func(ctx context.Context, userID uuid.UUID, baseClaims map[string]any) (map[string]any, error)
 }
 
 func NewSessionService(
@@ -32,6 +33,7 @@ func NewSessionService(
 	transactor crud.Transactor,
 	sessionRepo crud.Repository[users.Session],
 	refreshTokenRepo crud.Repository[users.RefreshToken],
+	claimsBuilder func(ctx context.Context, userID uuid.UUID, baseClaims map[string]any) (map[string]any, error),
 ) *sessionService {
 	return &sessionService{
 		jwtService,
@@ -39,6 +41,7 @@ func NewSessionService(
 		transactor,
 		sessionRepo,
 		refreshTokenRepo,
+		claimsBuilder,
 	}
 }
 
@@ -74,6 +77,14 @@ func (ss *sessionService) RefreshToken(ctx context.Context, request dto.RefreshT
 		rawFingerprint, fgpHash := ss.generateFingerprint()
 		claims := mapper.SessionToAuthData(session, fgpHash)
 
+		if ss.claimsBuilder != nil {
+			builtClaims, err := ss.claimsBuilder(ctx, session.UserID, claims)
+			if err != nil {
+				return err
+			}
+			claims = builtClaims
+		}
+
 		accessToken, err := ss.jwtService.CreateToken(claims)
 		if err != nil {
 			return err
@@ -99,6 +110,15 @@ func (ss *sessionService) CreateTokenAndSession(ctx context.Context, user users.
 	// Create access token
 	rawFingerprint, fgpHash := ss.generateFingerprint()
 	authData := mapper.SessionToAuthData(session, fgpHash)
+
+	if ss.claimsBuilder != nil {
+		builtClaims, err := ss.claimsBuilder(ctx, session.UserID, authData)
+		if err != nil {
+			return dto.TokenResponse{}, err
+		}
+		authData = builtClaims
+	}
+
 	accessToken, err := ss.jwtService.CreateToken(authData)
 	if err != nil {
 		return dto.TokenResponse{}, err

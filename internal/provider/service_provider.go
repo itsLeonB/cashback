@@ -76,9 +76,15 @@ func ProvideServices(
 	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)
 	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile, subs, subsLimit)
 	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken, coreSvc.Mail)
-	session := service.NewSessionService(jwt, user, repos.Transactor, repos.Session, repos.RefreshToken)
-
 	friendship := service.NewFriendshipService(repos.Transactor, repos.Friendship, profile)
+	pushNotification := service.NewPushNotificationService(repos.PushSubscription, repos.Notification, repos.Transactor, coreSvc.WebPush)
+
+	// hooks assembles the service.AuthHooks{} configuration that wires Cashus
+	// business logic into the generic auth service layer.
+	hooks := NewAuthHooks(pushNotification, profile, friendship)
+
+	session := service.NewSessionService(jwt, user, repos.Transactor, repos.Session, repos.RefreshToken, hooks.ClaimsBuilder)
+
 	friendReq := service.NewFriendshipRequestService(repos.Transactor, friendship, profile, repos.FriendshipRequest, coreSvc.Queue)
 
 	groupExpense := service.NewGroupExpenseService(friendship, repos.GroupExpense, repos.Transactor, fee.NewFeeCalculatorRegistry(), repos.OtherFee, repos.ExpenseBill, coreSvc.LLM, coreSvc.Image, coreSvc.Queue, coreSvc.Langfuse, profile)
@@ -86,14 +92,12 @@ func ProvideServices(
 	transferMethod := service.NewTransferMethodService(repos.TransferMethod, coreSvc.Storage, appConfig.BucketNameTransferMethods, appembed.TransferMethodAssets)
 	debt := service.NewDebtService(repos.DebtTransaction, transferMethod, friendship, profile, groupExpense, coreSvc.Queue)
 
-	pushNotification := service.NewPushNotificationService(repos.PushSubscription, repos.Notification, repos.Transactor, coreSvc.WebPush)
-
 	sessionCache := cache.NewInMemoryCache[uuid.UUID](authConfig.TokenDuration)
 	providerSvc := oauth.NewProviderService(config.Global.OAuthProviders)
 
 	return &Services{
-		Auth:    service.NewAuthService(jwt, repos.Transactor, user, coreSvc.Mail, appConfig.RegisterVerificationUrl, appConfig.ResetPasswordUrl, authConfig.HashCost, pushNotification, session, profile, friendship, sessionCache),
-		OAuth:   service.NewOAuthService(repos.Transactor, providerSvc, repos.OAuthAccount, coreSvc.State, user, session),
+		Auth:    service.NewAuthService(jwt, repos.Transactor, user, coreSvc.Mail, appConfig.RegisterVerificationUrl, appConfig.ResetPasswordUrl, authConfig.HashCost, session, sessionCache, hooks),
+		OAuth:   service.NewOAuthService(repos.Transactor, providerSvc, repos.OAuthAccount, coreSvc.State, user, session, hooks),
 		Session: session,
 		Captcha: service.NewTurnstileService(authConfig.TurnstileSecretKey),
 

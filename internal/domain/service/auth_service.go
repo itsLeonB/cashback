@@ -30,11 +30,9 @@ type authServiceImpl struct {
 	mailSvc          mail.MailService
 	verificationURL  string
 	resetPasswordURL string
-	pushSvc          PushNotificationService
 	sessionSvc       SessionService
-	profileSvc       ProfileService
-	friendshipSvc    FriendshipService
 	sessionCache     cache.Cache[uuid.UUID]
+	hooks            AuthHooks
 }
 
 func NewAuthService(
@@ -45,11 +43,9 @@ func NewAuthService(
 	verificationURL string,
 	resetPasswordURL string,
 	hashCost int,
-	pushSvc PushNotificationService,
 	sessionSvc SessionService,
-	profileSvc ProfileService,
-	friendshipSvc FriendshipService,
 	sessionCache cache.Cache[uuid.UUID],
+	hooks AuthHooks,
 ) AuthService {
 	return &authServiceImpl{
 		sekure.NewHashService(hashCost),
@@ -59,11 +55,9 @@ func NewAuthService(
 		mailSvc,
 		verificationURL,
 		resetPasswordURL,
-		pushSvc,
 		sessionSvc,
-		profileSvc,
-		friendshipSvc,
 		sessionCache,
+		hooks,
 	}
 }
 
@@ -282,44 +276,14 @@ func (as *authServiceImpl) VerifyRegistration(ctx context.Context, token string)
 			return err
 		}
 
-		// Handle slug-based profile association
-		if slug, ok := claims.Data["slug"].(string); ok && slug != "" {
-			if err := as.associateBySlug(ctx, user.Profile.ID, slug); err != nil {
-				return err
-			}
+		if err := as.hooks.CallAfterEmailVerified(ctx, user.ID, user.Profile.ID, claims.Data); err != nil {
+			return err
 		}
 
 		response, err = as.sessionSvc.CreateTokenAndSession(ctx, user)
 		return err
 	})
 	return response, err
-}
-
-func (as *authServiceImpl) associateBySlug(ctx context.Context, newProfileID uuid.UUID, slug string) error {
-	anonProfile, err := as.profileSvc.FindBySlug(ctx, slug)
-	if err != nil {
-		return err
-	}
-
-	// Find the owner of the anonymous profile via friendship
-	friendships, err := as.friendshipSvc.GetAll(ctx, anonProfile.ID)
-	if err != nil {
-		return err
-	}
-	if len(friendships) == 0 {
-		return fmt.Errorf("no friendship found for slug %s", slug)
-	}
-
-	ownerProfileID := friendships[0].ProfileID
-
-	// Create real friendship between owner and new user
-	_, err = as.friendshipSvc.CreateReal(ctx, ownerProfileID, newProfileID)
-	if err != nil {
-		return err
-	}
-
-	// Create RelatedProfile association
-	return as.profileSvc.Associate(ctx, ownerProfileID, newProfileID, anonProfile.ID)
 }
 
 func (as *authServiceImpl) SendPasswordReset(ctx context.Context, email string) error {
@@ -416,9 +380,10 @@ func (as *authServiceImpl) Logout(ctx context.Context, sessionID uuid.UUID) erro
 	ctx, span := otel.Tracer.Start(ctx, "AuthService.Logout")
 	defer span.End()
 
-	// Clean up push subscriptions for this session (failure must not block logout)
-	if err := as.pushSvc.UnsubscribeBySession(ctx, sessionID); err != nil {
-		logger.Error(err)
+	if as.hooks.BeforeLogout != nil {
+		if err := as.hooks.BeforeLogout(ctx, sessionID); err != nil {
+			logger.Error(err)
+		}
 	}
 
 	as.sessionCache.Delete(sessionID.String())

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/ungerr"
 	"github.com/nats-io/nats.go/jetstream"
@@ -19,11 +20,11 @@ func NewNATSKVStateStore(kv jetstream.KeyValue) *natsKVStateStore {
 	return &natsKVStateStore{kv: kv}
 }
 
-func (s *natsKVStateStore) Store(ctx context.Context, state string, expiry time.Duration) error {
+func (s *natsKVStateStore) Store(ctx context.Context, state string, value string, expiry time.Duration) error {
 	ctx, span := otel.Tracer.Start(ctx, "natsKVStateStore.Store")
 	defer span.End()
 
-	_, err := s.kv.Create(ctx, s.constructKey(state), []byte(state), jetstream.KeyTTL(expiry))
+	_, err := s.kv.Create(ctx, s.constructKey(state), []byte(value), jetstream.KeyTTL(expiry))
 	if err != nil {
 		return ungerr.Wrap(err, "error storing state in NATS KV")
 	}
@@ -31,7 +32,7 @@ func (s *natsKVStateStore) Store(ctx context.Context, state string, expiry time.
 	return nil
 }
 
-func (s *natsKVStateStore) VerifyAndDelete(ctx context.Context, state string) error {
+func (s *natsKVStateStore) VerifyAndDelete(ctx context.Context, state string) (string, error) {
 	ctx, span := otel.Tracer.Start(ctx, "natsKVStateStore.VerifyAndDelete")
 	defer span.End()
 
@@ -39,16 +40,17 @@ func (s *natsKVStateStore) VerifyAndDelete(ctx context.Context, state string) er
 	entry, err := s.kv.Get(ctx, key)
 	if err != nil {
 		if errors.Is(err, jetstream.ErrKeyNotFound) {
-			return ungerr.BadRequestError("invalid state")
+			return "", ungerr.BadRequestError("invalid state")
 		}
-		return ungerr.Wrap(err, "error verifying state in NATS KV")
+		return "", ungerr.Wrap(err, "error verifying state in NATS KV")
 	}
 
 	if err := s.kv.Delete(ctx, key, jetstream.LastRevision(entry.Revision())); err != nil {
-		return ungerr.BadRequestError("invalid state")
+		logger.Warnf("error deleting state from NATS KV: %v", err)
+		return "", ungerr.BadRequestError("invalid state")
 	}
 
-	return nil
+	return string(entry.Value()), nil
 }
 
 func (s *natsKVStateStore) Shutdown() error {

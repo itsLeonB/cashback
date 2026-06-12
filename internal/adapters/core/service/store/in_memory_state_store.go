@@ -29,36 +29,36 @@ func NewInMemoryStateStore() *inMemoryStateStore {
 	return store
 }
 
-func (vss *inMemoryStateStore) Store(ctx context.Context, state string, expiry time.Duration) error {
+func (vss *inMemoryStateStore) Store(ctx context.Context, state string, value string, expiry time.Duration) error {
 	key := vss.constructKey(state)
 	entry := stateEntry{
-		value:     state,
+		value:     value,
 		expiresAt: time.Now().Add(expiry),
 	}
 	vss.data.Store(key, entry)
 	return nil
 }
 
-func (vss *inMemoryStateStore) VerifyAndDelete(ctx context.Context, state string) error {
+func (vss *inMemoryStateStore) VerifyAndDelete(ctx context.Context, state string) (string, error) {
 	key := vss.constructKey(state)
-	value, loaded := vss.data.LoadAndDelete(key)
+	raw, loaded := vss.data.LoadAndDelete(key)
 	if !loaded {
-		return ungerr.BadRequestError("invalid state")
+		return "", ungerr.BadRequestError("invalid state")
 	}
 
-	entry := value.(stateEntry)
+	entry := raw.(stateEntry)
 	if time.Now().After(entry.expiresAt) {
-		return ungerr.BadRequestError("invalid state")
+		return "", ungerr.BadRequestError("invalid state")
 	}
 
-	return nil
+	return entry.value, nil
 }
 
 func (vss *inMemoryStateStore) startCleanup() {
 	vss.wg.Add(1)
 	go func() {
 		defer vss.wg.Done()
-		ticker := time.NewTicker(1 * time.Minute) // Adjust interval as needed
+		ticker := time.NewTicker(1 * time.Minute)
 		defer ticker.Stop()
 
 		for {

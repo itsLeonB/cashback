@@ -20,6 +20,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/kroma-labs/sentinel-go v0.3.4
+	github.com/markbates/goth v1.82.0
 	github.com/midtrans/midtrans-go v1.3.8
 	github.com/nats-io/nats.go v1.52.0
 	github.com/openai/openai-go/v2 v2.7.1

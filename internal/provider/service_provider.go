@@ -2,7 +2,6 @@ package provider
 
 import (
 	"errors"
-	"net/http"
 
 	"github.com/google/uuid"
 	appembed "github.com/itsLeonB/cashback"
@@ -13,6 +12,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/service/fee"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization/payment"
+	"github.com/itsLeonB/cashback/internal/domain/service/oauth"
 	"github.com/itsLeonB/sekure"
 )
 
@@ -89,10 +89,11 @@ func ProvideServices(
 	pushNotification := service.NewPushNotificationService(repos.PushSubscription, repos.Notification, repos.Transactor, coreSvc.WebPush)
 
 	sessionCache := cache.NewInMemoryCache[uuid.UUID](authConfig.TokenDuration)
+	providerSvc := oauth.NewProviderService(config.Global.OAuthProviders)
 
 	return &Services{
 		Auth:    service.NewAuthService(jwt, repos.Transactor, user, coreSvc.Mail, appConfig.RegisterVerificationUrl, appConfig.ResetPasswordUrl, authConfig.HashCost, pushNotification, session, profile, friendship, sessionCache),
-		OAuth:   service.NewOAuthService(repos.Transactor, repos.OAuthAccount, coreSvc.State, user, http.DefaultClient, session),
+		OAuth:   service.NewOAuthService(repos.Transactor, providerSvc, repos.OAuthAccount, coreSvc.State, user, session),
 		Session: session,
 		Captcha: service.NewTurnstileService(authConfig.TurnstileSecretKey),
 

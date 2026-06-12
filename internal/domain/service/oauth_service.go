@@ -4,10 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"net/http"
 	"time"
 
-	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/store"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
@@ -19,7 +17,7 @@ import (
 
 type oauthServiceImpl struct {
 	transactor       crud.Transactor
-	oauthProviders   map[string]oauth.ProviderService
+	providerSvc      oauth.ProviderService
 	oauthAccountRepo crud.Repository[users.OAuthAccount]
 	stateStore       store.StateStore
 	userSvc          UserService
@@ -28,19 +26,19 @@ type oauthServiceImpl struct {
 
 func NewOAuthService(
 	transactor crud.Transactor,
+	providerSvc oauth.ProviderService,
 	oauthAccountRepo crud.Repository[users.OAuthAccount],
 	stateStore store.StateStore,
 	userSvc UserService,
-	httpClient *http.Client,
 	sessionSvc SessionService,
 ) OAuthService {
 	return &oauthServiceImpl{
-		transactor,
-		oauth.NewOAuthProviderServices(config.Global.OAuthProviders, httpClient),
-		oauthAccountRepo,
-		stateStore,
-		userSvc,
-		sessionSvc,
+		transactor:       transactor,
+		providerSvc:      providerSvc,
+		oauthAccountRepo: oauthAccountRepo,
+		stateStore:       stateStore,
+		userSvc:          userSvc,
+		sessionSvc:       sessionSvc,
 	}
 }
 
@@ -48,22 +46,17 @@ func (as *oauthServiceImpl) GetOAuthURL(ctx context.Context, provider string) (s
 	ctx, span := otel.Tracer.Start(ctx, "OAuthService.GetOAuthURL")
 	defer span.End()
 
-	oauthProvider, ok := as.oauthProviders[provider]
-	if !ok {
-		return "", ungerr.Unknownf("unsupported oauth provider: %s", provider)
-	}
-
 	state, err := as.generateState()
 	if err != nil {
 		return "", err
 	}
 
-	url, err := oauthProvider.GetAuthCodeURL(state)
+	url, sessionStr, err := as.providerSvc.GetAuthCodeURL(provider, state)
 	if err != nil {
 		return "", err
 	}
 
-	if err = as.stateStore.Store(ctx, state, 5*time.Minute); err != nil {
+	if err = as.stateStore.Store(ctx, state, sessionStr, 5*time.Minute); err != nil {
 		return "", err
 	}
 
@@ -76,16 +69,12 @@ func (as *oauthServiceImpl) HandleOAuthCallback(ctx context.Context, data dto.OA
 
 	var response dto.TokenResponse
 	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		oauthProvider, ok := as.oauthProviders[data.Provider]
-		if !ok {
-			return ungerr.Unknownf("unsupported oauth provider: %s", data.Provider)
-		}
-
-		if err := as.stateStore.VerifyAndDelete(ctx, data.State); err != nil {
+		sessionStr, err := as.stateStore.VerifyAndDelete(ctx, data.State)
+		if err != nil {
 			return err
 		}
 
-		userInfo, err := oauthProvider.HandleCallback(ctx, data.Code)
+		userInfo, err := as.providerSvc.HandleCallback(ctx, data.Provider, data.Code, sessionStr)
 		if err != nil {
 			return err
 		}
@@ -125,7 +114,6 @@ func (as *oauthServiceImpl) createNewUserOAuth(ctx context.Context, userInfo oau
 		return users.User{}, err
 	}
 	if user.IsZero() {
-		// New user
 		newUser := dto.NewUserRequest{
 			Email:     userInfo.Email,
 			Name:      userInfo.Name,
@@ -138,11 +126,14 @@ func (as *oauthServiceImpl) createNewUserOAuth(ctx context.Context, userInfo oau
 		}
 	}
 
-	if !as.oauthProviders[userInfo.Provider].IsTrusted() {
+	trusted, err := as.providerSvc.IsTrusted(userInfo.Provider)
+	if err != nil {
+		return users.User{}, err
+	}
+	if !trusted {
 		return users.User{}, ungerr.Unknown("provider temporarily disabled")
 	}
 
-	// New oauth method
 	newOAuthAccount := users.OAuthAccount{
 		UserID:     user.ID,
 		Provider:   userInfo.Provider,

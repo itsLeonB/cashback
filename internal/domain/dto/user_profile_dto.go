@@ -33,6 +33,15 @@ type AssociateProfileRequest struct {
 	AnonProfileID uuid.UUID `json:"anonProfileId" binding:"required"`
 }
 
+// SearchProfileResponse is the minimal DTO returned by profile search.
+// Distinct from SimpleProfile (which includes IsUser for debt/transaction context)
+// because search results are always real users — IsUser would be redundant.
+type SearchProfileResponse struct {
+	ID     uuid.UUID `json:"id"`
+	Name   string    `json:"name"`
+	Avatar string    `json:"avatar"`
+}
+
 type SimpleProfile struct {
 	ID     uuid.UUID `json:"id"`
 	Name   string    `json:"name"`

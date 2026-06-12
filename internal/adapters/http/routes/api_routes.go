@@ -7,6 +7,9 @@ import (
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler"
 	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/kroma-labs/sentinel-go/httpserver"
+	sentinelGin "github.com/kroma-labs/sentinel-go/httpserver/adapters/gin"
+	"golang.org/x/time/rate"
 )
 
 func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddleware gin.HandlerFunc) {
@@ -19,6 +22,11 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 			v1.GET("/public/profiles/:slug", handlers.Public.HandleGetPublicProfile())
 
 			authRoutes := v1.Group("/auth")
+			authRoutes.Use(sentinelGin.RateLimit(httpserver.RateLimitConfig{
+				Limit:   rate.Limit(20.0 / 60),
+				Burst:   5,
+				KeyFunc: httpserver.KeyFuncByIP(),
+			}))
 			{
 				authRoutes.POST("/register", handlers.Auth.HandleRegister())
 				authRoutes.POST("/login", handlers.Auth.HandleInternalLogin())
@@ -26,8 +34,22 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 				authRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextProvider.String()), handlers.Auth.HandleOAuth2Login())
 				authRoutes.GET(fmt.Sprintf("/:%s/callback", appconstant.ContextProvider.String()), handlers.Auth.HandleOAuth2Callback())
 				authRoutes.GET("/verify-registration", handlers.Auth.HandleVerifyRegistration())
-				authRoutes.POST("/password-reset", handlers.Auth.HandleSendPasswordReset())
-				authRoutes.PATCH("/reset-password", handlers.Auth.HandleResetPassword())
+				authRoutes.POST("/password-reset",
+					sentinelGin.RateLimit(httpserver.RateLimitConfig{
+						Limit:   rate.Limit(3.0 / 900),
+						Burst:   3,
+						KeyFunc: httpserver.KeyFuncByIP(),
+					}),
+					handlers.Auth.HandleSendPasswordReset(),
+				)
+				authRoutes.PATCH("/reset-password",
+					sentinelGin.RateLimit(httpserver.RateLimitConfig{
+						Limit:   rate.Limit(5.0 / 900),
+						Burst:   5,
+						KeyFunc: httpserver.KeyFuncByIP(),
+					}),
+					handlers.Auth.HandleResetPassword(),
+				)
 			}
 
 			protectedRoutes := v1.Group("/", authMiddleware, middlewares.CSRF())
@@ -46,6 +68,14 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 				}
 
 				profilesRoutes := protectedRoutes.Group("/profiles")
+				profilesRoutes.Use(
+					middlewares.WithRateKey(appconstant.ContextProfileID.String()),
+					sentinelGin.RateLimit(httpserver.RateLimitConfig{
+						Limit:   rate.Limit(10.0 / 60),
+						Burst:   3,
+						KeyFunc: httpserver.KeyFuncByHeader("X-Rate-Key"),
+					}),
+				)
 				{
 					profilesRoutes.GET("", handlers.Profile.HandleSearch())
 					profilesRoutes.POST(fmt.Sprintf("/:%s/friend-requests", appconstant.ContextProfileID.String()), handlers.FriendshipRequest.HandleSend())

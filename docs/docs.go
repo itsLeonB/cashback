@@ -42,7 +42,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/response.JSONResponse-dto_TokenResponse"
+                            "$ref": "#/definitions/response.JSONResponse-map_string_string"
                         }
                     },
                     "400": {
@@ -130,9 +130,6 @@ const docTemplate = `{
         },
         "/auth/refresh": {
             "put": {
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
@@ -140,29 +137,11 @@ const docTemplate = `{
                     "auth"
                 ],
                 "summary": "Refresh access token",
-                "parameters": [
-                    {
-                        "description": "Refresh token payload",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.RefreshTokenRequest"
-                        }
-                    }
-                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/response.JSONResponse-dto_TokenResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.JSONResponse-map_string_string"
                         }
                     },
                     "401": {
@@ -202,8 +181,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.JSONResponse-map_string_string"
                         }
                     },
                     "400": {
@@ -238,7 +216,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/response.JSONResponse-dto_TokenResponse"
+                            "$ref": "#/definitions/response.JSONResponse-map_string_string"
                         }
                     },
                     "400": {
@@ -309,7 +287,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/response.JSONResponse-dto_TokenResponse"
+                            "$ref": "#/definitions/response.JSONResponse-map_string_string"
                         }
                     },
                     "400": {
@@ -2191,7 +2169,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/response.JSONResponse-array_dto_ProfileResponse"
+                            "$ref": "#/definitions/response.JSONResponse-array_dto_SearchProfileResponse"
                         }
                     },
                     "401": {
@@ -3373,17 +3351,6 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.RefreshTokenRequest": {
-            "type": "object",
-            "required": [
-                "refreshToken"
-            ],
-            "properties": {
-                "refreshToken": {
-                    "type": "string"
-                }
-            }
-        },
         "dto.ResetPasswordRequest": {
             "type": "object",
             "required": [
@@ -3404,12 +3371,30 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.SearchProfileResponse": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.SendPasswordResetRequest": {
             "type": "object",
             "required": [
+                "captchaToken",
                 "email"
             ],
             "properties": {
+                "captchaToken": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string",
                     "minLength": 3
@@ -3452,20 +3437,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/dto.ItemParticipantRequest"
                     }
-                }
-            }
-        },
-        "dto.TokenResponse": {
-            "type": "object",
-            "properties": {
-                "refreshToken": {
-                    "type": "string"
-                },
-                "token": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
                 }
             }
         },
@@ -3602,6 +3573,12 @@ const docTemplate = `{
             "type": "object",
             "additionalProperties": {
                 "$ref": "#/definitions/dto.FriendBalance"
+            }
+        },
+        "map_string_string": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
             }
         },
         "monetization.MidtransNotificationPayload": {
@@ -3888,13 +3865,13 @@ const docTemplate = `{
                 }
             }
         },
-        "response.JSONResponse-array_dto_ProfileResponse": {
+        "response.JSONResponse-array_dto_ProfileTransferMethodResponse": {
             "type": "object",
             "properties": {
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.ProfileResponse"
+                        "$ref": "#/definitions/dto.ProfileTransferMethodResponse"
                     }
                 },
                 "errors": {
@@ -3906,13 +3883,13 @@ const docTemplate = `{
                 }
             }
         },
-        "response.JSONResponse-array_dto_ProfileTransferMethodResponse": {
+        "response.JSONResponse-array_dto_SearchProfileResponse": {
             "type": "object",
             "properties": {
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.ProfileTransferMethodResponse"
+                        "$ref": "#/definitions/dto.SearchProfileResponse"
                     }
                 },
                 "errors": {
@@ -4080,11 +4057,11 @@ const docTemplate = `{
                 }
             }
         },
-        "response.JSONResponse-dto_TokenResponse": {
+        "response.JSONResponse-map_string_dto_FriendBalance": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/dto.TokenResponse"
+                    "$ref": "#/definitions/map_string_dto.FriendBalance"
                 },
                 "errors": {
                     "type": "array",
@@ -4095,11 +4072,11 @@ const docTemplate = `{
                 }
             }
         },
-        "response.JSONResponse-map_string_dto_FriendBalance": {
+        "response.JSONResponse-map_string_string": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/map_string_dto.FriendBalance"
+                    "$ref": "#/definitions/map_string_string"
                 },
                 "errors": {
                     "type": "array",

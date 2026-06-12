@@ -15,6 +15,7 @@ type Auth struct {
 	CookieDomain          string        `split_words:"true" default:"localhost"`
 	CookieSecure          bool          `split_words:"true" default:"false"`
 	CookieSameSite        string        `split_words:"true" default:"strict"`
+	TurnstileSecretKey    string        `split_words:"true"`
 }
 
 func (a Auth) ParsedSameSite() http.SameSite {

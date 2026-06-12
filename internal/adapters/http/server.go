@@ -17,12 +17,6 @@ func Setup(configs config.Config) (*httpserver.Server, func(), error) {
 		return nil, nil, err
 	}
 
-	shutdownFunc := func() {
-		if err := providers.Shutdown(); err != nil {
-			logger.Error(err)
-		}
-	}
-
 	gin.SetMode(configs.App.Env)
 	r := gin.New()
 	r.HandleMethodNotAllowed = true
@@ -34,7 +28,13 @@ func Setup(configs config.Config) (*httpserver.Server, func(), error) {
 		return nil, nil, err
 	}
 
-	RegisterRoutes(r, configs, providers.Services, providers.AdminServices)
+	routesShutdown := RegisterRoutes(r, configs, providers.Services, providers.AdminServices)
+	shutdownFunc := func() {
+		routesShutdown()
+		if err := providers.Shutdown(); err != nil {
+			logger.Error(err)
+		}
+	}
 
 	httpCfg := httpserver.ProductionConfig()
 	httpCfg.LoggerConfig = &httpserver.LoggerConfig{

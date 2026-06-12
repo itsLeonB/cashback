@@ -4,10 +4,12 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/adapters/http/cookie"
+	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
@@ -21,20 +23,26 @@ type AuthHandler struct {
 	authService    service.AuthService
 	oAuthService   service.OAuthService
 	sessionService service.SessionService
+	captchaService service.CaptchaService
 	cookieCfg      cookie.Config
+	emailLimiter   *middlewares.ValueLimiter
 }
 
 func NewAuthHandler(
 	authService service.AuthService,
 	oAuthService service.OAuthService,
 	sessionService service.SessionService,
+	captchaService service.CaptchaService,
 	cookieCfg cookie.Config,
+	emailLimiter *middlewares.ValueLimiter,
 ) *AuthHandler {
 	return &AuthHandler{
 		authService:    authService,
 		oAuthService:   oAuthService,
 		sessionService: sessionService,
+		captchaService: captchaService,
 		cookieCfg:      cookieCfg,
+		emailLimiter:   emailLimiter,
 	}
 }
 
@@ -200,6 +208,15 @@ func (ah *AuthHandler) HandleSendPasswordReset() gin.HandlerFunc {
 	return server.Handler("AuthHandler.HandleSendPasswordReset", http.StatusCreated, func(ctx *gin.Context) (any, error) {
 		request, err := server.BindJSON[dto.SendPasswordResetRequest](ctx)
 		if err != nil {
+			return nil, err
+		}
+
+		emailKey := strings.ToLower(strings.TrimSpace(request.Email))
+		if !ah.emailLimiter.Allow(emailKey) {
+			return nil, ungerr.TooManyRequestsError("too many reset requests for this email")
+		}
+
+		if err := ah.captchaService.Verify(ctx.Request.Context(), request.CaptchaToken); err != nil {
 			return nil, err
 		}
 

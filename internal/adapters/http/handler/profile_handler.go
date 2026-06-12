@@ -79,7 +79,7 @@ func (ph *ProfileHandler) HandleUpdate() gin.HandlerFunc {
 // @Security     BearerAuth
 // @Produce      json
 // @Param        query query string false "Search query"
-// @Success      200  {object}  response.JSONResponse[[]dto.ProfileResponse]
+// @Success      200  {object}  response.JSONResponse[[]dto.SearchProfileResponse]
 // @Failure      401  {object}  map[string]any
 // @Router       /profiles [get]
 func (ph *ProfileHandler) HandleSearch() gin.HandlerFunc {

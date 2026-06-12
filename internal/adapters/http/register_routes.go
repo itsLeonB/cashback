@@ -19,7 +19,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func RegisterRoutes(router *gin.Engine, configs config.Config, services *provider.Services, adminServices *admin.Services) {
+func RegisterRoutes(router *gin.Engine, configs config.Config, services *provider.Services, adminServices *admin.Services) func() {
 	cookieCfg := cookie.Config{
 		Domain:     configs.CookieDomain,
 		Secure:     configs.CookieSecure,
@@ -57,4 +57,6 @@ func RegisterRoutes(router *gin.Engine, configs config.Config, services *provide
 	routes.RegisterBaseRoutes(router)
 	routes.RegisterAPIRoutes(router, handlers, mw.Auth)
 	routes.RegisterAdminRoutes(router, adminHandlers, mw.AdminAuth)
+
+	return handlers.Shutdown
 }

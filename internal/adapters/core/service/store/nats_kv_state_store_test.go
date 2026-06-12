@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nats-io/nats.go/jetstream"
+	"github.com/stretchr/testify/assert"
 )
 
 type mockKV struct {
@@ -26,10 +27,11 @@ func (m *mockKV) Create(ctx context.Context, key string, value []byte, opts ...j
 }
 
 func (m *mockKV) Get(ctx context.Context, key string) (jetstream.KeyValueEntry, error) {
-	if _, ok := m.entries[key]; !ok {
+	v, ok := m.entries[key]
+	if !ok {
 		return nil, jetstream.ErrKeyNotFound
 	}
-	return &mockEntry{revision: 1}, nil
+	return &mockEntry{revision: 1, value: v}, nil
 }
 
 func (m *mockKV) Delete(ctx context.Context, key string, opts ...jetstream.KVDeleteOpt) error {
@@ -40,66 +42,55 @@ func (m *mockKV) Delete(ctx context.Context, key string, opts ...jetstream.KVDel
 type mockEntry struct {
 	jetstream.KeyValueEntry
 	revision uint64
+	value    []byte
 }
 
 func (e *mockEntry) Revision() uint64 { return e.revision }
+func (e *mockEntry) Value() []byte    { return e.value }
 
 func TestNATSKVStateStore_Store(t *testing.T) {
 	kv := newMockKV()
 	s := NewNATSKVStateStore(kv)
 
-	err := s.Store(context.Background(), "abc123", 5*time.Minute)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	err := s.Store(context.Background(), "abc123", "session-data", 5*time.Minute)
+	assert.NoError(t, err)
 
-	if _, ok := kv.entries["state.abc123"]; !ok {
-		t.Fatal("expected key to be stored")
-	}
+	assert.Contains(t, kv.entries, "state.abc123")
 }
 
 func TestNATSKVStateStore_Store_Duplicate(t *testing.T) {
 	kv := newMockKV()
 	s := NewNATSKVStateStore(kv)
 
-	_ = s.Store(context.Background(), "abc123", 5*time.Minute)
-	err := s.Store(context.Background(), "abc123", 5*time.Minute)
-	if err == nil {
-		t.Fatal("expected error on duplicate store")
-	}
+	_ = s.Store(context.Background(), "abc123", "session-data", 5*time.Minute)
+	err := s.Store(context.Background(), "abc123", "session-data", 5*time.Minute)
+	assert.Error(t, err)
 }
 
 func TestNATSKVStateStore_VerifyAndDelete(t *testing.T) {
 	kv := newMockKV()
 	s := NewNATSKVStateStore(kv)
 
-	_ = s.Store(context.Background(), "abc123", 5*time.Minute)
+	_ = s.Store(context.Background(), "abc123", "session-data", 5*time.Minute)
 
-	err := s.VerifyAndDelete(context.Background(), "abc123")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	value, err := s.VerifyAndDelete(context.Background(), "abc123")
+	assert.NoError(t, err)
+	assert.Equal(t, "session-data", value)
 
-	if _, ok := kv.entries["state.abc123"]; ok {
-		t.Fatal("expected key to be deleted")
-	}
+	assert.NotContains(t, kv.entries, "state.abc123")
 }
 
 func TestNATSKVStateStore_VerifyAndDelete_NotFound(t *testing.T) {
 	kv := newMockKV()
 	s := NewNATSKVStateStore(kv)
 
-	err := s.VerifyAndDelete(context.Background(), "nonexistent")
-	if err == nil {
-		t.Fatal("expected error for nonexistent state")
-	}
+	_, err := s.VerifyAndDelete(context.Background(), "nonexistent")
+	assert.Error(t, err)
 }
 
 func TestNATSKVStateStore_Shutdown(t *testing.T) {
 	kv := newMockKV()
 	s := NewNATSKVStateStore(kv)
 
-	if err := s.Shutdown(); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	assert.NoError(t, s.Shutdown())
 }

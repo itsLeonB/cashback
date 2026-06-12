@@ -11,8 +11,8 @@ import (
 )
 
 type StateStore interface {
-	Store(ctx context.Context, state string, expiry time.Duration) error
-	VerifyAndDelete(ctx context.Context, state string) error
+	Store(ctx context.Context, state string, value string, expiry time.Duration) error
+	VerifyAndDelete(ctx context.Context, state string) (string, error)
 	Shutdown() error
 }
 

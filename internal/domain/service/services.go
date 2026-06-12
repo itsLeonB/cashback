@@ -10,6 +10,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/cashback/internal/domain/message"
+	"github.com/itsLeonB/cashback/internal/domain/service/auth"
 	"github.com/shopspring/decimal"
 )
 
@@ -43,9 +44,9 @@ type OAuthService interface {
 type SessionService interface {
 	RefreshToken(ctx context.Context, request dto.RefreshTokenRequest) (dto.TokenResponse, error)
 
-	CreateTokenAndSession(ctx context.Context, user users.User) (dto.TokenResponse, error)
-	RevokeSession(ctx context.Context, sessionID uuid.UUID) error
-	GetByID(ctx context.Context, id uuid.UUID) (users.Session, error)
+	CreateTokenAndSession(ctx context.Context, user auth.User) (dto.TokenResponse, error)
+	RevokeSession(ctx context.Context, sessionID string) error
+	GetByID(ctx context.Context, id string) (auth.Session, error)
 }
 
 type ProfileService interface {

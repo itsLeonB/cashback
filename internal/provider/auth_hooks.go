@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/ungerr"
 )
@@ -18,15 +19,38 @@ func NewAuthHooks(
 	friendshipService service.FriendshipService,
 ) service.AuthHooks {
 	return service.AuthHooks{
-		BeforeLogout: func(ctx context.Context, sessionID uuid.UUID) error {
-			return pushNotification.UnsubscribeBySession(ctx, sessionID)
+		BeforeLogout: func(ctx context.Context, sessionID string) error {
+			sid, err := uuid.Parse(sessionID)
+			if err != nil {
+				return err
+			}
+			return pushNotification.UnsubscribeBySession(ctx, sid)
 		},
-		AfterEmailVerified: func(ctx context.Context, userID, profileID uuid.UUID, claims map[string]any) error {
+		AfterEmailVerified: func(ctx context.Context, userID, profileID string, claims map[string]any) error {
+			if profileID == "" {
+				return nil
+			}
+			pid, err := uuid.Parse(profileID)
+			if err != nil {
+				return err
+			}
 			slug, ok := claims["slug"].(string)
 			if !ok || slug == "" {
 				return nil
 			}
-			return associateBySlug(ctx, profileService, friendshipService, profileID, slug)
+			return associateBySlug(ctx, profileService, friendshipService, pid, slug)
+		},
+		ClaimsBuilder: func(ctx context.Context, userID string, baseClaims map[string]any) (map[string]any, error) {
+			uid, err := uuid.Parse(userID)
+			if err != nil {
+				return nil, err
+			}
+			profile, err := profileService.GetByID(ctx, uid)
+			if err != nil {
+				return nil, err
+			}
+			baseClaims[appconstant.ContextProfileID.String()] = profile.ID
+			return baseClaims, nil
 		},
 	}
 }

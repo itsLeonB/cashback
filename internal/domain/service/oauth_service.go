@@ -4,45 +4,44 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"time"
 
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
-	"github.com/itsLeonB/cashback/internal/core/service/store"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
-	"github.com/itsLeonB/cashback/internal/domain/entity/users"
+	"github.com/itsLeonB/cashback/internal/domain/service/auth"
 	"github.com/itsLeonB/cashback/internal/domain/service/oauth"
-	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 )
 
 type oauthServiceImpl struct {
-	transactor       crud.Transactor
-	providerSvc      oauth.ProviderService
-	oauthAccountRepo crud.Repository[users.OAuthAccount]
-	stateStore       store.StateStore
-	userSvc          UserService
-	sessionSvc       SessionService
-	hooks            AuthHooks
+	transactor    auth.Transactor
+	providerSvc   oauth.ProviderService
+	oauthAccounts auth.OAuthAccountStore
+	stateStore    auth.StateStore
+	users         auth.UserStore
+	sessionSvc    SessionService
+	hooks         AuthHooks
 }
 
 func NewOAuthService(
-	transactor crud.Transactor,
+	transactor auth.Transactor,
 	providerSvc oauth.ProviderService,
-	oauthAccountRepo crud.Repository[users.OAuthAccount],
-	stateStore store.StateStore,
-	userSvc UserService,
+	oauthAccounts auth.OAuthAccountStore,
+	stateStore auth.StateStore,
+	users auth.UserStore,
 	sessionSvc SessionService,
 	hooks AuthHooks,
 ) OAuthService {
 	return &oauthServiceImpl{
-		transactor:       transactor,
-		providerSvc:      providerSvc,
-		oauthAccountRepo: oauthAccountRepo,
-		stateStore:       stateStore,
-		userSvc:          userSvc,
-		sessionSvc:       sessionSvc,
-		hooks:            hooks,
+		transactor:    transactor,
+		providerSvc:   providerSvc,
+		oauthAccounts: oauthAccounts,
+		stateStore:    stateStore,
+		users:         users,
+		sessionSvc:    sessionSvc,
+		hooks:         hooks,
 	}
 }
 
@@ -76,7 +75,7 @@ func (as *oauthServiceImpl) HandleOAuthCallback(ctx context.Context, data dto.OA
 
 	var (
 		response dto.TokenResponse
-		user     users.User
+		user     auth.User
 		isNew    bool
 	)
 	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -95,8 +94,10 @@ func (as *oauthServiceImpl) HandleOAuthCallback(ctx context.Context, data dto.OA
 			return err
 		}
 
-		if !user.IsVerified() {
-			if _, err = as.userSvc.Verify(ctx, user.ID, user.Email, userInfo.Name, userInfo.Avatar); err != nil {
+		if !user.Verified {
+			var err error
+			user, err = as.users.SetVerified(ctx, user.ID, userInfo.Name, userInfo.Avatar)
+			if err != nil {
 				return err
 			}
 		}
@@ -115,64 +116,47 @@ func (as *oauthServiceImpl) HandleOAuthCallback(ctx context.Context, data dto.OA
 	return response, nil
 }
 
-func (as *oauthServiceImpl) getOrCreateUser(ctx context.Context, userInfo oauth.UserInfo) (users.User, bool, error) {
-	existingOAuth, err := as.findOAuthAccount(ctx, userInfo.Provider, userInfo.ProviderID)
-	if err != nil {
-		return users.User{}, false, err
+func (as *oauthServiceImpl) getOrCreateUser(ctx context.Context, userInfo oauth.UserInfo) (auth.User, bool, error) {
+	existingOAuth, err := as.oauthAccounts.FindByProvider(ctx, userInfo.Provider, userInfo.ProviderID)
+	if err != nil && !errors.Is(err, auth.ErrUserNotFound) {
+		return auth.User{}, false, err
 	}
 	if !existingOAuth.IsZero() {
-		return existingOAuth.User, false, nil
+		found, err := as.users.FindByEmail(ctx, existingOAuth.Email)
+		if err != nil {
+			return auth.User{}, false, err
+		}
+		return found, false, nil
 	}
 	user, err := as.createNewUserOAuth(ctx, userInfo)
 	return user, true, err
 }
 
-func (as *oauthServiceImpl) createNewUserOAuth(ctx context.Context, userInfo oauth.UserInfo) (users.User, error) {
-	user, err := as.userSvc.FindByEmail(ctx, userInfo.Email)
-	if err != nil {
-		return users.User{}, err
+func (as *oauthServiceImpl) createNewUserOAuth(ctx context.Context, userInfo oauth.UserInfo) (auth.User, error) {
+	user, err := as.users.FindByEmail(ctx, userInfo.Email)
+	if err != nil && !errors.Is(err, auth.ErrUserNotFound) {
+		return auth.User{}, err
 	}
 	if user.IsZero() {
-		newUser := dto.NewUserRequest{
-			Email:     userInfo.Email,
-			Name:      userInfo.Name,
-			Avatar:    userInfo.Avatar,
-			VerifyNow: true,
-		}
-		user, err = as.userSvc.CreateNew(ctx, newUser)
+		user, err = as.users.CreateOAuth(ctx, userInfo.Email, userInfo.Name, userInfo.Avatar)
 		if err != nil {
-			return users.User{}, err
+			return auth.User{}, err
 		}
 	}
 
 	trusted, err := as.providerSvc.IsTrusted(userInfo.Provider)
 	if err != nil {
-		return users.User{}, err
+		return auth.User{}, err
 	}
 	if !trusted {
-		return users.User{}, ungerr.Unknown("provider temporarily disabled")
+		return auth.User{}, ungerr.Unknown("provider temporarily disabled")
 	}
 
-	newOAuthAccount := users.OAuthAccount{
-		UserID:     user.ID,
-		Provider:   userInfo.Provider,
-		ProviderID: userInfo.ProviderID,
-		Email:      userInfo.Email,
-	}
-
-	if _, err = as.oauthAccountRepo.Insert(ctx, newOAuthAccount); err != nil {
-		return users.User{}, err
+	if err = as.oauthAccounts.Link(ctx, user.ID, userInfo.Provider, userInfo.ProviderID, userInfo.Email); err != nil {
+		return auth.User{}, err
 	}
 
 	return user, nil
-}
-
-func (as *oauthServiceImpl) findOAuthAccount(ctx context.Context, provider, providerID string) (users.OAuthAccount, error) {
-	oauthSpec := crud.Specification[users.OAuthAccount]{}
-	oauthSpec.Model.Provider = provider
-	oauthSpec.Model.ProviderID = providerID
-	oauthSpec.PreloadRelations = []string{"User"}
-	return as.oauthAccountRepo.FindFirst(ctx, oauthSpec)
 }
 
 func (as *oauthServiceImpl) generateState() (string, error) {

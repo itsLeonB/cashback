@@ -4,43 +4,43 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
+	"errors"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
-	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
-	"github.com/itsLeonB/go-crud"
-	"github.com/itsLeonB/sekure"
+	"github.com/itsLeonB/cashback/internal/domain/service/auth"
 	"github.com/itsLeonB/ungerr"
 )
 
 type sessionService struct {
-	jwtService       sekure.JWTService
-	userSvc          UserService
-	transactor       crud.Transactor
-	sessionRepo      crud.Repository[users.Session]
-	refreshTokenRepo crud.Repository[users.RefreshToken]
-	claimsBuilder    func(ctx context.Context, userID uuid.UUID, baseClaims map[string]any) (map[string]any, error)
+	jwtService       auth.JWTService
+	users            auth.UserStore
+	transactor       auth.Transactor
+	sessions         auth.SessionStore
+	refreshTokens    auth.RefreshTokenStore
+	refreshTokenTTL  time.Duration
+	claimsBuilder    func(ctx context.Context, userID string, baseClaims map[string]any) (map[string]any, error)
 }
 
 func NewSessionService(
-	jwtService sekure.JWTService,
-	userSvc UserService,
-	transactor crud.Transactor,
-	sessionRepo crud.Repository[users.Session],
-	refreshTokenRepo crud.Repository[users.RefreshToken],
-	claimsBuilder func(ctx context.Context, userID uuid.UUID, baseClaims map[string]any) (map[string]any, error),
-) *sessionService {
+	jwtService auth.JWTService,
+	users auth.UserStore,
+	transactor auth.Transactor,
+	sessions auth.SessionStore,
+	refreshTokens auth.RefreshTokenStore,
+	refreshTokenTTL time.Duration,
+	claimsBuilder func(ctx context.Context, userID string, baseClaims map[string]any) (map[string]any, error),
+) SessionService {
 	return &sessionService{
 		jwtService,
-		userSvc,
+		users,
 		transactor,
-		sessionRepo,
-		refreshTokenRepo,
+		sessions,
+		refreshTokens,
+		refreshTokenTTL,
 		claimsBuilder,
 	}
 }
@@ -64,7 +64,7 @@ func (ss *sessionService) RefreshToken(ctx context.Context, request dto.RefreshT
 		}
 
 		// Verify user
-		if _, err := ss.userSvc.GetByID(ctx, session.UserID); err != nil {
+		if err := ss.users.Exists(ctx, session.UserID); err != nil {
 			return err
 		}
 
@@ -97,17 +97,16 @@ func (ss *sessionService) RefreshToken(ctx context.Context, request dto.RefreshT
 	return response, err
 }
 
-func (ss *sessionService) CreateTokenAndSession(ctx context.Context, user users.User) (dto.TokenResponse, error) {
+func (ss *sessionService) CreateTokenAndSession(ctx context.Context, user auth.User) (dto.TokenResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "SessionService.CreateTokenAndSession")
 	defer span.End()
 
 	// Create session with refresh token
-	session, refreshToken, err := ss.createSession(ctx, user.ID, "", 30*24*time.Hour) // 30 day refresh token
+	session, refreshToken, err := ss.createSession(ctx, user.ID, ss.refreshTokenTTL)
 	if err != nil {
 		return dto.TokenResponse{}, err
 	}
 
-	// Create access token
 	rawFingerprint, fgpHash := ss.generateFingerprint()
 	authData := mapper.SessionToAuthData(session, fgpHash)
 
@@ -127,68 +126,38 @@ func (ss *sessionService) CreateTokenAndSession(ctx context.Context, user users.
 	return dto.NewTokenResp(accessToken, refreshToken, rawFingerprint), nil
 }
 
-// revokeSession deletes the session and all associated refresh tokens
-func (ss *sessionService) RevokeSession(ctx context.Context, sessionID uuid.UUID) error {
+// RevokeSession deletes the session and all associated refresh tokens
+func (ss *sessionService) RevokeSession(ctx context.Context, sessionID string) error {
 	ctx, span := otel.Tracer.Start(ctx, "SessionService.RevokeSession")
 	defer span.End()
 
 	return ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		// Delete all refresh tokens for this session
-		spec := crud.Specification[users.RefreshToken]{}
-		spec.Model.SessionID = sessionID
-		refreshTokens, err := ss.refreshTokenRepo.FindAll(ctx, spec)
-		if err != nil {
+		if err := ss.refreshTokens.DeleteBySession(ctx, sessionID); err != nil {
 			return err
 		}
-
-		if err = ss.refreshTokenRepo.DeleteMany(ctx, refreshTokens); err != nil {
-			return err
-		}
-
-		// Delete the session
-		session, err := ss.findSessionByID(ctx, sessionID)
-		if err != nil {
-			return err
-		}
-		if session.IsZero() {
-			return nil
-		}
-		return ss.sessionRepo.Delete(ctx, session)
+		return ss.sessions.Delete(ctx, sessionID)
 	})
 }
 
 // createSession creates a new session with initial refresh token
-func (ss *sessionService) createSession(ctx context.Context, userID uuid.UUID, deviceID string, refreshTokenTTL time.Duration) (users.Session, string, error) {
-	var session users.Session
+func (ss *sessionService) createSession(ctx context.Context, userID string, refreshTokenTTL time.Duration) (auth.Session, string, error) {
+	var session auth.Session
 	var refreshToken string
 
 	err := ss.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		// Create session
-		session = users.Session{
-			UserID:     userID,
-			LastUsedAt: time.Now(),
-		}
-
-		if deviceID != "" {
-			session.DeviceID = sql.NullString{
-				String: deviceID,
-				Valid:  true,
-			}
-		}
-
-		insertedSession, err := ss.sessionRepo.Insert(ctx, session)
+		var err error
+		session, err = ss.sessions.Create(ctx, userID)
 		if err != nil {
 			return err
 		}
 
 		// Create initial refresh token
 		expiresAt := time.Now().Add(refreshTokenTTL)
-		refreshToken, err = ss.createRefreshToken(ctx, insertedSession.ID, expiresAt)
+		refreshToken, err = ss.createRefreshToken(ctx, session.ID, expiresAt)
 		if err != nil {
 			return err
 		}
 
-		session = insertedSession
 		return nil
 	})
 
@@ -196,7 +165,7 @@ func (ss *sessionService) createSession(ctx context.Context, userID uuid.UUID, d
 }
 
 // createRefreshToken issues a new refresh token for a session
-func (ss *sessionService) createRefreshToken(ctx context.Context, sessionID uuid.UUID, expiresAt time.Time) (string, error) {
+func (ss *sessionService) createRefreshToken(ctx context.Context, sessionID string, expiresAt time.Time) (string, error) {
 	ctx, span := otel.Tracer.Start(ctx, "SessionService.createRefreshToken")
 	defer span.End()
 
@@ -205,14 +174,7 @@ func (ss *sessionService) createRefreshToken(ctx context.Context, sessionID uuid
 		return "", err
 	}
 
-	refreshToken := users.RefreshToken{
-		SessionID: sessionID,
-		TokenHash: tokenHash,
-		ExpiresAt: expiresAt,
-	}
-
-	_, err = ss.refreshTokenRepo.Insert(ctx, refreshToken)
-	if err != nil {
+	if err = ss.refreshTokens.Create(ctx, sessionID, tokenHash, expiresAt); err != nil {
 		return "", err
 	}
 
@@ -231,24 +193,18 @@ func (ss *sessionService) generateRefreshToken() (string, string, error) {
 	return token, ss.hashToken(token), nil
 }
 
-func (ss *sessionService) GetByID(ctx context.Context, id uuid.UUID) (users.Session, error) {
+func (ss *sessionService) GetByID(ctx context.Context, id string) (auth.Session, error) {
 	ctx, span := otel.Tracer.Start(ctx, "SessionService.GetByID")
 	defer span.End()
 
-	session, err := ss.findSessionByID(ctx, id)
+	session, err := ss.sessions.GetByID(ctx, id)
 	if err != nil {
-		return users.Session{}, err
+		return auth.Session{}, err
 	}
 	if session.IsZero() {
-		return users.Session{}, ungerr.UnauthorizedError("session not found")
+		return auth.Session{}, ungerr.UnauthorizedError("session not found")
 	}
 	return session, nil
-}
-
-func (ss *sessionService) findSessionByID(ctx context.Context, id uuid.UUID) (users.Session, error) {
-	spec := crud.Specification[users.Session]{}
-	spec.Model.ID = id
-	return ss.sessionRepo.FindFirst(ctx, spec)
 }
 
 // rotateRefreshToken safely rotates a refresh token with reuse detection
@@ -275,54 +231,52 @@ func (ss *sessionService) rotateRefreshToken(ctx context.Context, oldToken strin
 			return err
 		}
 
-		// Delete the old refresh token (hard delete for rotation)
-		if err = ss.refreshTokenRepo.Delete(ctx, oldRefreshToken); err != nil {
+		// Delete the old refresh token
+		if err = ss.refreshTokens.Delete(ctx, oldRefreshToken.SessionID, oldRefreshToken.TokenHash); err != nil {
 			return err
 		}
 
-		// Create new refresh token with same expiry duration
-		duration := oldRefreshToken.ExpiresAt.Sub(oldRefreshToken.CreatedAt)
-		newExpiresAt := time.Now().Add(duration)
-
-		newToken, err = ss.createRefreshToken(ctx, session.ID, newExpiresAt)
+		// Session stays active; issue new refresh token
+		expiresAt := time.Now().Add(ss.refreshTokenTTL)
+		newToken, err = ss.createRefreshToken(ctx, session.ID, expiresAt)
 		if err != nil {
 			return err
 		}
 
-		// Update session last used time
-		session.LastUsedAt = time.Now()
-		session.UpdatedAt = time.Now()
-		_, err = ss.sessionRepo.Update(ctx, session)
-		return err
+		// Touch session to update LastUsedAt
+		if err = ss.sessions.Touch(ctx, session.ID); err != nil {
+			return err
+		}
+
+		return nil
 	})
 
 	return newToken, err
 }
 
-func (ss *sessionService) getRefreshToken(ctx context.Context, token string) (users.RefreshToken, error) {
+// getRefreshToken looks up a refresh token by its raw value (hashed comparison)
+func (ss *sessionService) getRefreshToken(ctx context.Context, rawToken string) (auth.RefreshToken, error) {
 	ctx, span := otel.Tracer.Start(ctx, "SessionService.getRefreshToken")
 	defer span.End()
 
-	spec := crud.Specification[users.RefreshToken]{}
-	spec.Model.TokenHash = ss.hashToken(token)
-	refreshToken, err := ss.refreshTokenRepo.FindFirst(ctx, spec)
+	rt, err := ss.refreshTokens.FindByHash(ctx, ss.hashToken(rawToken))
 	if err != nil {
-		return users.RefreshToken{}, err
+		if errors.Is(err, auth.ErrTokenNotFound) {
+			return auth.RefreshToken{}, ungerr.UnauthorizedError("refresh token not found")
+		}
+		return auth.RefreshToken{}, err
 	}
-	if refreshToken.IsZero() {
-		return users.RefreshToken{}, ungerr.UnauthorizedError("invalid refresh token")
-	}
-	return refreshToken, nil
+	return rt, nil
 }
 
-func (sessionService) hashToken(token string) string {
+func (ss *sessionService) hashToken(token string) string {
 	hash := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(hash[:])
 }
 
 func (sessionService) generateFingerprint() (raw string, hash string) {
 	b := make([]byte, 32)
-	rand.Read(b) // crypto/rand.Read panics on failure since Go 1.20; error intentionally ignored
+	rand.Read(b)
 	raw = hex.EncodeToString(b)
 	h := sha256.Sum256([]byte(raw))
 	hash = hex.EncodeToString(h[:])

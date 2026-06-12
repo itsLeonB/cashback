@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,53 +14,51 @@ import (
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
-	"github.com/itsLeonB/cashback/internal/core/service/cache"
-	"github.com/itsLeonB/cashback/internal/core/service/mail"
 	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
-	"github.com/itsLeonB/cashback/internal/domain/entity/users"
-	"github.com/itsLeonB/ezutil/v2"
-	"github.com/itsLeonB/go-crud"
-	"github.com/itsLeonB/sekure"
+	"github.com/itsLeonB/cashback/internal/domain/service/auth"
 	"github.com/itsLeonB/ungerr"
 )
 
 type authServiceImpl struct {
-	hashService      sekure.HashService
-	jwtService       sekure.JWTService
-	transactor       crud.Transactor
-	userSvc          UserService
-	mailSvc          mail.MailService
+	hashService      auth.HashService
+	jwtService       auth.JWTService
+	transactor       auth.Transactor
+	users            auth.UserStore
+	resets           auth.ResetTokenStore
+	mailSvc          auth.MailService
 	verificationURL  string
 	resetPasswordURL string
 	sessionSvc       SessionService
-	sessionCache     cache.Cache[uuid.UUID]
+	sessionCache     auth.SessionCache
 	hooks            AuthHooks
 }
 
 func NewAuthService(
-	jwtService sekure.JWTService,
-	transactor crud.Transactor,
-	userSvc UserService,
-	mailSvc mail.MailService,
+	jwtService auth.JWTService,
+	transactor auth.Transactor,
+	users auth.UserStore,
+	resets auth.ResetTokenStore,
+	mailSvc auth.MailService,
 	verificationURL string,
 	resetPasswordURL string,
-	hashCost int,
+	hashService auth.HashService,
 	sessionSvc SessionService,
-	sessionCache cache.Cache[uuid.UUID],
+	sessionCache auth.SessionCache,
 	hooks AuthHooks,
 ) AuthService {
 	return &authServiceImpl{
-		sekure.NewHashService(hashCost),
-		jwtService,
-		transactor,
-		userSvc,
-		mailSvc,
-		verificationURL,
-		resetPasswordURL,
-		sessionSvc,
-		sessionCache,
-		hooks,
+		hashService:      hashService,
+		jwtService:       jwtService,
+		transactor:       transactor,
+		users:            users,
+		resets:           resets,
+		mailSvc:          mailSvc,
+		verificationURL:  verificationURL,
+		resetPasswordURL: resetPasswordURL,
+		sessionSvc:       sessionSvc,
+		sessionCache:     sessionCache,
+		hooks:            hooks,
 	}
 }
 
@@ -83,11 +84,11 @@ func (as *authServiceImpl) Register(ctx context.Context, req dto.RegisterRequest
 func (as *authServiceImpl) executeRegistration(ctx context.Context, request dto.RegisterRequest) (bool, error) {
 	isVerified := as.verificationURL == ""
 	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		existingUser, err := as.userSvc.FindByEmail(ctx, request.Email)
-		if err != nil {
+		user, err := as.users.FindByEmail(ctx, request.Email)
+		if err != nil && !errors.Is(err, auth.ErrUserNotFound) {
 			return err
 		}
-		if !existingUser.IsZero() {
+		if !user.IsZero() {
 			return ungerr.ConflictError(fmt.Sprintf("email %s already exists", request.Email))
 		}
 
@@ -96,27 +97,22 @@ func (as *authServiceImpl) executeRegistration(ctx context.Context, request dto.
 			return err
 		}
 
-		newUserReq := dto.NewUserRequest{
-			Email:     request.Email,
-			Password:  hash,
-			Name:      util.GetNameFromEmail(request.Email),
-			VerifyNow: isVerified,
-		}
-
-		user, err := as.userSvc.CreateNew(ctx, newUserReq)
+		name := util.GetNameFromEmail(request.Email)
+		newUser, err := as.users.Create(ctx, request.Email, hash)
 		if err != nil {
 			return err
 		}
 		if isVerified {
-			return nil
+			_, err = as.users.SetVerified(ctx, newUser.ID, name, "")
+			return err
 		}
 
-		return as.sendVerificationMail(ctx, user, as.verificationURL, request.Slug)
+		return as.sendVerificationMail(ctx, newUser, as.verificationURL, request.Slug)
 	})
 	return isVerified, err
 }
 
-func (as *authServiceImpl) sendVerificationMail(ctx context.Context, user users.User, verificationURL string, slug string) error {
+func (as *authServiceImpl) sendVerificationMail(ctx context.Context, user auth.User, verificationURL string, slug string) error {
 	claims := map[string]any{
 		"id":    user.ID,
 		"email": user.Email,
@@ -133,32 +129,27 @@ func (as *authServiceImpl) sendVerificationMail(ctx context.Context, user users.
 
 	url := fmt.Sprintf("%s?token=%s", verificationURL, token)
 
-	mailMsg := mail.MailMessage{
-		RecipientMail: user.Email,
-		RecipientName: util.GetNameFromEmail(user.Email),
-		Subject:       "Verify your email",
-		TextContent:   "Please verify your email by clicking the following link:\n\n" + url,
-	}
-
-	return as.mailSvc.Send(ctx, mailMsg)
+	name := util.GetNameFromEmail(user.Email)
+	err = as.mailSvc.SendVerification(ctx, user.Email, name, url)
+	return err
 }
 
 func (as *authServiceImpl) InternalLogin(ctx context.Context, req dto.InternalLoginRequest) (dto.TokenResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "AuthService.InternalLogin")
 	defer span.End()
 
-	user, err := as.userSvc.FindByEmail(ctx, req.Email)
+	user, err := as.users.FindByEmail(ctx, req.Email)
 	if err != nil {
+		if errors.Is(err, auth.ErrUserNotFound) {
+			return dto.TokenResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
+		}
 		return dto.TokenResponse{}, err
 	}
-	if user.IsZero() {
-		return dto.TokenResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
-	}
-	if !user.IsVerified() {
+	if !user.Verified {
 		return dto.TokenResponse{}, ungerr.NotFoundError(appconstant.ErrAuthUnknownCredentials)
 	}
 
-	ok, err := as.hashService.CheckHash(user.Password, req.Password)
+	ok, err := as.hashService.Verify(user.PasswordHash, req.Password)
 	if err != nil {
 		return dto.TokenResponse{}, err
 	}
@@ -196,10 +187,6 @@ func (as *authServiceImpl) VerifyToken(ctx context.Context, token string, finger
 	if !ok {
 		return false, nil, ungerr.Unknown("error asserting userID, is not a string")
 	}
-	userID, err := ezutil.Parse[uuid.UUID](stringUserID)
-	if err != nil {
-		return false, nil, err
-	}
 
 	// Extract session_id from token
 	sessionIDStr, exists := claims.Data[appconstant.ContextSessionID.String()]
@@ -210,34 +197,34 @@ func (as *authServiceImpl) VerifyToken(ctx context.Context, token string, finger
 	if !ok {
 		return false, nil, ungerr.Unknown("error asserting sessionID, is not a string")
 	}
-	sessionID, err := ezutil.Parse[uuid.UUID](sessionIDString)
-	if err != nil {
-		return false, nil, err
-	}
 
-	cachedUserID, hit := as.sessionCache.Get(sessionID.String(), func(_ string) (uuid.UUID, bool) {
-		session, err := as.sessionSvc.GetByID(ctx, sessionID)
+	cachedUserID, hit := as.sessionCache.Get(sessionIDString, func(_ string) (string, bool) {
+		session, err := as.sessionSvc.GetByID(ctx, sessionIDString)
 		if err != nil {
-			return uuid.Nil, false
+			return "", false
 		}
 		return session.UserID, true
 	})
 	if !hit {
 		return false, nil, ungerr.UnauthorizedError("session is not found")
 	}
-	if cachedUserID != userID {
+	if cachedUserID != stringUserID {
 		return false, nil, ungerr.UnauthorizedError("session does not belong to user")
 	}
 
-	user, err := as.userSvc.GetByID(ctx, userID)
-	if err != nil {
-		return false, nil, err
+	// Parse UUID string fields back to uuid.UUID for handlers
+	result := make(map[string]any, len(claims.Data))
+	for k, v := range claims.Data {
+		if s, ok := v.(string); ok {
+			if uid, err := uuid.Parse(s); err == nil {
+				result[k] = uid
+				continue
+			}
+		}
+		result[k] = v
 	}
 
-	return true, map[string]any{
-		appconstant.ContextProfileID.String(): user.Profile.ID,
-		appconstant.ContextSessionID.String(): sessionID,
-	}, nil
+	return true, result, nil
 }
 
 func (as *authServiceImpl) VerifyRegistration(ctx context.Context, token string) (dto.TokenResponse, error) {
@@ -254,10 +241,6 @@ func (as *authServiceImpl) VerifyRegistration(ctx context.Context, token string)
 		if !ok {
 			return ungerr.Unknown("error asserting id, is not a string")
 		}
-		userID, err := ezutil.Parse[uuid.UUID](id)
-		if err != nil {
-			return err
-		}
 		email, ok := claims.Data["email"].(string)
 		if !ok {
 			return ungerr.Unknown("error asserting email, is not a string")
@@ -271,12 +254,12 @@ func (as *authServiceImpl) VerifyRegistration(ctx context.Context, token string)
 			return ungerr.UnauthorizedError("token has expired")
 		}
 
-		user, err := as.userSvc.Verify(ctx, userID, email, util.GetNameFromEmail(email), "")
+		user, err := as.users.SetVerified(ctx, id, util.GetNameFromEmail(email), "")
 		if err != nil {
 			return err
 		}
 
-		if err := as.hooks.CallAfterEmailVerified(ctx, user.ID, user.Profile.ID, claims.Data); err != nil {
+		if err := as.hooks.CallAfterEmailVerified(ctx, user.ID, user.ProfileID, claims.Data); err != nil {
 			return err
 		}
 
@@ -291,28 +274,37 @@ func (as *authServiceImpl) SendPasswordReset(ctx context.Context, email string) 
 	defer span.End()
 
 	return as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		user, err := as.userSvc.FindByEmail(ctx, email)
+		user, err := as.users.FindByEmail(ctx, email)
 		if err != nil {
+			if errors.Is(err, auth.ErrUserNotFound) {
+				return nil
+			}
 			return err
 		}
-		if user.IsZero() || !user.IsVerified() {
+		if !user.Verified {
 			return nil
 		}
 
-		resetToken, err := as.userSvc.GeneratePasswordResetToken(ctx, user.ID)
+		selector := generateToken()
+		verifier := generateToken()
+		verifierHash := hashVerifier(verifier)
+		expiresAt := time.Now().Add(1 * time.Hour)
+
+		err = as.resets.Create(ctx, user.ID, selector, verifierHash, expiresAt)
 		if err != nil {
 			return err
 		}
 
-		return as.sendResetPasswordMail(ctx, user, as.resetPasswordURL, resetToken)
+		return as.sendResetPasswordMail(ctx, user, as.resetPasswordURL, selector, verifier)
 	})
 }
 
-func (as *authServiceImpl) sendResetPasswordMail(ctx context.Context, user users.User, resetURL, resetToken string) error {
+func (as *authServiceImpl) sendResetPasswordMail(ctx context.Context, user auth.User, resetURL, selector, verifier string) error {
 	claims := map[string]any{
-		"id":          user.ID,
-		"email":       user.Email,
-		"reset_token": resetToken,
+		"id":       user.ID,
+		"email":    user.Email,
+		"selector": selector,
+		"verifier": verifier,
 	}
 
 	token, err := as.jwtService.CreateToken(claims)
@@ -322,14 +314,8 @@ func (as *authServiceImpl) sendResetPasswordMail(ctx context.Context, user users
 
 	url := fmt.Sprintf("%s?token=%s", resetURL, token)
 
-	mailMsg := mail.MailMessage{
-		RecipientMail: user.Email,
-		RecipientName: user.Profile.Name,
-		Subject:       "Reset your password",
-		TextContent:   "You have requested to reset your password.\nIf this is not you, ignore this mail.\nPlease reset your password by clicking the following link:\n\n" + url,
-	}
-
-	return as.mailSvc.Send(ctx, mailMsg)
+	name := util.GetNameFromEmail(user.Email)
+	return as.mailSvc.SendPasswordReset(ctx, user.Email, name, url)
 }
 
 func (as *authServiceImpl) ResetPassword(ctx context.Context, token, newPassword string) (dto.TokenResponse, error) {
@@ -346,17 +332,17 @@ func (as *authServiceImpl) ResetPassword(ctx context.Context, token, newPassword
 		if !ok {
 			return ungerr.Unknown("error asserting id, is not a string")
 		}
-		userID, err := ezutil.Parse[uuid.UUID](id)
-		if err != nil {
-			return err
-		}
 		email, ok := claims.Data["email"].(string)
 		if !ok {
 			return ungerr.Unknown("error asserting email, is not a string")
 		}
-		resetToken, ok := claims.Data["reset_token"].(string)
+		selector, ok := claims.Data["selector"].(string)
 		if !ok {
-			return ungerr.Unknown("error asserting reset_token, is not a string")
+			return ungerr.Unknown("error asserting selector, is not a string")
+		}
+		verifier, ok := claims.Data["verifier"].(string)
+		if !ok {
+			return ungerr.Unknown("error asserting verifier, is not a string")
 		}
 
 		hashedPassword, err := as.hashService.Hash(newPassword)
@@ -364,11 +350,37 @@ func (as *authServiceImpl) ResetPassword(ctx context.Context, token, newPassword
 			return err
 		}
 
-		user, err := as.userSvc.ResetPassword(ctx, userID, email, resetToken, hashedPassword)
+		// Validate selector/verifier
+		resetToken, err := as.resets.FindBySelector(ctx, selector)
+		if err != nil {
+			if errors.Is(err, auth.ErrTokenNotFound) {
+				return ungerr.UnauthorizedError("token is invalid")
+			}
+			return err
+		}
+		if resetToken.ExpiresAt.Before(time.Now()) {
+			return ungerr.UnauthorizedError("token has expired")
+		}
+
+		verifierHash := hashVerifier(verifier)
+		if subtle.ConstantTimeCompare([]byte(resetToken.VerifierHash), []byte(verifierHash)) != 1 {
+			return ungerr.UnauthorizedError("token is invalid")
+		}
+
+		err = as.users.UpdatePassword(ctx, id, hashedPassword)
 		if err != nil {
 			return err
 		}
 
+		err = as.resets.DeleteByUser(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		user := auth.User{
+			ID:    id,
+			Email: email,
+		}
 		response, err = as.sessionSvc.CreateTokenAndSession(ctx, user)
 		return err
 	})
@@ -380,18 +392,29 @@ func (as *authServiceImpl) Logout(ctx context.Context, sessionID uuid.UUID) erro
 	ctx, span := otel.Tracer.Start(ctx, "AuthService.Logout")
 	defer span.End()
 
-	if as.hooks.BeforeLogout != nil {
-		if err := as.hooks.BeforeLogout(ctx, sessionID); err != nil {
-			logger.Error(err)
-		}
+	sid := sessionID.String()
+
+	if err := as.hooks.CallBeforeLogout(ctx, sid); err != nil {
+		logger.Error(err)
 	}
 
-	as.sessionCache.Delete(sessionID.String())
+	as.sessionCache.Delete(sid)
 
 	// Revoke session and refresh tokens
-	return as.sessionSvc.RevokeSession(ctx, sessionID)
+	return as.sessionSvc.RevokeSession(ctx, sid)
 }
 
 func (as *authServiceImpl) Shutdown() error {
 	return as.sessionCache.Shutdown()
+}
+
+func generateToken() string {
+	b := make([]byte, 32)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+func hashVerifier(verifier string) string {
+	h := sha256.Sum256([]byte(verifier))
+	return hex.EncodeToString(h[:])
 }

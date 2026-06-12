@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"time"
 
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/store"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
@@ -22,6 +23,7 @@ type oauthServiceImpl struct {
 	stateStore       store.StateStore
 	userSvc          UserService
 	sessionSvc       SessionService
+	hooks            AuthHooks
 }
 
 func NewOAuthService(
@@ -31,6 +33,7 @@ func NewOAuthService(
 	stateStore store.StateStore,
 	userSvc UserService,
 	sessionSvc SessionService,
+	hooks AuthHooks,
 ) OAuthService {
 	return &oauthServiceImpl{
 		transactor:       transactor,
@@ -39,6 +42,7 @@ func NewOAuthService(
 		stateStore:       stateStore,
 		userSvc:          userSvc,
 		sessionSvc:       sessionSvc,
+		hooks:            hooks,
 	}
 }
 
@@ -67,7 +71,14 @@ func (as *oauthServiceImpl) HandleOAuthCallback(ctx context.Context, data dto.OA
 	ctx, span := otel.Tracer.Start(ctx, "OAuthService.HandleOAuthCallback")
 	defer span.End()
 
-	var response dto.TokenResponse
+	// Preserve the parent context for hooks that run outside the transaction.
+	parentCtx := ctx
+
+	var (
+		response dto.TokenResponse
+		user     users.User
+		isNew    bool
+	)
 	err := as.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
 		sessionStr, err := as.stateStore.VerifyAndDelete(ctx, data.State)
 		if err != nil {
@@ -79,7 +90,7 @@ func (as *oauthServiceImpl) HandleOAuthCallback(ctx context.Context, data dto.OA
 			return err
 		}
 
-		user, err := as.getOrCreateUser(ctx, userInfo)
+		user, isNew, err = as.getOrCreateUser(ctx, userInfo)
 		if err != nil {
 			return err
 		}
@@ -93,19 +104,27 @@ func (as *oauthServiceImpl) HandleOAuthCallback(ctx context.Context, data dto.OA
 		response, err = as.sessionSvc.CreateTokenAndSession(ctx, user)
 		return err
 	})
+	if err != nil {
+		return dto.TokenResponse{}, err
+	}
 
-	return response, err
+	if hookErr := as.hooks.CallAfterOAuthLogin(parentCtx, user.ID, data.Provider, isNew); hookErr != nil {
+		logger.Error(hookErr)
+	}
+
+	return response, nil
 }
 
-func (as *oauthServiceImpl) getOrCreateUser(ctx context.Context, userInfo oauth.UserInfo) (users.User, error) {
+func (as *oauthServiceImpl) getOrCreateUser(ctx context.Context, userInfo oauth.UserInfo) (users.User, bool, error) {
 	existingOAuth, err := as.findOAuthAccount(ctx, userInfo.Provider, userInfo.ProviderID)
 	if err != nil {
-		return users.User{}, err
+		return users.User{}, false, err
 	}
 	if !existingOAuth.IsZero() {
-		return existingOAuth.User, nil
+		return existingOAuth.User, false, nil
 	}
-	return as.createNewUserOAuth(ctx, userInfo)
+	user, err := as.createNewUserOAuth(ctx, userInfo)
+	return user, true, err
 }
 
 func (as *oauthServiceImpl) createNewUserOAuth(ctx context.Context, userInfo oauth.UserInfo) (users.User, error) {

@@ -22,7 +22,7 @@ import (
 )
 
 func newTestAuthService(jwtSvc sekure.JWTService, userSvc service.UserService, sessionSvc service.SessionService, sessionCache cache.Cache[uuid.UUID]) service.AuthService {
-	return service.NewAuthService(jwtSvc, nil, userSvc, nil, "", "", 10, nil, sessionSvc, nil, nil, sessionCache)
+	return service.NewAuthService(jwtSvc, nil, userSvc, nil, "", "", 10, sessionSvc, sessionCache, service.AuthHooks{})
 }
 
 func TestVerifyToken_Success(t *testing.T) {

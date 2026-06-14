@@ -24,6 +24,23 @@ func NewUserStore(userRepo repository.UserRepository, profileSvc service.Profile
 	return &userStoreAdapter{userRepo, profileSvc}
 }
 
+func (a *userStoreAdapter) FindByID(ctx context.Context, userID string) (auth.User, error) {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return auth.User{}, err
+	}
+	spec := crud.Specification[users.User]{}
+	spec.Model.ID = uid
+	user, err := a.userRepo.FindFirst(ctx, spec)
+	if err != nil {
+		return auth.User{}, err
+	}
+	if user.IsZero() {
+		return auth.User{}, auth.ErrUserNotFound
+	}
+	return toAuthUser(user), nil
+}
+
 func (a *userStoreAdapter) FindByEmail(ctx context.Context, email string) (auth.User, error) {
 	spec := crud.Specification[users.User]{}
 	spec.Model.Email = email

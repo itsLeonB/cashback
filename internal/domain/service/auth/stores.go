@@ -8,6 +8,7 @@ import (
 // UserStore handles user persistence for auth operations.
 // Implementations should return ErrUserNotFound when no user matches.
 type UserStore interface {
+	FindByID(ctx context.Context, userID string) (User, error)
 	FindByEmail(ctx context.Context, email string) (User, error)
 	Create(ctx context.Context, email, passwordHash string) (User, error)
 	CreateOAuth(ctx context.Context, email, name, avatar string) (User, error)

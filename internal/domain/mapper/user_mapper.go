@@ -9,12 +9,9 @@ import (
 )
 
 func SessionToAuthData(session auth.Session, fgpHash string) map[string]any {
-	// IDs originate from DB adapters and are always valid UUIDs.
-	uid, _ := uuid.Parse(session.UserID)
-	sid, _ := uuid.Parse(session.ID)
 	return map[string]any{
-		appconstant.ContextUserID.String():      uid,
-		appconstant.ContextSessionID.String():   sid,
+		appconstant.ContextUserID.String():      session.UserID,
+		appconstant.ContextSessionID.String():   session.ID,
 		appconstant.ContextFingerprint.String(): fgpHash,
 	}
 }

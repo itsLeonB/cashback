@@ -154,7 +154,7 @@ func TestVerifyToken_SessionNotFound(t *testing.T) {
 	}
 
 	jwtMock.EXPECT().VerifyToken("token").Return(claims, nil)
-	sessionMock.EXPECT().GetByID(mock.Anything, sessionID.String()).Return(auth.Session{}, errors.New("not found"))
+	sessionMock.EXPECT().GetByID(mock.Anything, sessionID.String()).Return(auth.Session{}, ungerr.UnauthorizedError("session not found"))
 
 	svc := newTestAuthService(jwtMock, sessionMock, sessionCache)
 
@@ -165,7 +165,7 @@ func TestVerifyToken_SessionNotFound(t *testing.T) {
 	assert.Nil(t, data)
 	var appErr ungerr.AppError
 	assert.ErrorAs(t, err, &appErr)
-	assert.Equal(t, "session is not found", appErr.Details())
+	assert.Equal(t, "session not found", appErr.Details())
 }
 
 func TestVerifyToken_SessionBelongsToDifferentUser(t *testing.T) {

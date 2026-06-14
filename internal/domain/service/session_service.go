@@ -74,7 +74,10 @@ func (ss *sessionService) RefreshToken(ctx context.Context, request dto.RefreshT
 			return err
 		}
 
-		rawFingerprint, fgpHash := ss.generateFingerprint()
+		rawFingerprint, fgpHash, err := ss.generateFingerprint()
+		if err != nil {
+			return err
+		}
 		claims := mapper.SessionToAuthData(session, fgpHash)
 
 		if ss.claimsBuilder != nil {
@@ -107,7 +110,10 @@ func (ss *sessionService) CreateTokenAndSession(ctx context.Context, user auth.U
 		return dto.TokenResponse{}, err
 	}
 
-	rawFingerprint, fgpHash := ss.generateFingerprint()
+	rawFingerprint, fgpHash, err := ss.generateFingerprint()
+	if err != nil {
+		return dto.TokenResponse{}, err
+	}
 	authData := mapper.SessionToAuthData(session, fgpHash)
 
 	if ss.claimsBuilder != nil {
@@ -199,10 +205,10 @@ func (ss *sessionService) GetByID(ctx context.Context, id string) (auth.Session,
 
 	session, err := ss.sessions.GetByID(ctx, id)
 	if err != nil {
+		if errors.Is(err, auth.ErrSessionNotFound) {
+			return auth.Session{}, ungerr.UnauthorizedError("session not found")
+		}
 		return auth.Session{}, err
-	}
-	if session.IsZero() {
-		return auth.Session{}, ungerr.UnauthorizedError("session not found")
 	}
 	return session, nil
 }
@@ -274,9 +280,11 @@ func (ss *sessionService) hashToken(token string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func (sessionService) generateFingerprint() (raw string, hash string) {
+func (sessionService) generateFingerprint() (raw string, hash string, err error) {
 	b := make([]byte, 32)
-	rand.Read(b)
+	if _, err = rand.Read(b); err != nil {
+		return "", "", ungerr.Wrap(err, "error generating fingerprint")
+	}
 	raw = hex.EncodeToString(b)
 	h := sha256.Sum256([]byte(raw))
 	hash = hex.EncodeToString(h[:])

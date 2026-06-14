@@ -45,11 +45,11 @@ func NewAuthHooks(
 			if err != nil {
 				return nil, err
 			}
-			profile, err := profileService.GetByID(ctx, uid)
+			profileID, err := profileService.GetProfileIDByUserID(ctx, uid)
 			if err != nil {
 				return nil, err
 			}
-			baseClaims[appconstant.ContextProfileID.String()] = profile.ID
+			baseClaims[appconstant.ContextProfileID.String()] = profileID
 			return baseClaims, nil
 		},
 	}

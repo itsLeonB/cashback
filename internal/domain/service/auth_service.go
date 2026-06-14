@@ -174,8 +174,12 @@ func (as *authServiceImpl) VerifyToken(ctx context.Context, token string, finger
 	if !fgpExists {
 		return false, nil, ungerr.UnauthorizedError("missing fingerprint claim")
 	}
+	expectedHashStr, ok := expectedHash.(string)
+	if !ok {
+		return false, nil, ungerr.UnauthorizedError("invalid fingerprint claim type")
+	}
 	hash := sha256.Sum256([]byte(fingerprint))
-	if hex.EncodeToString(hash[:]) != expectedHash {
+	if hex.EncodeToString(hash[:]) != expectedHashStr {
 		return false, nil, ungerr.UnauthorizedError("invalid token fingerprint")
 	}
 
@@ -198,13 +202,18 @@ func (as *authServiceImpl) VerifyToken(ctx context.Context, token string, finger
 		return false, nil, ungerr.Unknown("error asserting sessionID, is not a string")
 	}
 
+	var loadErr error
 	cachedUserID, hit := as.sessionCache.Get(sessionIDString, func(_ string) (string, bool) {
 		session, err := as.sessionSvc.GetByID(ctx, sessionIDString)
 		if err != nil {
+			loadErr = err
 			return "", false
 		}
 		return session.UserID, true
 	})
+	if loadErr != nil {
+		return false, nil, loadErr
+	}
 	if !hit {
 		return false, nil, ungerr.UnauthorizedError("session is not found")
 	}
@@ -285,8 +294,14 @@ func (as *authServiceImpl) SendPasswordReset(ctx context.Context, email string) 
 			return nil
 		}
 
-		selector := generateToken()
-		verifier := generateToken()
+		selector, err := generateToken()
+		if err != nil {
+			return err
+		}
+		verifier, err := generateToken()
+		if err != nil {
+			return err
+		}
 		verifierHash := hashVerifier(verifier)
 		expiresAt := time.Now().Add(1 * time.Hour)
 
@@ -345,11 +360,6 @@ func (as *authServiceImpl) ResetPassword(ctx context.Context, token, newPassword
 			return ungerr.Unknown("error asserting verifier, is not a string")
 		}
 
-		hashedPassword, err := as.hashService.Hash(newPassword)
-		if err != nil {
-			return err
-		}
-
 		// Validate selector/verifier
 		resetToken, err := as.resets.FindBySelector(ctx, selector)
 		if err != nil {
@@ -365,6 +375,11 @@ func (as *authServiceImpl) ResetPassword(ctx context.Context, token, newPassword
 		verifierHash := hashVerifier(verifier)
 		if subtle.ConstantTimeCompare([]byte(resetToken.VerifierHash), []byte(verifierHash)) != 1 {
 			return ungerr.UnauthorizedError("token is invalid")
+		}
+
+		hashedPassword, err := as.hashService.Hash(newPassword)
+		if err != nil {
+			return err
 		}
 
 		err = as.users.UpdatePassword(ctx, id, hashedPassword)
@@ -408,10 +423,12 @@ func (as *authServiceImpl) Shutdown() error {
 	return as.sessionCache.Shutdown()
 }
 
-func generateToken() string {
+func generateToken() (string, error) {
 	b := make([]byte, 32)
-	_, _ = rand.Read(b)
-	return hex.EncodeToString(b)
+	if _, err := rand.Read(b); err != nil {
+		return "", ungerr.Wrap(err, "error generating token")
+	}
+	return hex.EncodeToString(b), nil
 }
 
 func hashVerifier(verifier string) string {

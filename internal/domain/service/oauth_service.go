@@ -122,41 +122,42 @@ func (as *oauthServiceImpl) getOrCreateUser(ctx context.Context, userInfo oauth.
 		return auth.User{}, false, err
 	}
 	if !existingOAuth.IsZero() {
-		found, err := as.users.FindByEmail(ctx, existingOAuth.Email)
+		found, err := as.users.FindByID(ctx, existingOAuth.UserID)
 		if err != nil {
 			return auth.User{}, false, err
 		}
 		return found, false, nil
 	}
-	user, err := as.createNewUserOAuth(ctx, userInfo)
-	return user, true, err
+	return as.createNewUserOAuth(ctx, userInfo)
 }
 
-func (as *oauthServiceImpl) createNewUserOAuth(ctx context.Context, userInfo oauth.UserInfo) (auth.User, error) {
+func (as *oauthServiceImpl) createNewUserOAuth(ctx context.Context, userInfo oauth.UserInfo) (auth.User, bool, error) {
 	user, err := as.users.FindByEmail(ctx, userInfo.Email)
 	if err != nil && !errors.Is(err, auth.ErrUserNotFound) {
-		return auth.User{}, err
+		return auth.User{}, false, err
 	}
+	created := false
 	if user.IsZero() {
 		user, err = as.users.CreateOAuth(ctx, userInfo.Email, userInfo.Name, userInfo.Avatar)
 		if err != nil {
-			return auth.User{}, err
+			return auth.User{}, false, err
 		}
+		created = true
 	}
 
 	trusted, err := as.providerSvc.IsTrusted(userInfo.Provider)
 	if err != nil {
-		return auth.User{}, err
+		return auth.User{}, false, err
 	}
 	if !trusted {
-		return auth.User{}, ungerr.Unknown("provider temporarily disabled")
+		return auth.User{}, false, ungerr.Unknown("provider temporarily disabled")
 	}
 
 	if err = as.oauthAccounts.Link(ctx, user.ID, userInfo.Provider, userInfo.ProviderID, userInfo.Email); err != nil {
-		return auth.User{}, err
+		return auth.User{}, false, err
 	}
 
-	return user, nil
+	return user, created, nil
 }
 
 func (as *oauthServiceImpl) generateState() (string, error) {

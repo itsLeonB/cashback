@@ -46,7 +46,13 @@ func (a *refreshTokenStoreAdapter) FindByHash(ctx context.Context, hash string) 
 }
 
 func (a *refreshTokenStoreAdapter) Delete(ctx context.Context, sessionID string, tokenHash string) error {
+	sid, err := uuid.Parse(sessionID)
+	if err != nil {
+		return err
+	}
+
 	spec := crud.Specification[users.RefreshToken]{}
+	spec.Model.SessionID = sid
 	spec.Model.TokenHash = tokenHash
 	rt, err := a.repo.FindFirst(ctx, spec)
 	if err != nil {

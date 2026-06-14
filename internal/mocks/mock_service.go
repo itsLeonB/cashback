@@ -11,6 +11,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/cashback/internal/domain/message"
+	"github.com/itsLeonB/cashback/internal/domain/service/auth"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -1093,7 +1094,7 @@ func (_m *MockSessionService) EXPECT() *MockSessionService_Expecter {
 }
 
 // CreateTokenAndSession provides a mock function for the type MockSessionService
-func (_mock *MockSessionService) CreateTokenAndSession(ctx context.Context, user users.User) (dto.TokenResponse, error) {
+func (_mock *MockSessionService) CreateTokenAndSession(ctx context.Context, user auth.User) (dto.TokenResponse, error) {
 	ret := _mock.Called(ctx, user)
 
 	if len(ret) == 0 {
@@ -1102,15 +1103,15 @@ func (_mock *MockSessionService) CreateTokenAndSession(ctx context.Context, user
 
 	var r0 dto.TokenResponse
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, users.User) (dto.TokenResponse, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, auth.User) (dto.TokenResponse, error)); ok {
 		return returnFunc(ctx, user)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, users.User) dto.TokenResponse); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, auth.User) dto.TokenResponse); ok {
 		r0 = returnFunc(ctx, user)
 	} else {
 		r0 = ret.Get(0).(dto.TokenResponse)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, users.User) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, auth.User) error); ok {
 		r1 = returnFunc(ctx, user)
 	} else {
 		r1 = ret.Error(1)
@@ -1125,20 +1126,20 @@ type MockSessionService_CreateTokenAndSession_Call struct {
 
 // CreateTokenAndSession is a helper method to define mock.On call
 //   - ctx context.Context
-//   - user users.User
+//   - user auth.User
 func (_e *MockSessionService_Expecter) CreateTokenAndSession(ctx interface{}, user interface{}) *MockSessionService_CreateTokenAndSession_Call {
 	return &MockSessionService_CreateTokenAndSession_Call{Call: _e.mock.On("CreateTokenAndSession", ctx, user)}
 }
 
-func (_c *MockSessionService_CreateTokenAndSession_Call) Run(run func(ctx context.Context, user users.User)) *MockSessionService_CreateTokenAndSession_Call {
+func (_c *MockSessionService_CreateTokenAndSession_Call) Run(run func(ctx context.Context, user auth.User)) *MockSessionService_CreateTokenAndSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 users.User
+		var arg1 auth.User
 		if args[1] != nil {
-			arg1 = args[1].(users.User)
+			arg1 = args[1].(auth.User)
 		}
 		run(
 			arg0,
@@ -1153,30 +1154,30 @@ func (_c *MockSessionService_CreateTokenAndSession_Call) Return(tokenResponse dt
 	return _c
 }
 
-func (_c *MockSessionService_CreateTokenAndSession_Call) RunAndReturn(run func(ctx context.Context, user users.User) (dto.TokenResponse, error)) *MockSessionService_CreateTokenAndSession_Call {
+func (_c *MockSessionService_CreateTokenAndSession_Call) RunAndReturn(run func(ctx context.Context, user auth.User) (dto.TokenResponse, error)) *MockSessionService_CreateTokenAndSession_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetByID provides a mock function for the type MockSessionService
-func (_mock *MockSessionService) GetByID(ctx context.Context, id uuid.UUID) (users.Session, error) {
+func (_mock *MockSessionService) GetByID(ctx context.Context, id string) (auth.Session, error) {
 	ret := _mock.Called(ctx, id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetByID")
 	}
 
-	var r0 users.Session
+	var r0 auth.Session
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (users.Session, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (auth.Session, error)); ok {
 		return returnFunc(ctx, id)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) users.Session); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) auth.Session); ok {
 		r0 = returnFunc(ctx, id)
 	} else {
-		r0 = ret.Get(0).(users.Session)
+		r0 = ret.Get(0).(auth.Session)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
 		r1 = returnFunc(ctx, id)
 	} else {
 		r1 = ret.Error(1)
@@ -1191,20 +1192,20 @@ type MockSessionService_GetByID_Call struct {
 
 // GetByID is a helper method to define mock.On call
 //   - ctx context.Context
-//   - id uuid.UUID
+//   - id string
 func (_e *MockSessionService_Expecter) GetByID(ctx interface{}, id interface{}) *MockSessionService_GetByID_Call {
 	return &MockSessionService_GetByID_Call{Call: _e.mock.On("GetByID", ctx, id)}
 }
 
-func (_c *MockSessionService_GetByID_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockSessionService_GetByID_Call {
+func (_c *MockSessionService_GetByID_Call) Run(run func(ctx context.Context, id string)) *MockSessionService_GetByID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 uuid.UUID
+		var arg1 string
 		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
+			arg1 = args[1].(string)
 		}
 		run(
 			arg0,
@@ -1214,12 +1215,12 @@ func (_c *MockSessionService_GetByID_Call) Run(run func(ctx context.Context, id 
 	return _c
 }
 
-func (_c *MockSessionService_GetByID_Call) Return(session users.Session, err error) *MockSessionService_GetByID_Call {
+func (_c *MockSessionService_GetByID_Call) Return(session auth.Session, err error) *MockSessionService_GetByID_Call {
 	_c.Call.Return(session, err)
 	return _c
 }
 
-func (_c *MockSessionService_GetByID_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) (users.Session, error)) *MockSessionService_GetByID_Call {
+func (_c *MockSessionService_GetByID_Call) RunAndReturn(run func(ctx context.Context, id string) (auth.Session, error)) *MockSessionService_GetByID_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1291,7 +1292,7 @@ func (_c *MockSessionService_RefreshToken_Call) RunAndReturn(run func(ctx contex
 }
 
 // RevokeSession provides a mock function for the type MockSessionService
-func (_mock *MockSessionService) RevokeSession(ctx context.Context, sessionID uuid.UUID) error {
+func (_mock *MockSessionService) RevokeSession(ctx context.Context, sessionID string) error {
 	ret := _mock.Called(ctx, sessionID)
 
 	if len(ret) == 0 {
@@ -1299,7 +1300,7 @@ func (_mock *MockSessionService) RevokeSession(ctx context.Context, sessionID uu
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) error); ok {
 		r0 = returnFunc(ctx, sessionID)
 	} else {
 		r0 = ret.Error(0)
@@ -1314,20 +1315,20 @@ type MockSessionService_RevokeSession_Call struct {
 
 // RevokeSession is a helper method to define mock.On call
 //   - ctx context.Context
-//   - sessionID uuid.UUID
+//   - sessionID string
 func (_e *MockSessionService_Expecter) RevokeSession(ctx interface{}, sessionID interface{}) *MockSessionService_RevokeSession_Call {
 	return &MockSessionService_RevokeSession_Call{Call: _e.mock.On("RevokeSession", ctx, sessionID)}
 }
 
-func (_c *MockSessionService_RevokeSession_Call) Run(run func(ctx context.Context, sessionID uuid.UUID)) *MockSessionService_RevokeSession_Call {
+func (_c *MockSessionService_RevokeSession_Call) Run(run func(ctx context.Context, sessionID string)) *MockSessionService_RevokeSession_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 uuid.UUID
+		var arg1 string
 		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
+			arg1 = args[1].(string)
 		}
 		run(
 			arg0,
@@ -1342,7 +1343,7 @@ func (_c *MockSessionService_RevokeSession_Call) Return(err error) *MockSessionS
 	return _c
 }
 
-func (_c *MockSessionService_RevokeSession_Call) RunAndReturn(run func(ctx context.Context, sessionID uuid.UUID) error) *MockSessionService_RevokeSession_Call {
+func (_c *MockSessionService_RevokeSession_Call) RunAndReturn(run func(ctx context.Context, sessionID string) error) *MockSessionService_RevokeSession_Call {
 	_c.Call.Return(run)
 	return _c
 }

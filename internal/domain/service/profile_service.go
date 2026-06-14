@@ -285,6 +285,22 @@ func (ps *profileServiceImpl) GetEntityByID(ctx context.Context, id uuid.UUID) (
 	return profile, nil
 }
 
+func (ps *profileServiceImpl) GetProfileIDByUserID(ctx context.Context, userID uuid.UUID) (uuid.UUID, error) {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileService.GetProfileIDByUserID")
+	defer span.End()
+
+	spec := crud.Specification[users.UserProfile]{}
+	spec.Model.UserID = uuid.NullUUID{UUID: userID, Valid: true}
+	profile, err := ps.profileRepo.FindFirst(ctx, spec)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if profile.IsZero() {
+		return uuid.Nil, ungerr.NotFoundError(fmt.Sprintf("profile for user %s not found", userID))
+	}
+	return profile.ID, nil
+}
+
 func (ps *profileServiceImpl) Update(ctx context.Context, req dto.UpdateProfileRequest) (dto.ProfileResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "ProfileService.Update")
 	defer span.End()

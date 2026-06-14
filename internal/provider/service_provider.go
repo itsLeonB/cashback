@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	appembed "github.com/itsLeonB/cashback"
+	authadapter "github.com/itsLeonB/cashback/internal/adapters/auth"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/service/cache"
@@ -83,7 +84,21 @@ func ProvideServices(
 	// business logic into the generic auth service layer.
 	hooks := NewAuthHooks(pushNotification, profile, friendship)
 
-	session := service.NewSessionService(jwt, user, repos.Transactor, repos.Session, repos.RefreshToken, hooks.ClaimsBuilder)
+	// Auth adapters bridge the auth package interfaces to existing repos/infra.
+	jwtAdapter := authadapter.NewJWTService(jwt)
+	hashAdapter := authadapter.NewHashService(sekure.NewHashService(authConfig.HashCost))
+	txAdapter := authadapter.NewTransactor(repos.Transactor)
+	userStore := authadapter.NewUserStore(repos.User, profile)
+	sessionStore := authadapter.NewSessionStore(repos.Session)
+	refreshTokenStore := authadapter.NewRefreshTokenStore(repos.RefreshToken)
+	resetTokenStore := authadapter.NewResetTokenStore(repos.PasswordResetToken)
+	oauthAccountStore := authadapter.NewOAuthAccountStore(repos.OAuthAccount)
+	mailAdapter := authadapter.NewMailAdapter(coreSvc.Mail)
+	sessionCache := cache.NewInMemoryCache[uuid.UUID](authConfig.TokenDuration)
+	cacheAdapter := authadapter.NewSessionCacheAdapter(sessionCache)
+	stateAdapter := authadapter.NewStateStore(coreSvc.State)
+
+	session := service.NewSessionService(jwtAdapter, userStore, txAdapter, sessionStore, refreshTokenStore, authConfig.RefreshTokenDuration, hooks.ClaimsBuilder)
 
 	friendReq := service.NewFriendshipRequestService(repos.Transactor, friendship, profile, repos.FriendshipRequest, coreSvc.Queue)
 
@@ -92,12 +107,11 @@ func ProvideServices(
 	transferMethod := service.NewTransferMethodService(repos.TransferMethod, coreSvc.Storage, appConfig.BucketNameTransferMethods, appembed.TransferMethodAssets)
 	debt := service.NewDebtService(repos.DebtTransaction, transferMethod, friendship, profile, groupExpense, coreSvc.Queue)
 
-	sessionCache := cache.NewInMemoryCache[uuid.UUID](authConfig.TokenDuration)
 	providerSvc := oauth.NewProviderService(config.Global.OAuthProviders)
 
 	return &Services{
-		Auth:    service.NewAuthService(jwt, repos.Transactor, user, coreSvc.Mail, appConfig.RegisterVerificationUrl, appConfig.ResetPasswordUrl, authConfig.HashCost, session, sessionCache, hooks),
-		OAuth:   service.NewOAuthService(repos.Transactor, providerSvc, repos.OAuthAccount, coreSvc.State, user, session, hooks),
+		Auth:    service.NewAuthService(jwtAdapter, txAdapter, userStore, resetTokenStore, mailAdapter, appConfig.RegisterVerificationUrl, appConfig.ResetPasswordUrl, hashAdapter, session, cacheAdapter, hooks),
+		OAuth:   service.NewOAuthService(txAdapter, providerSvc, oauthAccountStore, stateAdapter, userStore, session, hooks),
 		Session: session,
 		Captcha: service.NewTurnstileService(authConfig.TurnstileSecretKey),
 

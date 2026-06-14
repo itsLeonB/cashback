@@ -11,23 +11,24 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/service/cache"
-	"github.com/itsLeonB/cashback/internal/domain/entity/users"
+	authadapter "github.com/itsLeonB/cashback/internal/adapters/auth"
 	"github.com/itsLeonB/cashback/internal/domain/service"
+	"github.com/itsLeonB/cashback/internal/domain/service/auth"
 	"github.com/itsLeonB/cashback/internal/mocks"
-	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/sekure"
 	"github.com/itsLeonB/ungerr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
-func newTestAuthService(jwtSvc sekure.JWTService, userSvc service.UserService, sessionSvc service.SessionService, sessionCache cache.Cache[uuid.UUID]) service.AuthService {
-	return service.NewAuthService(jwtSvc, nil, userSvc, nil, "", "", 10, sessionSvc, sessionCache, service.AuthHooks{})
+func newTestAuthService(jwtSvc sekure.JWTService, sessionSvc service.SessionService, sessionCache cache.Cache[uuid.UUID]) service.AuthService {
+	jwtAdapter := authadapter.NewJWTService(jwtSvc)
+	cacheAdapter := authadapter.NewSessionCacheAdapter(sessionCache)
+	return service.NewAuthService(jwtAdapter, nil, nil, nil, nil, "", "", nil, sessionSvc, cacheAdapter, service.AuthHooks{})
 }
 
 func TestVerifyToken_Success(t *testing.T) {
 	jwtMock := mocks.NewMockJWTService(t)
-	userMock := mocks.NewMockUserService(t)
 	sessionMock := mocks.NewMockSessionService(t)
 	sessionCache := cache.NewInMemoryCache[uuid.UUID](time.Hour)
 
@@ -44,20 +45,17 @@ func TestVerifyToken_Success(t *testing.T) {
 			appconstant.ContextUserID.String():      userID.String(),
 			appconstant.ContextSessionID.String():   sessionID.String(),
 			appconstant.ContextFingerprint.String(): fgpHash,
+			appconstant.ContextProfileID.String():   profileID.String(),
 		},
 	}
 
 	jwtMock.EXPECT().VerifyToken("valid-token").Return(claims, nil)
-	sessionMock.EXPECT().GetByID(mock.Anything, sessionID).Return(users.Session{
-		BaseEntity: crud.BaseEntity{ID: sessionID},
-		UserID:     userID,
-	}, nil)
-	userMock.EXPECT().GetByID(mock.Anything, userID).Return(users.User{
-		BaseEntity: crud.BaseEntity{ID: userID},
-		Profile:    users.UserProfile{BaseEntity: crud.BaseEntity{ID: profileID}},
+	sessionMock.EXPECT().GetByID(mock.Anything, sessionID.String()).Return(auth.Session{
+		ID:     sessionID.String(),
+		UserID: userID.String(),
 	}, nil)
 
-	svc := newTestAuthService(jwtMock, userMock, sessionMock, sessionCache)
+	svc := newTestAuthService(jwtMock, sessionMock, sessionCache)
 
 	valid, data, err := svc.VerifyToken(context.Background(), "valid-token", rawFgp)
 
@@ -84,7 +82,7 @@ func TestVerifyToken_InvalidFingerprint(t *testing.T) {
 
 	jwtMock.EXPECT().VerifyToken("token").Return(claims, nil)
 
-	svc := newTestAuthService(jwtMock, nil, nil, sessionCache)
+	svc := newTestAuthService(jwtMock, nil, sessionCache)
 
 	valid, data, err := svc.VerifyToken(context.Background(), "token", "wrong-fingerprint")
 
@@ -109,7 +107,7 @@ func TestVerifyToken_MissingFingerprintClaim(t *testing.T) {
 
 	jwtMock.EXPECT().VerifyToken("token").Return(claims, nil)
 
-	svc := newTestAuthService(jwtMock, nil, nil, sessionCache)
+	svc := newTestAuthService(jwtMock, nil, sessionCache)
 
 	valid, data, err := svc.VerifyToken(context.Background(), "token", "any-fingerprint")
 
@@ -127,7 +125,7 @@ func TestVerifyToken_InvalidToken(t *testing.T) {
 
 	jwtMock.EXPECT().VerifyToken("bad-token").Return(sekure.JWTClaims{}, errors.New("invalid token"))
 
-	svc := newTestAuthService(jwtMock, nil, nil, sessionCache)
+	svc := newTestAuthService(jwtMock, nil, sessionCache)
 
 	valid, data, err := svc.VerifyToken(context.Background(), "bad-token", "")
 
@@ -156,9 +154,9 @@ func TestVerifyToken_SessionNotFound(t *testing.T) {
 	}
 
 	jwtMock.EXPECT().VerifyToken("token").Return(claims, nil)
-	sessionMock.EXPECT().GetByID(mock.Anything, sessionID).Return(users.Session{}, errors.New("not found"))
+	sessionMock.EXPECT().GetByID(mock.Anything, sessionID.String()).Return(auth.Session{}, ungerr.UnauthorizedError("session not found"))
 
-	svc := newTestAuthService(jwtMock, nil, sessionMock, sessionCache)
+	svc := newTestAuthService(jwtMock, sessionMock, sessionCache)
 
 	valid, data, err := svc.VerifyToken(context.Background(), "token", rawFgp)
 
@@ -167,7 +165,7 @@ func TestVerifyToken_SessionNotFound(t *testing.T) {
 	assert.Nil(t, data)
 	var appErr ungerr.AppError
 	assert.ErrorAs(t, err, &appErr)
-	assert.Equal(t, "session is not found", appErr.Details())
+	assert.Equal(t, "session not found", appErr.Details())
 }
 
 func TestVerifyToken_SessionBelongsToDifferentUser(t *testing.T) {
@@ -191,12 +189,12 @@ func TestVerifyToken_SessionBelongsToDifferentUser(t *testing.T) {
 	}
 
 	jwtMock.EXPECT().VerifyToken("forged-token").Return(claims, nil)
-	sessionMock.EXPECT().GetByID(mock.Anything, sessionID).Return(users.Session{
-		BaseEntity: crud.BaseEntity{ID: sessionID},
-		UserID:     attackerUserID,
+	sessionMock.EXPECT().GetByID(mock.Anything, sessionID.String()).Return(auth.Session{
+		ID:     sessionID.String(),
+		UserID: attackerUserID.String(),
 	}, nil)
 
-	svc := newTestAuthService(jwtMock, nil, sessionMock, sessionCache)
+	svc := newTestAuthService(jwtMock, sessionMock, sessionCache)
 
 	valid, data, err := svc.VerifyToken(context.Background(), "forged-token", rawFgp)
 
@@ -210,7 +208,6 @@ func TestVerifyToken_SessionBelongsToDifferentUser(t *testing.T) {
 
 func TestVerifyToken_CachedSession(t *testing.T) {
 	jwtMock := mocks.NewMockJWTService(t)
-	userMock := mocks.NewMockUserService(t)
 	sessionMock := mocks.NewMockSessionService(t)
 	sessionCache := cache.NewInMemoryCache[uuid.UUID](time.Hour)
 
@@ -226,20 +223,17 @@ func TestVerifyToken_CachedSession(t *testing.T) {
 			appconstant.ContextUserID.String():      userID.String(),
 			appconstant.ContextSessionID.String():   sessionID.String(),
 			appconstant.ContextFingerprint.String(): fgpHash,
+			appconstant.ContextProfileID.String():   profileID.String(),
 		},
 	}
 
 	jwtMock.EXPECT().VerifyToken("token").Return(claims, nil)
-	sessionMock.EXPECT().GetByID(mock.Anything, sessionID).Return(users.Session{
-		BaseEntity: crud.BaseEntity{ID: sessionID},
-		UserID:     userID,
+	sessionMock.EXPECT().GetByID(mock.Anything, sessionID.String()).Return(auth.Session{
+		ID:     sessionID.String(),
+		UserID: userID.String(),
 	}, nil).Once()
-	userMock.EXPECT().GetByID(mock.Anything, userID).Return(users.User{
-		BaseEntity: crud.BaseEntity{ID: userID},
-		Profile:    users.UserProfile{BaseEntity: crud.BaseEntity{ID: profileID}},
-	}, nil)
 
-	svc := newTestAuthService(jwtMock, userMock, sessionMock, sessionCache)
+	svc := newTestAuthService(jwtMock, sessionMock, sessionCache)
 
 	// First call - hits DB via fallback
 	valid, _, err := svc.VerifyToken(context.Background(), "token", rawFgp)
@@ -269,7 +263,7 @@ func TestVerifyToken_MissingUserID(t *testing.T) {
 
 	jwtMock.EXPECT().VerifyToken("token").Return(claims, nil)
 
-	svc := newTestAuthService(jwtMock, nil, nil, sessionCache)
+	svc := newTestAuthService(jwtMock, nil, sessionCache)
 
 	valid, data, err := svc.VerifyToken(context.Background(), "token", rawFgp)
 
@@ -296,7 +290,7 @@ func TestVerifyToken_MissingSessionID(t *testing.T) {
 
 	jwtMock.EXPECT().VerifyToken("token").Return(claims, nil)
 
-	svc := newTestAuthService(jwtMock, nil, nil, sessionCache)
+	svc := newTestAuthService(jwtMock, nil, sessionCache)
 
 	valid, data, err := svc.VerifyToken(context.Background(), "token", rawFgp)
 

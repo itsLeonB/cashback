@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
-	"github.com/itsLeonB/cashback/internal/domain/service/auth"
+	"github.com/itsLeonB/go-authkit"
 	"github.com/itsLeonB/go-crud"
 )
 
@@ -14,7 +14,7 @@ type resetTokenStoreAdapter struct {
 	repo crud.Repository[users.PasswordResetToken]
 }
 
-func NewResetTokenStore(repo crud.Repository[users.PasswordResetToken]) auth.ResetTokenStore {
+func NewResetTokenStore(repo crud.Repository[users.PasswordResetToken]) authkit.ResetTokenStore {
 	return &resetTokenStoreAdapter{repo}
 }
 
@@ -33,17 +33,17 @@ func (a *resetTokenStoreAdapter) Create(ctx context.Context, userID, selector, v
 	return err
 }
 
-func (a *resetTokenStoreAdapter) FindBySelector(ctx context.Context, selector string) (auth.ResetToken, error) {
+func (a *resetTokenStoreAdapter) FindBySelector(ctx context.Context, selector string) (authkit.ResetToken, error) {
 	spec := crud.Specification[users.PasswordResetToken]{}
 	spec.Model.Selector = selector
 	rt, err := a.repo.FindFirst(ctx, spec)
 	if err != nil {
-		return auth.ResetToken{}, err
+		return authkit.ResetToken{}, err
 	}
 	if rt.IsZero() {
-		return auth.ResetToken{}, auth.ErrTokenNotFound
+		return authkit.ResetToken{}, authkit.ErrTokenNotFound
 	}
-	return auth.ResetToken{
+	return authkit.ResetToken{
 		UserID:       rt.UserID.String(),
 		Selector:     rt.Selector,
 		VerifierHash: rt.VerifierHash,

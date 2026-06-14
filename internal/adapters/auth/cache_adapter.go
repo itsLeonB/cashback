@@ -3,20 +3,18 @@ package authadapter
 import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/core/service/cache"
-	"github.com/itsLeonB/cashback/internal/domain/service/auth"
+	"github.com/itsLeonB/go-authkit"
 )
 
 type sessionCacheAdapter struct {
 	inner cache.Cache[uuid.UUID]
 }
 
-func NewSessionCacheAdapter(inner cache.Cache[uuid.UUID]) auth.SessionCache {
+func NewSessionCacheAdapter(inner cache.Cache[uuid.UUID]) authkit.SessionCache {
 	return &sessionCacheAdapter{inner}
 }
 
 func (a *sessionCacheAdapter) Get(sessionID string, loader func(string) (string, bool)) (string, bool) {
-	// The inner cache stores uuid.Nil on loader failure; we only use the value
-	// when hit==true, so the zero UUID never propagates to callers.
 	userID, hit := a.inner.Get(sessionID, func(sid string) (uuid.UUID, bool) {
 		userIDStr, ok := loader(sid)
 		if !ok {

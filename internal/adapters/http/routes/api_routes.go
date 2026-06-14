@@ -28,19 +28,19 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 				KeyFunc: httpserver.KeyFuncByIP(),
 			}))
 			{
-				authRoutes.POST("/register", handlers.Auth.HandleRegister())
-				authRoutes.POST("/login", handlers.Auth.HandleInternalLogin())
-				authRoutes.PUT("/refresh", handlers.Auth.HandleRefreshToken())
-				authRoutes.GET(fmt.Sprintf("/:%s", appconstant.ContextProvider.String()), handlers.Auth.HandleOAuth2Login())
-				authRoutes.GET(fmt.Sprintf("/:%s/callback", appconstant.ContextProvider.String()), handlers.Auth.HandleOAuth2Callback())
-				authRoutes.GET("/verify-registration", handlers.Auth.HandleVerifyRegistration())
+				authRoutes.POST("/register", handlers.Auth.Register())
+				authRoutes.POST("/login", handlers.Auth.Login())
+				authRoutes.PUT("/refresh", handlers.Auth.RefreshToken())
+				authRoutes.GET("/:provider", handlers.Auth.OAuthLogin())
+				authRoutes.GET("/:provider/callback", handlers.Auth.OAuthCallback())
+				authRoutes.GET("/verify-registration", handlers.Auth.VerifyRegistration())
 				authRoutes.POST("/password-reset",
 					sentinelGin.RateLimit(httpserver.RateLimitConfig{
 						Limit:   rate.Limit(3.0 / 900),
 						Burst:   3,
 						KeyFunc: httpserver.KeyFuncByIP(),
 					}),
-					handlers.Auth.HandleSendPasswordReset(),
+					handlers.Auth.SendPasswordReset(),
 				)
 				authRoutes.PATCH("/reset-password",
 					sentinelGin.RateLimit(httpserver.RateLimitConfig{
@@ -48,13 +48,13 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 						Burst:   5,
 						KeyFunc: httpserver.KeyFuncByIP(),
 					}),
-					handlers.Auth.HandleResetPassword(),
+					handlers.Auth.ResetPassword(),
 				)
 			}
 
 			protectedRoutes := v1.Group("/", authMiddleware, middlewares.CSRF())
 			{
-				protectedRoutes.DELETE("/auth/logout", handlers.Auth.HandleLogout())
+				protectedRoutes.DELETE("/auth/logout", handlers.Auth.Logout())
 
 				transferMethodsRoute := "/transfer-methods"
 				profileRoutes := protectedRoutes.Group("/profile")

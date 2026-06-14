@@ -10,7 +10,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
 	"github.com/itsLeonB/cashback/internal/domain/service"
-	"github.com/itsLeonB/cashback/internal/domain/service/auth"
+	"github.com/itsLeonB/go-authkit"
 	"github.com/itsLeonB/go-crud"
 	"golang.org/x/text/currency"
 )
@@ -20,52 +20,52 @@ type userStoreAdapter struct {
 	profileSvc service.ProfileService
 }
 
-func NewUserStore(userRepo repository.UserRepository, profileSvc service.ProfileService) auth.UserStore {
+func NewUserStore(userRepo repository.UserRepository, profileSvc service.ProfileService) authkit.UserStore {
 	return &userStoreAdapter{userRepo, profileSvc}
 }
 
-func (a *userStoreAdapter) FindByID(ctx context.Context, userID string) (auth.User, error) {
+func (a *userStoreAdapter) FindByID(ctx context.Context, userID string) (authkit.User, error) {
 	uid, err := uuid.Parse(userID)
 	if err != nil {
-		return auth.User{}, err
+		return authkit.User{}, err
 	}
 	spec := crud.Specification[users.User]{}
 	spec.Model.ID = uid
 	user, err := a.userRepo.FindFirst(ctx, spec)
 	if err != nil {
-		return auth.User{}, err
+		return authkit.User{}, err
 	}
 	if user.IsZero() {
-		return auth.User{}, auth.ErrUserNotFound
+		return authkit.User{}, authkit.ErrUserNotFound
 	}
 	return toAuthUser(user), nil
 }
 
-func (a *userStoreAdapter) FindByEmail(ctx context.Context, email string) (auth.User, error) {
+func (a *userStoreAdapter) FindByEmail(ctx context.Context, email string) (authkit.User, error) {
 	spec := crud.Specification[users.User]{}
 	spec.Model.Email = email
 	user, err := a.userRepo.FindFirst(ctx, spec)
 	if err != nil {
-		return auth.User{}, err
+		return authkit.User{}, err
 	}
 	if user.IsZero() {
-		return auth.User{}, auth.ErrUserNotFound
+		return authkit.User{}, authkit.ErrUserNotFound
 	}
 	return toAuthUser(user), nil
 }
 
-func (a *userStoreAdapter) Create(ctx context.Context, email, passwordHash string) (auth.User, error) {
+func (a *userStoreAdapter) Create(ctx context.Context, email, passwordHash string) (authkit.User, error) {
 	user, err := a.userRepo.Insert(ctx, users.User{
 		Email:    email,
 		Password: passwordHash,
 	})
 	if err != nil {
-		return auth.User{}, err
+		return authkit.User{}, err
 	}
 	return toAuthUser(user), nil
 }
 
-func (a *userStoreAdapter) CreateOAuth(ctx context.Context, email, name, avatar string) (auth.User, error) {
+func (a *userStoreAdapter) CreateOAuth(ctx context.Context, email, name, avatar string) (authkit.User, error) {
 	user, err := a.userRepo.Insert(ctx, users.User{
 		Email: email,
 		VerifiedAt: sql.NullTime{
@@ -74,7 +74,7 @@ func (a *userStoreAdapter) CreateOAuth(ctx context.Context, email, name, avatar 
 		},
 	})
 	if err != nil {
-		return auth.User{}, err
+		return authkit.User{}, err
 	}
 
 	if _, err = a.profileSvc.Create(ctx, dto.NewProfileRequest{
@@ -83,16 +83,16 @@ func (a *userStoreAdapter) CreateOAuth(ctx context.Context, email, name, avatar 
 		Avatar:       avatar,
 		HomeCurrency: currency.IDR.String(),
 	}); err != nil {
-		return auth.User{}, err
+		return authkit.User{}, err
 	}
 
 	return toAuthUser(user), nil
 }
 
-func (a *userStoreAdapter) SetVerified(ctx context.Context, userID string, name, avatar string) (auth.User, error) {
+func (a *userStoreAdapter) SetVerified(ctx context.Context, userID string, name, avatar string) (authkit.User, error) {
 	uid, err := uuid.Parse(userID)
 	if err != nil {
-		return auth.User{}, err
+		return authkit.User{}, err
 	}
 
 	spec := crud.Specification[users.User]{}
@@ -100,10 +100,10 @@ func (a *userStoreAdapter) SetVerified(ctx context.Context, userID string, name,
 	spec.PreloadRelations = []string{"Profile"}
 	user, err := a.userRepo.FindFirst(ctx, spec)
 	if err != nil {
-		return auth.User{}, err
+		return authkit.User{}, err
 	}
 	if user.IsZero() {
-		return auth.User{}, auth.ErrUserNotFound
+		return authkit.User{}, authkit.ErrUserNotFound
 	}
 
 	if user.Profile.IsZero() {
@@ -113,12 +113,11 @@ func (a *userStoreAdapter) SetVerified(ctx context.Context, userID string, name,
 			Avatar:       avatar,
 			HomeCurrency: currency.IDR.String(),
 		}); err != nil {
-			return auth.User{}, err
+			return authkit.User{}, err
 		}
-		// Refresh profile after creation
 		updated, err := a.userRepo.FindFirst(ctx, spec)
 		if err != nil {
-			return auth.User{}, err
+			return authkit.User{}, err
 		}
 		user = updated
 	}
@@ -130,7 +129,7 @@ func (a *userStoreAdapter) SetVerified(ctx context.Context, userID string, name,
 
 	updated, err := a.userRepo.Update(ctx, user)
 	if err != nil {
-		return auth.User{}, err
+		return authkit.User{}, err
 	}
 	return toAuthUser(updated), nil
 }
@@ -148,7 +147,7 @@ func (a *userStoreAdapter) Exists(ctx context.Context, userID string) error {
 		return err
 	}
 	if user.IsZero() {
-		return auth.ErrUserNotFound
+		return authkit.ErrUserNotFound
 	}
 	return nil
 }
@@ -166,7 +165,7 @@ func (a *userStoreAdapter) UpdatePassword(ctx context.Context, userID, passwordH
 		return err
 	}
 	if u.IsZero() {
-		return auth.ErrUserNotFound
+		return authkit.ErrUserNotFound
 	}
 
 	u.Password = passwordHash
@@ -174,12 +173,12 @@ func (a *userStoreAdapter) UpdatePassword(ctx context.Context, userID, passwordH
 	return err
 }
 
-func toAuthUser(u users.User) auth.User {
+func toAuthUser(u users.User) authkit.User {
 	profileID := ""
 	if !u.Profile.IsZero() {
 		profileID = u.Profile.ID.String()
 	}
-	return auth.User{
+	return authkit.User{
 		ID:           u.ID.String(),
 		Email:        u.Email,
 		PasswordHash: u.Password,

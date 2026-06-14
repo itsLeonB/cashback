@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/itsLeonB/cashback/internal/adapters/http/cookie"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler"
 	adminHandler "github.com/itsLeonB/cashback/internal/adapters/http/handler/admin"
 	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
@@ -13,6 +12,8 @@ import (
 	_ "github.com/itsLeonB/cashback/docs"
 	"github.com/itsLeonB/cashback/internal/provider"
 	"github.com/itsLeonB/cashback/internal/provider/admin"
+	"github.com/itsLeonB/go-authkit"
+	"github.com/itsLeonB/go-authkit/authgin"
 	"github.com/kroma-labs/sentinel-go/httpserver"
 	sentinelGin "github.com/kroma-labs/sentinel-go/httpserver/adapters/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -20,17 +21,21 @@ import (
 )
 
 func RegisterRoutes(router *gin.Engine, configs config.Config, services *provider.Services, adminServices *admin.Services) func() {
-	cookieCfg := cookie.Config{
-		Domain:     configs.CookieDomain,
-		Secure:     configs.CookieSecure,
-		SameSite:   configs.ParsedSameSite(),
-		AccessTTL:  configs.TokenDuration,
-		RefreshTTL: configs.RefreshTokenDuration,
-	}
+	authCfg := configs.Auth
 
-	handlers := handler.ProvideHandlers(services, cookieCfg)
+	transport := authgin.NewCookieTransport(authgin.CookieConfig{
+		Domain:     authCfg.CookieDomain,
+		Secure:     authCfg.CookieSecure,
+		SameSite:   authCfg.ParsedSameSite(),
+		AccessTTL:  authCfg.TokenDuration,
+		RefreshTTL: authCfg.RefreshTokenDuration,
+	})
+
+	authMW := authgin.AuthMiddleware(services.AuthKit, transport, authkit.RequireAuth)
+
+	handlers := handler.ProvideHandlers(services, authCfg)
 	adminHandlers := adminHandler.ProvideHandlers(adminServices, services)
-	mw := middlewares.Provide(configs.App, services.Auth, adminServices.Auth)
+	mw := middlewares.Provide(configs.App, adminServices.Auth)
 
 	router.Use(mw.Err)
 
@@ -55,7 +60,7 @@ func RegisterRoutes(router *gin.Engine, configs config.Config, services *provide
 	})
 
 	routes.RegisterBaseRoutes(router)
-	routes.RegisterAPIRoutes(router, handlers, mw.Auth)
+	routes.RegisterAPIRoutes(router, handlers, authMW)
 	routes.RegisterAdminRoutes(router, adminHandlers, mw.AdminAuth)
 
 	return handlers.Shutdown

@@ -4,9 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/itsLeonB/cashback/internal/adapters/http/cookie"
 	"github.com/itsLeonB/ungerr"
 )
+
+const csrfTokenCookieName = "csrf_token"
 
 func CSRF() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -17,7 +18,7 @@ func CSRF() gin.HandlerFunc {
 			return
 		}
 
-		csrfCookie, err := c.Cookie(cookie.CSRFTokenName)
+		csrfCookie, err := c.Cookie(csrfTokenCookieName)
 		if err != nil || csrfCookie == "" {
 			_ = c.Error(ungerr.ForbiddenError("missing CSRF token"))
 			c.Abort()

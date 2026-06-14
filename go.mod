@@ -2,6 +2,10 @@ module github.com/itsLeonB/cashback
 
 go 1.25.0
 
+require github.com/itsLeonB/go-authkit v0.0.0
+
+replace github.com/itsLeonB/go-authkit => /home/leon/itsLeonB/go-authkit
+
 require (
 	cloud.google.com/go/storage v1.58.0
 	cloud.google.com/go/vision v1.2.0
@@ -9,7 +13,7 @@ require (
 	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/deckarep/golang-set/v2 v2.8.0
 	github.com/getbrevo/brevo-go v1.1.3
-	github.com/gin-gonic/gin v1.11.0
+	github.com/gin-gonic/gin v1.12.0
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/google/uuid v1.6.0
 	github.com/itsLeonB/ezutil/v2 v2.4.0
@@ -141,6 +145,7 @@ require (
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
+	go.mongodb.org/mongo-driver/v2 v2.5.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.38.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0 // indirect

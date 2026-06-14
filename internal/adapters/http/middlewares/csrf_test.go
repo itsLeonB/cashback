@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/itsLeonB/cashback/internal/adapters/http/cookie"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -42,7 +41,7 @@ func TestCSRF_POSTRequest_MissingCookie(t *testing.T) {
 func TestCSRF_POSTRequest_MissingHeader(t *testing.T) {
 	r := setupCSRFRouter()
 	req := httptest.NewRequest(http.MethodPost, "/action", nil)
-	req.AddCookie(&http.Cookie{Name: cookie.CSRFTokenName, Value: "token123"})
+	req.AddCookie(&http.Cookie{Name: csrfTokenCookieName, Value: "token123"})
 	w := httptest.NewRecorder()
 
 	r.ServeHTTP(w, req)
@@ -53,7 +52,7 @@ func TestCSRF_POSTRequest_MissingHeader(t *testing.T) {
 func TestCSRF_POSTRequest_Mismatch(t *testing.T) {
 	r := setupCSRFRouter()
 	req := httptest.NewRequest(http.MethodPost, "/action", nil)
-	req.AddCookie(&http.Cookie{Name: cookie.CSRFTokenName, Value: "token123"})
+	req.AddCookie(&http.Cookie{Name: csrfTokenCookieName, Value: "token123"})
 	req.Header.Set("X-CSRF-Token", "wrong")
 	w := httptest.NewRecorder()
 
@@ -65,7 +64,7 @@ func TestCSRF_POSTRequest_Mismatch(t *testing.T) {
 func TestCSRF_POSTRequest_Valid(t *testing.T) {
 	r := setupCSRFRouter()
 	req := httptest.NewRequest(http.MethodPost, "/action", nil)
-	req.AddCookie(&http.Cookie{Name: cookie.CSRFTokenName, Value: "token123"})
+	req.AddCookie(&http.Cookie{Name: csrfTokenCookieName, Value: "token123"})
 	req.Header.Set("X-CSRF-Token", "token123")
 	w := httptest.NewRecorder()
 

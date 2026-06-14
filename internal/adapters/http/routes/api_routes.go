@@ -7,6 +7,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler"
 	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
 	"github.com/itsLeonB/cashback/internal/appconstant"
+	"github.com/itsLeonB/go-authkit/authgin"
 	"github.com/kroma-labs/sentinel-go/httpserver"
 	sentinelGin "github.com/kroma-labs/sentinel-go/httpserver/adapters/gin"
 	"golang.org/x/time/rate"
@@ -52,7 +53,7 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 				)
 			}
 
-			protectedRoutes := v1.Group("/", authMiddleware, middlewares.CSRF())
+			protectedRoutes := v1.Group("/", authMiddleware, authgin.CSRFMiddleware())
 			{
 				protectedRoutes.DELETE("/auth/logout", handlers.Auth.Logout())
 

@@ -2,10 +2,6 @@ module github.com/itsLeonB/cashback
 
 go 1.25.0
 
-require github.com/itsLeonB/go-authkit v0.0.0
-
-replace github.com/itsLeonB/go-authkit => /home/leon/itsLeonB/go-authkit
-
 require (
 	cloud.google.com/go/storage v1.58.0
 	cloud.google.com/go/vision v1.2.0
@@ -18,6 +14,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/itsLeonB/ezutil/v2 v2.4.0
 	github.com/itsLeonB/ginkgo v0.6.1-pre2
+	github.com/itsLeonB/go-authkit v0.0.1
 	github.com/itsLeonB/go-crud v1.4.0
 	github.com/itsLeonB/sekure v0.1.1
 	github.com/itsLeonB/ungerr v0.4.0-pre2

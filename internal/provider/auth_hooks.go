@@ -7,18 +7,17 @@ import (
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/domain/service"
+	"github.com/itsLeonB/go-authkit"
 	"github.com/itsLeonB/ungerr"
 )
 
-// NewAuthHooks builds the application-specific auth hooks that wire Cashus
-// business logic into the generic auth flows. Hooks that have no current
-// implementation are left as nil (no-op).
-func NewAuthHooks(
+// NewAuthKitHooks builds authkit.Hooks wiring Cashus business logic.
+func NewAuthKitHooks(
 	pushNotification service.PushNotificationService,
 	profileService service.ProfileService,
 	friendshipService service.FriendshipService,
-) service.AuthHooks {
-	return service.AuthHooks{
+) authkit.Hooks {
+	return authkit.Hooks{
 		BeforeLogout: func(ctx context.Context, sessionID string) error {
 			sid, err := uuid.Parse(sessionID)
 			if err != nil {
@@ -55,10 +54,6 @@ func NewAuthHooks(
 	}
 }
 
-// associateBySlug links a newly verified user's profile to an anonymous
-// profile identified by a slug. It looks up the anonymous profile, finds its
-// owner through the friendship graph, creates a real friendship, and then
-// associates the profiles.
 func associateBySlug(
 	ctx context.Context,
 	profileSvc service.ProfileService,
@@ -71,7 +66,6 @@ func associateBySlug(
 		return err
 	}
 
-	// Find the owner of the anonymous profile via friendship
 	friendships, err := friendshipSvc.GetAll(ctx, anonProfile.ID)
 	if err != nil {
 		return err
@@ -82,12 +76,10 @@ func associateBySlug(
 
 	ownerProfileID := friendships[0].ProfileID
 
-	// Create real friendship between owner and new user
 	_, err = friendshipSvc.CreateReal(ctx, ownerProfileID, newProfileID)
 	if err != nil {
 		return err
 	}
 
-	// Create RelatedProfile association
 	return profileSvc.Associate(ctx, ownerProfileID, newProfileID, anonProfile.ID)
 }

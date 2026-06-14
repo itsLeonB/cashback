@@ -5,14 +5,14 @@ import (
 	"time"
 
 	"github.com/itsLeonB/cashback/internal/core/service/store"
-	"github.com/itsLeonB/cashback/internal/domain/service/auth"
+	"github.com/itsLeonB/go-authkit"
 )
 
 type stateStoreAdapter struct {
 	inner store.StateStore
 }
 
-func NewStateStore(inner store.StateStore) auth.StateStore {
+func NewStateStore(inner store.StateStore) authkit.StateStore {
 	return &stateStoreAdapter{inner}
 }
 

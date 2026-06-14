@@ -3,7 +3,7 @@ package authadapter
 import (
 	"context"
 
-	"github.com/itsLeonB/cashback/internal/domain/service/auth"
+	"github.com/itsLeonB/go-authkit"
 	"github.com/itsLeonB/go-crud"
 )
 
@@ -11,7 +11,7 @@ type transactorAdapter struct {
 	inner crud.Transactor
 }
 
-func NewTransactor(inner crud.Transactor) auth.Transactor {
+func NewTransactor(inner crud.Transactor) authkit.Transactor {
 	return &transactorAdapter{inner}
 }
 

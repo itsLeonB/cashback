@@ -8,20 +8,19 @@ import (
 	authadapter "github.com/itsLeonB/cashback/internal/adapters/auth"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/cache"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/cashback/internal/domain/service/fee"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization"
 	"github.com/itsLeonB/cashback/internal/domain/service/monetization/payment"
-	"github.com/itsLeonB/cashback/internal/domain/service/oauth"
-	"github.com/itsLeonB/sekure"
+	"github.com/itsLeonB/go-authkit"
+	"github.com/markbates/goth/providers/google"
 )
 
 type Services struct {
 	// Auth
-	Auth    service.AuthService
-	OAuth   service.OAuthService
-	Session service.SessionService
+	AuthKit *authkit.AuthKit
 	Captcha service.CaptchaService
 
 	// Users
@@ -54,7 +53,7 @@ type Services struct {
 }
 
 func (s *Services) Shutdown() error {
-	return errors.Join(s.Auth.Shutdown(), s.TransferMethod.Shutdown())
+	return errors.Join(s.AuthKit.Shutdown(), s.TransferMethod.Shutdown())
 }
 
 func ProvideServices(
@@ -63,6 +62,7 @@ func ProvideServices(
 ) *Services {
 	authConfig := config.Global.Auth
 	appConfig := config.Global.App
+	oauthConfig := config.Global.OAuthProviders
 	paymentConfig := config.Global.Payment
 
 	paymentGateway, err := payment.NewGateway(paymentConfig)
@@ -74,19 +74,12 @@ func ProvideServices(
 	payment := monetization.NewPaymentService(paymentGateway, repos.Transactor, repos.Payment, coreSvc.Queue, subs)
 	subsLimit := service.NewSubscriptionLimitService(subs, repos.ExpenseBill)
 
-	jwt := sekure.NewJwtService(authConfig.Issuer, authConfig.SecretKey, authConfig.TokenDuration)
 	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile, subs, subsLimit)
 	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken, coreSvc.Mail)
 	friendship := service.NewFriendshipService(repos.Transactor, repos.Friendship, profile)
 	pushNotification := service.NewPushNotificationService(repos.PushSubscription, repos.Notification, repos.Transactor, coreSvc.WebPush)
 
-	// hooks assembles the service.AuthHooks{} configuration that wires Cashus
-	// business logic into the generic auth service layer.
-	hooks := NewAuthHooks(pushNotification, profile, friendship)
-
-	// Auth adapters bridge the auth package interfaces to existing repos/infra.
-	jwtAdapter := authadapter.NewJWTService(jwt)
-	hashAdapter := authadapter.NewHashService(sekure.NewHashService(authConfig.HashCost))
+	// Auth adapters bridge authkit store interfaces to existing repos/infra.
 	txAdapter := authadapter.NewTransactor(repos.Transactor)
 	userStore := authadapter.NewUserStore(repos.User, profile)
 	sessionStore := authadapter.NewSessionStore(repos.Session)
@@ -98,7 +91,30 @@ func ProvideServices(
 	cacheAdapter := authadapter.NewSessionCacheAdapter(sessionCache)
 	stateAdapter := authadapter.NewStateStore(coreSvc.State)
 
-	session := service.NewSessionService(jwtAdapter, userStore, txAdapter, sessionStore, refreshTokenStore, authConfig.RefreshTokenDuration, hooks.ClaimsBuilder)
+	hooks := NewAuthKitHooks(pushNotification, profile, friendship)
+
+	kit := authkit.New(authkit.Config{
+		VerificationURL:  appConfig.RegisterVerificationUrl,
+		ResetPasswordURL: appConfig.ResetPasswordUrl,
+		RefreshTokenTTL:  authConfig.RefreshTokenDuration,
+		JWTIssuer:        authConfig.Issuer,
+		JWTSecret:        authConfig.SecretKey,
+		JWTDuration:      authConfig.TokenDuration,
+		Tracer:           otel.Tracer,
+	}, authkit.Deps{
+		Tx:       txAdapter,
+		Users:    userStore,
+		Sessions: sessionStore,
+		Refresh:  refreshTokenStore,
+		Resets:   resetTokenStore,
+		OAuth:    oauthAccountStore,
+		Mail:     mailAdapter,
+		Cache:    cacheAdapter,
+		State:    stateAdapter,
+		Providers: []authkit.ProviderConfig{
+			{Provider: google.New(oauthConfig.Google.ClientID, oauthConfig.Google.ClientSecret, oauthConfig.Google.RedirectUrl, "email", "profile"), Trusted: true},
+		},
+	}, hooks)
 
 	friendReq := service.NewFriendshipRequestService(repos.Transactor, friendship, profile, repos.FriendshipRequest, coreSvc.Queue)
 
@@ -107,12 +123,8 @@ func ProvideServices(
 	transferMethod := service.NewTransferMethodService(repos.TransferMethod, coreSvc.Storage, appConfig.BucketNameTransferMethods, appembed.TransferMethodAssets)
 	debt := service.NewDebtService(repos.DebtTransaction, transferMethod, friendship, profile, groupExpense, coreSvc.Queue)
 
-	providerSvc := oauth.NewProviderService(config.Global.OAuthProviders)
-
 	return &Services{
-		Auth:    service.NewAuthService(jwtAdapter, txAdapter, userStore, resetTokenStore, mailAdapter, appConfig.RegisterVerificationUrl, appConfig.ResetPasswordUrl, hashAdapter, session, cacheAdapter, hooks),
-		OAuth:   service.NewOAuthService(txAdapter, providerSvc, oauthAccountStore, stateAdapter, userStore, session, hooks),
-		Session: session,
+		AuthKit: kit,
 		Captcha: service.NewTurnstileService(authConfig.TurnstileSecretKey),
 
 		User:              user,

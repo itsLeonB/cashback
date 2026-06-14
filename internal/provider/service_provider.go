@@ -8,6 +8,7 @@ import (
 	authadapter "github.com/itsLeonB/cashback/internal/adapters/auth"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
+	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/core/service/cache"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/cashback/internal/domain/service/fee"
@@ -99,6 +100,7 @@ func ProvideServices(
 		JWTIssuer:        authConfig.Issuer,
 		JWTSecret:        authConfig.SecretKey,
 		JWTDuration:      authConfig.TokenDuration,
+		Tracer:           otel.Tracer,
 	}, authkit.Deps{
 		Tx:       txAdapter,
 		Users:    userStore,

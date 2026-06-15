@@ -37,7 +37,7 @@ func (h *PushSubscriptionHandler) HandleSubscribe() gin.HandlerFunc {
 			return nil, err
 		}
 
-		sessionID, err := server.GetFromContext[uuid.UUID](ctx, appconstant.ContextSessionID.String())
+		sessionID, err := server.GetAndParseFromContext[uuid.UUID](ctx, appconstant.ContextSessionID.String())
 		if err != nil {
 			return nil, err
 		}

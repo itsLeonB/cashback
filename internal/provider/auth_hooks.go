@@ -11,8 +11,8 @@ import (
 	"github.com/itsLeonB/ungerr"
 )
 
-// NewAuthKitHooks builds authkit.Hooks wiring Cashus business logic.
-func NewAuthKitHooks(
+// newAuthKitHooks builds authkit.Hooks wiring Cashus business logic.
+func newAuthKitHooks(
 	pushNotification service.PushNotificationService,
 	profileService service.ProfileService,
 	friendshipService service.FriendshipService,

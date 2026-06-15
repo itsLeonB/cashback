@@ -80,7 +80,6 @@ func ProvideServices(
 	pushNotification := service.NewPushNotificationService(repos.PushSubscription, repos.Notification, repos.Transactor, coreSvc.WebPush)
 
 	// Auth adapters bridge authkit store interfaces to existing repos/infra.
-	txAdapter := authadapter.NewTransactor(repos.Transactor)
 	userStore := authadapter.NewUserStore(repos.User, profile)
 	sessionStore := authadapter.NewSessionStore(repos.Session)
 	refreshTokenStore := authadapter.NewRefreshTokenStore(repos.RefreshToken)
@@ -89,11 +88,10 @@ func ProvideServices(
 	mailAdapter := authadapter.NewMailAdapter(coreSvc.Mail)
 	sessionCache := cache.NewInMemoryCache[uuid.UUID](authConfig.TokenDuration)
 	cacheAdapter := authadapter.NewSessionCacheAdapter(sessionCache)
-	stateAdapter := authadapter.NewStateStore(coreSvc.State)
 
-	hooks := NewAuthKitHooks(pushNotification, profile, friendship)
+	hooks := newAuthKitHooks(pushNotification, profile, friendship)
 
-	kit := authkit.New(authkit.Config{
+	authKitCfg := authkit.Config{
 		VerificationURL:  appConfig.RegisterVerificationUrl,
 		ResetPasswordURL: appConfig.ResetPasswordUrl,
 		RefreshTokenTTL:  authConfig.RefreshTokenDuration,
@@ -101,8 +99,10 @@ func ProvideServices(
 		JWTSecret:        authConfig.SecretKey,
 		JWTDuration:      authConfig.TokenDuration,
 		Tracer:           otel.Tracer,
-	}, authkit.Deps{
-		Tx:       txAdapter,
+	}
+
+	authKitDeps := authkit.Deps{
+		Tx:       repos.Transactor,
 		Users:    userStore,
 		Sessions: sessionStore,
 		Refresh:  refreshTokenStore,
@@ -110,11 +110,11 @@ func ProvideServices(
 		OAuth:    oauthAccountStore,
 		Mail:     mailAdapter,
 		Cache:    cacheAdapter,
-		State:    stateAdapter,
+		State:    coreSvc.State,
 		Providers: []authkit.ProviderConfig{
 			{Provider: google.New(oauthConfig.Google.ClientID, oauthConfig.Google.ClientSecret, oauthConfig.Google.RedirectUrl, "email", "profile"), Trusted: true},
 		},
-	}, hooks)
+	}
 
 	friendReq := service.NewFriendshipRequestService(repos.Transactor, friendship, profile, repos.FriendshipRequest, coreSvc.Queue)
 
@@ -124,7 +124,7 @@ func ProvideServices(
 	debt := service.NewDebtService(repos.DebtTransaction, transferMethod, friendship, profile, groupExpense, coreSvc.Queue)
 
 	return &Services{
-		AuthKit: kit,
+		AuthKit: authkit.New(authKitCfg, authKitDeps, hooks),
 		Captcha: service.NewTurnstileService(authConfig.TurnstileSecretKey),
 
 		User:              user,

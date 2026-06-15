@@ -1,12 +1,10 @@
 package handler
 
 import (
-	"context"
 	"time"
 
 	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
 	"github.com/itsLeonB/cashback/internal/core/config"
-	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/cashback/internal/provider"
 	"github.com/itsLeonB/go-authkit/authgin"
 )
@@ -49,7 +47,7 @@ func ProvideHandlers(services *provider.Services, authCfg config.Auth) *Handlers
 	emailLimiter := middlewares.NewValueLimiter(3.0/3600, 3, time.Hour)
 
 	authHandler := authgin.NewHandler(services.AuthKit, transport, authgin.HandlerConfig{
-		Captcha: &captchaAdapter{inner: services.Captcha},
+		Captcha: services.Captcha,
 		Limiter: emailLimiter,
 	})
 
@@ -73,13 +71,4 @@ func ProvideHandlers(services *provider.Services, authCfg config.Auth) *Handlers
 		Public:                NewPublicHandler(services.FriendDetails),
 		emailLimiter:          emailLimiter,
 	}
-}
-
-// captchaAdapter adapts service.CaptchaService to authgin.CaptchaVerifier.
-type captchaAdapter struct {
-	inner service.CaptchaService
-}
-
-func (a *captchaAdapter) Verify(ctx context.Context, token string) error {
-	return a.inner.Verify(ctx, token)
 }

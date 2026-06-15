@@ -10,7 +10,6 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/cashback/internal/domain/message"
-	"github.com/itsLeonB/cashback/internal/domain/service/auth"
 	"github.com/shopspring/decimal"
 )
 
@@ -23,30 +22,6 @@ type UserService interface {
 
 	GetByID(ctx context.Context, id uuid.UUID) (users.User, error)
 	SendSubscriptionNearingDueDateMail(ctx context.Context, msg message.SubscriptionNearingDue) error
-}
-
-type AuthService interface {
-	Register(ctx context.Context, request dto.RegisterRequest) (dto.RegisterResponse, error)
-	InternalLogin(ctx context.Context, request dto.InternalLoginRequest) (dto.TokenResponse, error)
-	VerifyToken(ctx context.Context, token string, fingerprint string) (bool, map[string]any, error)
-	VerifyRegistration(ctx context.Context, token string) (dto.TokenResponse, error)
-	SendPasswordReset(ctx context.Context, email string) error
-	ResetPassword(ctx context.Context, token, newPassword string) (dto.TokenResponse, error)
-	Logout(ctx context.Context, sessionID uuid.UUID) error
-	Shutdown() error
-}
-
-type OAuthService interface {
-	GetOAuthURL(ctx context.Context, provider string) (string, error)
-	HandleOAuthCallback(ctx context.Context, data dto.OAuthCallbackData) (dto.TokenResponse, error)
-}
-
-type SessionService interface {
-	RefreshToken(ctx context.Context, request dto.RefreshTokenRequest) (dto.TokenResponse, error)
-
-	CreateTokenAndSession(ctx context.Context, user auth.User) (dto.TokenResponse, error)
-	RevokeSession(ctx context.Context, sessionID string) error
-	GetByID(ctx context.Context, id string) (auth.Session, error)
 }
 
 type ProfileService interface {

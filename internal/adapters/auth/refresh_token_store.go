@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
-	"github.com/itsLeonB/cashback/internal/domain/service/auth"
+	"github.com/itsLeonB/go-authkit"
 	"github.com/itsLeonB/go-crud"
 )
 
@@ -14,7 +14,7 @@ type refreshTokenStoreAdapter struct {
 	repo crud.Repository[users.RefreshToken]
 }
 
-func NewRefreshTokenStore(repo crud.Repository[users.RefreshToken]) auth.RefreshTokenStore {
+func NewRefreshTokenStore(repo crud.Repository[users.RefreshToken]) authkit.RefreshTokenStore {
 	return &refreshTokenStoreAdapter{repo}
 }
 
@@ -32,15 +32,15 @@ func (a *refreshTokenStoreAdapter) Create(ctx context.Context, sessionID, tokenH
 	return err
 }
 
-func (a *refreshTokenStoreAdapter) FindByHash(ctx context.Context, hash string) (auth.RefreshToken, error) {
+func (a *refreshTokenStoreAdapter) FindByHash(ctx context.Context, hash string) (authkit.RefreshToken, error) {
 	spec := crud.Specification[users.RefreshToken]{}
 	spec.Model.TokenHash = hash
 	rt, err := a.repo.FindFirst(ctx, spec)
 	if err != nil {
-		return auth.RefreshToken{}, err
+		return authkit.RefreshToken{}, err
 	}
 	if rt.IsZero() {
-		return auth.RefreshToken{}, auth.ErrTokenNotFound
+		return authkit.RefreshToken{}, authkit.ErrTokenNotFound
 	}
 	return toAuthRefreshToken(rt), nil
 }
@@ -82,8 +82,8 @@ func (a *refreshTokenStoreAdapter) DeleteBySession(ctx context.Context, sessionI
 	return a.repo.DeleteMany(ctx, tokens)
 }
 
-func toAuthRefreshToken(rt users.RefreshToken) auth.RefreshToken {
-	return auth.RefreshToken{
+func toAuthRefreshToken(rt users.RefreshToken) authkit.RefreshToken {
+	return authkit.RefreshToken{
 		ID:        rt.ID.String(),
 		SessionID: rt.SessionID.String(),
 		TokenHash: rt.TokenHash,

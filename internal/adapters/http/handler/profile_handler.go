@@ -5,8 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
-	"github.com/google/uuid"
-	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	_ "github.com/itsLeonB/ginkgo/pkg/response"
@@ -35,7 +33,7 @@ func NewProfileHandler(
 // @Router       /profile [get]
 func (ph *ProfileHandler) HandleProfile() gin.HandlerFunc {
 	return server.Handler("ProfileHandler.HandleProfile", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := server.GetFromContext[uuid.UUID](ctx, appconstant.ContextProfileID.String())
+		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -57,7 +55,7 @@ func (ph *ProfileHandler) HandleProfile() gin.HandlerFunc {
 // @Router       /profile [patch]
 func (ph *ProfileHandler) HandleUpdate() gin.HandlerFunc {
 	return server.Handler("ProfileHandler.HandleUpdate", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		profileID, err := server.GetFromContext[uuid.UUID](ctx, appconstant.ContextProfileID.String())
+		profileID, err := getProfileID(ctx)
 		if err != nil {
 			return nil, err
 		}

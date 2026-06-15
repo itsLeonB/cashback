@@ -5,14 +5,14 @@ import (
 	"fmt"
 
 	"github.com/itsLeonB/cashback/internal/core/service/mail"
-	"github.com/itsLeonB/cashback/internal/domain/service/auth"
+	"github.com/itsLeonB/go-authkit"
 )
 
 type mailAdapter struct {
 	inner mail.MailService
 }
 
-func NewMailAdapter(inner mail.MailService) auth.MailService {
+func NewMailAdapter(inner mail.MailService) authkit.MailService {
 	return &mailAdapter{inner}
 }
 

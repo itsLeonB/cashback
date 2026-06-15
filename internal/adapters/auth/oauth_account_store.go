@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
-	"github.com/itsLeonB/cashback/internal/domain/service/auth"
+	"github.com/itsLeonB/go-authkit"
 	"github.com/itsLeonB/go-crud"
 )
 
@@ -13,23 +13,23 @@ type oauthAccountStoreAdapter struct {
 	repo crud.Repository[users.OAuthAccount]
 }
 
-func NewOAuthAccountStore(repo crud.Repository[users.OAuthAccount]) auth.OAuthAccountStore {
+func NewOAuthAccountStore(repo crud.Repository[users.OAuthAccount]) authkit.OAuthAccountStore {
 	return &oauthAccountStoreAdapter{repo}
 }
 
-func (a *oauthAccountStoreAdapter) FindByProvider(ctx context.Context, provider, providerID string) (auth.OAuthAccount, error) {
+func (a *oauthAccountStoreAdapter) FindByProvider(ctx context.Context, provider, providerID string) (authkit.OAuthAccount, error) {
 	spec := crud.Specification[users.OAuthAccount]{}
 	spec.Model.Provider = provider
 	spec.Model.ProviderID = providerID
 	spec.PreloadRelations = []string{"User"}
 	account, err := a.repo.FindFirst(ctx, spec)
 	if err != nil {
-		return auth.OAuthAccount{}, err
+		return authkit.OAuthAccount{}, err
 	}
 	if account.IsZero() {
-		return auth.OAuthAccount{}, auth.ErrUserNotFound
+		return authkit.OAuthAccount{}, authkit.ErrUserNotFound
 	}
-	return auth.OAuthAccount{
+	return authkit.OAuthAccount{
 		UserID:     account.UserID.String(),
 		Provider:   account.Provider,
 		ProviderID: account.ProviderID,

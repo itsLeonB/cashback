@@ -20,7 +20,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func RegisterRoutes(router *gin.Engine, configs config.Config, services *provider.Services, adminServices *admin.Services) (func(), error) {
+func RegisterRoutes(router *gin.Engine, configs config.Config, services *provider.Services, adminServices *admin.Services, adminRepos *admin.Repositories) (func(), error) {
 	authCfg := configs.Auth
 
 	transport, err := authgin.NewCookieTransport(authgin.CookieConfig{
@@ -37,8 +37,8 @@ func RegisterRoutes(router *gin.Engine, configs config.Config, services *provide
 	authMW := authgin.AuthMiddleware(services.AuthKit, transport, authkit.RequireAuth)
 
 	handlers := handler.ProvideHandlers(services, transport)
-	adminHandlers := adminHandler.ProvideHandlers(adminServices, services)
-	mw := middlewares.Provide(configs.App, adminServices.Auth)
+	adminHandlers := adminHandler.ProvideHandlers(adminServices, adminRepos, services)
+	mw := middlewares.Provide(configs.App, adminServices.Kit)
 
 	router.Use(mw.Err)
 

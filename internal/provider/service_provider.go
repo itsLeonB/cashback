@@ -124,7 +124,7 @@ func ProvideServices(
 	debt := service.NewDebtService(repos.DebtTransaction, transferMethod, friendship, profile, groupExpense, coreSvc.Queue)
 
 	return &Services{
-		AuthKit: authkit.New(authKitCfg, authKitDeps, hooks),
+		AuthKit: mustNewAuthKit(authKitCfg, authKitDeps, hooks),
 		Captcha: service.NewTurnstileService(authConfig.TurnstileSecretKey),
 
 		User:              user,
@@ -150,4 +150,12 @@ func ProvideServices(
 		Notification:     service.NewNotificationService(repos.Notification, debt, friendReq, friendship, groupExpense, coreSvc.Queue),
 		PushNotification: pushNotification,
 	}
+}
+
+func mustNewAuthKit(cfg authkit.Config, deps authkit.Deps, hooks authkit.Hooks) *authkit.AuthKit {
+	kit, err := authkit.New(cfg, deps, hooks)
+	if err != nil {
+		panic(err)
+	}
+	return kit
 }

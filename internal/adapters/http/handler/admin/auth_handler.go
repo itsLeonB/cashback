@@ -4,35 +4,26 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/itsLeonB/cashback/internal/core/util"
 	"github.com/itsLeonB/cashback/internal/domain/dto"
-	"github.com/itsLeonB/cashback/internal/domain/service/admin"
+	adminEntity "github.com/itsLeonB/cashback/internal/domain/entity/admin"
+	"github.com/itsLeonB/go-authkit/authgin"
+	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ginkgo/pkg/server"
+	"github.com/itsLeonB/ungerr"
 )
 
 type AuthHandler struct {
-	authSvc admin.AuthService
+	stateless *authgin.StatelessHandler
+	userRepo  crud.Repository[adminEntity.User]
 }
 
 func (ah *AuthHandler) HandleRegister() gin.HandlerFunc {
-	return server.Handler("AuthHandler.HandleRegister", http.StatusCreated, func(ctx *gin.Context) (any, error) {
-		request, err := server.BindJSON[dto.RegisterRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, ah.authSvc.Register(ctx.Request.Context(), request)
-	})
+	return ah.stateless.Register()
 }
 
 func (ah *AuthHandler) HandleLogin() gin.HandlerFunc {
-	return server.Handler("AuthHandler.HandleLogin", http.StatusOK, func(ctx *gin.Context) (any, error) {
-		request, err := server.BindJSON[dto.InternalLoginRequest](ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		return ah.authSvc.Login(ctx.Request.Context(), request)
-	})
+	return ah.stateless.Login()
 }
 
 func (ah *AuthHandler) HandleMe() gin.HandlerFunc {
@@ -41,7 +32,15 @@ func (ah *AuthHandler) HandleMe() gin.HandlerFunc {
 		if err != nil {
 			return nil, err
 		}
-
-		return ah.authSvc.Me(ctx.Request.Context(), userID)
+		spec := crud.Specification[adminEntity.User]{}
+		spec.Model.ID = userID
+		user, err := ah.userRepo.FindFirst(ctx.Request.Context(), spec)
+		if err != nil {
+			return nil, err
+		}
+		if user.IsZero() {
+			return nil, ungerr.UnauthorizedError("user not found")
+		}
+		return dto.AdminMe{ID: user.ID, FullName: util.GetNameFromEmail(user.Email)}, nil
 	})
 }

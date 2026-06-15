@@ -7,11 +7,13 @@ import (
 )
 
 type Repositories struct {
-	User crud.Repository[admin.User]
+	Transactor crud.Transactor
+	User       crud.Repository[admin.User]
 }
 
 func ProvideRepositories(db *gorm.DB) *Repositories {
 	return &Repositories{
-		crud.NewRepository[admin.User](db),
+		Transactor: crud.NewTransactor(db),
+		User:       crud.NewRepository[admin.User](db),
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
-	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/provider"
 	"github.com/itsLeonB/go-authkit/authgin"
 )
@@ -35,15 +34,7 @@ func (h *Handlers) Shutdown() {
 	h.emailLimiter.Stop()
 }
 
-func ProvideHandlers(services *provider.Services, authCfg config.Auth) *Handlers {
-	transport := authgin.NewCookieTransport(authgin.CookieConfig{
-		Domain:     authCfg.CookieDomain,
-		Secure:     authCfg.CookieSecure,
-		SameSite:   authCfg.ParsedSameSite(),
-		AccessTTL:  authCfg.TokenDuration,
-		RefreshTTL: authCfg.RefreshTokenDuration,
-	})
-
+func ProvideHandlers(services *provider.Services, transport *authgin.CookieTransport) *Handlers {
 	emailLimiter := middlewares.NewValueLimiter(3.0/3600, 3, time.Hour)
 
 	authHandler := authgin.NewHandler(services.AuthKit, transport, authgin.HandlerConfig{

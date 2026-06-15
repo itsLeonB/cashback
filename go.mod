@@ -13,11 +13,11 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/google/uuid v1.6.0
 	github.com/itsLeonB/ezutil/v2 v2.4.0
-	github.com/itsLeonB/ginkgo v0.6.1-pre2
-	github.com/itsLeonB/go-authkit v0.0.1
+	github.com/itsLeonB/ginkgo v0.6.1
+	github.com/itsLeonB/go-authkit v0.0.3
 	github.com/itsLeonB/go-crud v1.4.0
 	github.com/itsLeonB/sekure v0.1.1
-	github.com/itsLeonB/ungerr v0.4.0-pre2
+	github.com/itsLeonB/ungerr v0.4.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/kroma-labs/sentinel-go v0.3.4

@@ -4,12 +4,12 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/itsLeonB/cashback/docs"
 	"github.com/itsLeonB/cashback/internal/adapters/http/handler"
 	adminHandler "github.com/itsLeonB/cashback/internal/adapters/http/handler/admin"
 	"github.com/itsLeonB/cashback/internal/adapters/http/middlewares"
 	"github.com/itsLeonB/cashback/internal/adapters/http/routes"
 	"github.com/itsLeonB/cashback/internal/core/config"
-	_ "github.com/itsLeonB/cashback/docs"
 	"github.com/itsLeonB/cashback/internal/provider"
 	"github.com/itsLeonB/cashback/internal/provider/admin"
 	"github.com/itsLeonB/go-authkit"
@@ -20,20 +20,23 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func RegisterRoutes(router *gin.Engine, configs config.Config, services *provider.Services, adminServices *admin.Services) func() {
+func RegisterRoutes(router *gin.Engine, configs config.Config, services *provider.Services, adminServices *admin.Services) (func(), error) {
 	authCfg := configs.Auth
 
-	transport := authgin.NewCookieTransport(authgin.CookieConfig{
+	transport, err := authgin.NewCookieTransport(authgin.CookieConfig{
 		Domain:     authCfg.CookieDomain,
 		Secure:     authCfg.CookieSecure,
 		SameSite:   authCfg.ParsedSameSite(),
 		AccessTTL:  authCfg.TokenDuration,
 		RefreshTTL: authCfg.RefreshTokenDuration,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	authMW := authgin.AuthMiddleware(services.AuthKit, transport, authkit.RequireAuth)
 
-	handlers := handler.ProvideHandlers(services, authCfg)
+	handlers := handler.ProvideHandlers(services, transport)
 	adminHandlers := adminHandler.ProvideHandlers(adminServices, services)
 	mw := middlewares.Provide(configs.App, adminServices.Auth)
 
@@ -63,5 +66,5 @@ func RegisterRoutes(router *gin.Engine, configs config.Config, services *provide
 	routes.RegisterAPIRoutes(router, handlers, authMW)
 	routes.RegisterAdminRoutes(router, adminHandlers, mw.AdminAuth)
 
-	return handlers.Shutdown
+	return handlers.Shutdown, nil
 }

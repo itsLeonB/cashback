@@ -28,7 +28,11 @@ func Setup(configs config.Config) (*httpserver.Server, func(), error) {
 		return nil, nil, err
 	}
 
-	routesShutdown := RegisterRoutes(r, configs, providers.Services, providers.AdminServices)
+	routesShutdown, err := RegisterRoutes(r, configs, providers.Services, providers.AdminServices)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	shutdownFunc := func() {
 		routesShutdown()
 		if err := providers.Shutdown(); err != nil {

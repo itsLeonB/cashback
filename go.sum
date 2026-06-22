@@ -318,8 +318,8 @@ github.com/itsLeonB/ezutil/v2 v2.4.0 h1:ylhQWF0yoBGltfuU4zi0wPj+JCoVv9jPoNvZsNON
 github.com/itsLeonB/ezutil/v2 v2.4.0/go.mod h1:h30JTcbfmdbMXfgc9ARGlqoudR2UMG2EV49dpIZ60Os=
 github.com/itsLeonB/ginkgo v0.6.1 h1:M6oNaA+V+t2zEiq7Oao53zz1Pn3ucAzl5ESL3JFduTo=
 github.com/itsLeonB/ginkgo v0.6.1/go.mod h1:BeT3tcIuen91lNjMyUTmP0N+ckCzlZsv+wMoxj4kqEo=
-github.com/itsLeonB/go-authkit v0.1.0 h1:f2iYieKjIzq904lMVeE9WIfsSTj5Boedyz9cj8soUPM=
-github.com/itsLeonB/go-authkit v0.1.0/go.mod h1:LaTtHS4Wkn3lqrd5rf5RLYgeJ5UEAQ+KFK1x6Fr6Tx8=
+github.com/itsLeonB/go-authkit v0.1.1 h1:uqwfq60GjdfVI2/f9QZDoj0XXIOIjtQ9sYwhYyOWDJ8=
+github.com/itsLeonB/go-authkit v0.1.1/go.mod h1:H/It7OXBiskKXx/CZ1fxm9D/2JlaoZRzMVlYvqLgG1s=
 github.com/itsLeonB/go-crud v1.4.0 h1:A8gRbxFJ9VrrqkoBUKvhf1I3EmXz2evFM660gk5wexI=
 github.com/itsLeonB/go-crud v1.4.0/go.mod h1:cndhkAF9Z0m2cMsKfD8Z2R07lPAJqHpazCF0UlfW89U=
 github.com/itsLeonB/ungerr v0.4.0 h1:unXts8ahcD7mTnlzJgem5twGcQLMPzo3Vn35PbORito=

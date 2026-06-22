@@ -14,7 +14,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/itsLeonB/ezutil/v2 v2.4.0
 	github.com/itsLeonB/ginkgo v0.6.1
-	github.com/itsLeonB/go-authkit v0.1.0
+	github.com/itsLeonB/go-authkit v0.1.1
 	github.com/itsLeonB/go-crud v1.4.0
 	github.com/itsLeonB/ungerr v0.4.0
 	github.com/joho/godotenv v1.5.1

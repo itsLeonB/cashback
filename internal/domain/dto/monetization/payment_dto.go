@@ -39,6 +39,13 @@ type MidtransNotificationPayload struct {
 	StatusMessage string `json:"status_message"`
 }
 
+type IPaymuNotificationPayload struct {
+	TrxID       string `json:"trx_id" binding:"required"`
+	ReferenceID string `json:"reference_id" binding:"required"`
+	StatusCode  string `json:"status_code" binding:"required"`
+	Status      string `json:"status" binding:"required"`
+}
+
 type UpdatePaymentRequest struct {
 	ID       uuid.UUID       `json:"-"`
 	Status   string          `json:"status" binding:"required,oneof=pending processing paid canceled error expired"`

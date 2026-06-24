@@ -44,7 +44,7 @@ func RegisterRoutes(router *gin.Engine, configs config.Config, services *provide
 
 	sentinelGin.RegisterHealth(router, httpserver.NewHealthHandler())
 
-	if configs.App.Env != "release" {
+	if configs.Env != "release" {
 		sentinelGin.RegisterPprof(router, httpserver.DefaultPprofConfig())
 		routes.RegisterTestRoutes(router)
 	}

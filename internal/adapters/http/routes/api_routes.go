@@ -18,7 +18,8 @@ func RegisterAPIRoutes(router *gin.Engine, handlers *handler.Handlers, authMiddl
 	{
 		v1 := apiRoutes.Group("/v1")
 		{
-			v1.POST("/payments/midtrans/notifications", handlers.Payment.HandleNotification())
+			v1.POST("/payments/midtrans/notifications", handlers.Payment.HandleMidtransNotification())
+			v1.POST("/payments/ipaymu/notifications", handlers.Payment.HandleIPaymuNotification())
 			v1.GET("/plans", handlers.Plan.HandleGetActive())
 			v1.GET("/public/profiles/:slug", handlers.Public.HandleGetPublicProfile())
 

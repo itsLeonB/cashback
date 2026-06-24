@@ -6,11 +6,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/core/otel"
-	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	entity "github.com/itsLeonB/cashback/internal/domain/entity/monetization"
 	"github.com/itsLeonB/ungerr"
 	"github.com/midtrans/midtrans-go"
@@ -28,9 +28,9 @@ func newMidtransGateway(cfg config.Payment) (*midtransGateway, error) {
 	snapClient := &snap.Client{}
 	coreClient := &coreapi.Client{}
 
-	env, err := loadMidtransEnv(cfg.Env)
-	if err != nil {
-		return nil, err
+	env := midtrans.Production
+	if strings.Contains(cfg.BaseUrl, "sandbox") {
+		env = midtrans.Sandbox
 	}
 
 	snapClient.New(cfg.ServerKey, env)
@@ -39,16 +39,6 @@ func newMidtransGateway(cfg config.Payment) (*midtransGateway, error) {
 	return &midtransGateway{snapClient, coreClient, cfg.ServerKey}, nil
 }
 
-func loadMidtransEnv(envCfg string) (midtrans.EnvironmentType, error) {
-	switch envCfg {
-	case "sandbox":
-		return midtrans.Sandbox, nil
-	case "production":
-		return midtrans.Production, nil
-	default:
-		return 0, ungerr.Unknownf("unsupported payment gateway env: %s", envCfg)
-	}
-}
 
 func (mg *midtransGateway) Provider() string {
 	return "midtrans"
@@ -81,20 +71,27 @@ func (mg *midtransGateway) CreateTransaction(ctx context.Context, payment entity
 	return payment, nil
 }
 
-func (mg *midtransGateway) CheckStatus(ctx context.Context, req dto.MidtransNotificationPayload) (entity.PaymentStatus, error) {
-	ctx, span := otel.Tracer.Start(ctx, "midtransGateway.CheckStatus")
+func (mg *midtransGateway) ValidateAndCheckStatus(ctx context.Context, payload NotificationPayload) (entity.PaymentStatus, error) {
+	ctx, span := otel.Tracer.Start(ctx, "midtransGateway.ValidateAndCheckStatus")
 	defer span.End()
 
-	if err := mg.validate(req); err != nil {
-		return entity.ErrorPayment, err
+	// Validate signature
+	statusCode := payload.Extra["status_code"]
+	grossAmount := payload.Extra["gross_amount"]
+	signatureKey := payload.Signature
+
+	checkKey := payload.OrderID + statusCode + grossAmount + mg.serverKey
+	constructedKey := sha512.Sum512([]byte(checkKey))
+	if fmt.Sprintf("%x", constructedKey) != signatureKey {
+		return entity.ErrorPayment, ungerr.Unknown("signature key cannot be validated")
 	}
 
 	coreClient := *mg.coreClient
 	coreClient.Options = &midtrans.ConfigOptions{}
 	coreClient.Options.SetContext(ctx)
-	trxStatusResp, err := coreClient.CheckTransaction(req.OrderID)
+	trxStatusResp, err := coreClient.CheckTransaction(payload.OrderID)
 	if err != nil {
-		return entity.ErrorPayment, ungerr.Wrapf(err, "error checking transaction status of ID: %s", req.OrderID)
+		return entity.ErrorPayment, ungerr.Wrapf(err, "error checking transaction status of ID: %s", payload.OrderID)
 	}
 
 	switch trxStatusResp.TransactionStatus {
@@ -111,11 +108,12 @@ func (mg *midtransGateway) CheckStatus(ctx context.Context, req dto.MidtransNoti
 	case "settlement":
 		return entity.PaidPayment, nil
 	case "deny":
+		statusMessage := payload.Extra["status_message"]
 		var e error
-		if req.StatusMessage == "" {
+		if statusMessage == "" {
 			e = errors.New("unknown")
 		} else {
-			e = errors.New(req.StatusMessage)
+			e = errors.New(statusMessage)
 		}
 		return entity.ErrorPayment, e
 	case "cancel", "expire":
@@ -125,15 +123,4 @@ func (mg *midtransGateway) CheckStatus(ctx context.Context, req dto.MidtransNoti
 	default:
 		return entity.ErrorPayment, ungerr.Unknownf("unhandled transaction status: %s", trxStatusResp.TransactionStatus)
 	}
-}
-
-func (mg *midtransGateway) validate(req dto.MidtransNotificationPayload) error {
-	checkKey := req.OrderID + req.StatusCode + req.GrossAmount + mg.serverKey
-	constructedKey := sha512.Sum512([]byte(checkKey))
-
-	if fmt.Sprintf("%x", constructedKey) == req.SignatureKey {
-		return nil
-	}
-
-	return ungerr.Unknown("signature key cannot be validated")
 }

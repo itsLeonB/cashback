@@ -22,7 +22,7 @@ import (
 
 type PaymentService interface {
 	NewPurchase(ctx context.Context, req dto.PurchaseSubscriptionRequest) (dto.PaymentResponse, error)
-	HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error
+	HandleNotification(ctx context.Context, payload payment.NotificationPayload) error
 	MakePayment(ctx context.Context, subscriptionID uuid.UUID) (dto.PaymentResponse, error)
 
 	// Admin
@@ -118,7 +118,7 @@ func (ps *paymentService) create(ctx context.Context, req dto.NewPaymentRequest)
 	return mapper.PaymentToResponse(requestedPayment), nil
 }
 
-func (ps *paymentService) HandleNotification(ctx context.Context, req dto.MidtransNotificationPayload) error {
+func (ps *paymentService) HandleNotification(ctx context.Context, payload payment.NotificationPayload) error {
 	ctx, span := otel.Tracer.Start(ctx, "PaymentService.HandleNotification")
 	defer span.End()
 
@@ -126,7 +126,7 @@ func (ps *paymentService) HandleNotification(ctx context.Context, req dto.Midtra
 		return err
 	}
 
-	newStatus, statusErr := ps.gateway.CheckStatus(ctx, req)
+	newStatus, statusErr := ps.gateway.ValidateAndCheckStatus(ctx, payload)
 	if statusErr != nil {
 		if newStatus == "" {
 			return statusErr
@@ -135,7 +135,7 @@ func (ps *paymentService) HandleNotification(ctx context.Context, req dto.Midtra
 	}
 
 	return ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		id, err := ezutil.Parse[uuid.UUID](req.OrderID)
+		id, err := ezutil.Parse[uuid.UUID](payload.OrderID)
 		if err != nil {
 			return err
 		}

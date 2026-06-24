@@ -8,6 +8,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	dto "github.com/itsLeonB/cashback/internal/domain/dto/monetization"
 	service "github.com/itsLeonB/cashback/internal/domain/service/monetization"
+	"github.com/itsLeonB/cashback/internal/domain/service/monetization/payment"
 	_ "github.com/itsLeonB/ginkgo/pkg/response"
 	"github.com/itsLeonB/ginkgo/pkg/server"
 )
@@ -16,7 +17,7 @@ type PaymentHandler struct {
 	svc service.PaymentService
 }
 
-// HandleNotification godoc
+// HandleMidtransNotification godoc
 // @Summary      Handle Midtrans payment notification
 // @Tags         payments
 // @Accept       json
@@ -25,14 +26,54 @@ type PaymentHandler struct {
 // @Success      200  {object}  map[string]any
 // @Failure      400  {object}  map[string]any
 // @Router       /payments/midtrans/notifications [post]
-func (ph *PaymentHandler) HandleNotification() gin.HandlerFunc {
-	return server.Handler("PaymentHandler.HandleNotification", http.StatusOK, func(ctx *gin.Context) (any, error) {
+func (ph *PaymentHandler) HandleMidtransNotification() gin.HandlerFunc {
+	return server.Handler("PaymentHandler.HandleMidtransNotification", http.StatusOK, func(ctx *gin.Context) (any, error) {
 		req, err := server.BindJSON[dto.MidtransNotificationPayload](ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		return nil, ph.svc.HandleNotification(ctx.Request.Context(), req)
+		payload := payment.NotificationPayload{
+			OrderID:   req.OrderID,
+			Signature: req.SignatureKey,
+			Extra: map[string]string{
+				"status_code":    req.StatusCode,
+				"gross_amount":   req.GrossAmount,
+				"status_message": req.StatusMessage,
+			},
+		}
+
+		return nil, ph.svc.HandleNotification(ctx.Request.Context(), payload)
+	})
+}
+
+// HandleIPaymuNotification godoc
+// @Summary      Handle iPaymu payment notification
+// @Tags         payments
+// @Accept       json
+// @Produce      json
+// @Param        body body dto.IPaymuNotificationPayload true "iPaymu notification payload"
+// @Success      200  {object}  map[string]any
+// @Failure      400  {object}  map[string]any
+// @Router       /payments/ipaymu/notifications [post]
+func (ph *PaymentHandler) HandleIPaymuNotification() gin.HandlerFunc {
+	return server.Handler("PaymentHandler.HandleIPaymuNotification", http.StatusOK, func(ctx *gin.Context) (any, error) {
+		req, err := server.BindJSON[dto.IPaymuNotificationPayload](ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		payload := payment.NotificationPayload{
+			OrderID:   req.ReferenceID,
+			RawStatus: req.Status,
+			Signature: ctx.Query("secret"),
+			Extra: map[string]string{
+				"trx_id":      req.TrxID,
+				"status_code": req.StatusCode,
+			},
+		}
+
+		return nil, ph.svc.HandleNotification(ctx.Request.Context(), payload)
 	})
 }
 

@@ -47,6 +47,7 @@ func setupSentinel(router *gin.Engine, skipPaths []string, logger zerolog.Logger
 	tracingCfg.SkipPaths = skipPaths
 
 	router.Use(
+		realIP(),
 		securityHeaders(),
 		sentinelGin.Recovery(logger),
 		sentinelGin.Tracing(tracingCfg),
@@ -58,7 +59,14 @@ func setupSentinel(router *gin.Engine, skipPaths []string, logger zerolog.Logger
 		sentinelGin.CORS(corsCfg),
 		sentinelGin.Timeout(config.Global.Timeout),
 		sentinelGin.Metrics(metrics),
-		sentinelGin.RateLimit(httpserver.DefaultRateLimitConfig()),
+		sentinelGin.RateLimit(httpserver.RateLimitConfig{
+			// ponytail: per-IP global limit. 100 req/s burst 200 is generous for
+			// legitimate users but stops single-IP floods. Ceiling: doesn't help
+			// distributed DDoS. Upgrade path: Redis-backed limiter + WAF.
+			Limit:   100,
+			Burst:   200,
+			KeyFunc: httpserver.KeyFuncByIP(),
+		}),
 	)
 
 	return nil
@@ -69,6 +77,17 @@ func securityHeaders() gin.HandlerFunc {
 		c.Header("X-Frame-Options", "DENY")
 		c.Header("Content-Security-Policy", "frame-ancestors 'none'")
 		c.Header("X-Content-Type-Options", "nosniff")
+		c.Next()
+	}
+}
+
+// ponytail: overwrites RemoteAddr with the real client IP from Railway's proxy header.
+// This makes sentinel's logger and rate limiter see the true IP.
+func realIP() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if ip := c.GetHeader("X-Real-IP"); ip != "" {
+			c.Request.RemoteAddr = ip
+		}
 		c.Next()
 	}
 }

@@ -102,15 +102,21 @@ func InitSDK(ctx context.Context, cfg config.OTel) (func(context.Context) error,
 	return shutdown, nil
 }
 
-func initMetrics(ctx context.Context, res *resource.Resource, _ config.OTel) (func(context.Context) error, error) {
-	metricExporter, err := otlpmetrichttp.New(ctx)
+func initMetrics(ctx context.Context, res *resource.Resource, cfg config.OTel) (func(context.Context) error, error) {
+	metricExporter, err := otlpmetrichttp.New(ctx,
+		otlpmetrichttp.WithTimeout(cfg.ExportTimeout),
+	)
 	if err != nil {
 		return nil, ungerr.Wrap(err, "failed to create metric exporter")
 	}
 
 	meterProvider := sdkmetric.NewMeterProvider(
 		sdkmetric.WithResource(res),
-		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter, sdkmetric.WithInterval(15*time.Second))),
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter,
+			sdkmetric.WithInterval(15*time.Second),
+			sdkmetric.WithTimeout(cfg.ExportTimeout),
+		)),
+		sdkmetric.WithCardinalityLimit(cfg.MaxQueueSize),
 	)
 	otel.SetMeterProvider(meterProvider)
 

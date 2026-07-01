@@ -466,42 +466,72 @@ func (ges *groupExpenseServiceImpl) ParseFromBillText(ctx context.Context, msg m
 	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseService.ParseFromBillText")
 	defer span.End()
 
+	expenseBill, err := ges.findExpenseBillForParsing(ctx, msg.ID, false)
+	if err != nil {
+		return err
+	}
+
+	// ponytail: the LLM call is intentionally made outside the DB transaction below.
+	// It previously ran inside WithinTransaction, holding a FOR UPDATE lock on this
+	// expense_bills row for the entire LLM round-trip (seconds to tens of seconds),
+	// blocking unrelated requests (e.g. SyncParticipants) that write the same row via
+	// GORM's Save() association cascade. Correctness is re-checked with a fresh FOR
+	// UPDATE fetch inside the transaction below before anything is written.
+	request, status, llmErr := ges.callLLMForParsedBillRequest(ctx, expenseBill.ExtractedText)
+
 	return ges.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		expenseBill, err := ges.getPendingForProcessingExpenseBill(ctx, msg.ID)
+		expenseBill, err := ges.findExpenseBillForParsing(ctx, msg.ID, true)
 		if err != nil {
 			return err
 		}
-		if err := ges.parseFlow(ctx, expenseBill); err != nil {
+
+		finalStatus, applyErr := ges.applyParsedBillRequest(ctx, expenseBill.GroupExpenseID, status, request)
+		if applyErr != nil {
 			// Log error but do not return error (commit the transaction)
-			logger.Errorf("error processing bill parsing: %v", err)
+			logger.Errorf("error processing bill parsing: %v", errors.Join(applyErr, llmErr))
 		}
-		return nil
+
+		expenseBill.Status = finalStatus
+		_, err = ges.billRepo.Update(ctx, expenseBill)
+		return err
 	})
 }
 
-func (ges *groupExpenseServiceImpl) parseFlow(ctx context.Context, expenseBill expenses.ExpenseBill) error {
-	status, err := ges.processAndGetStatus(ctx, expenseBill)
-	expenseBill.Status = status
-	_, statusErr := ges.billRepo.Update(ctx, expenseBill)
-	if statusErr != nil {
-		return errors.Join(statusErr, err)
+func (ges *groupExpenseServiceImpl) findExpenseBillForParsing(ctx context.Context, id uuid.UUID, forUpdate bool) (expenses.ExpenseBill, error) {
+	spec := crud.Specification[expenses.ExpenseBill]{}
+	spec.Model.ID = id
+	spec.ForUpdate = forUpdate
+	expenseBill, err := ges.billRepo.FindFirst(ctx, spec)
+	if err != nil {
+		return expenses.ExpenseBill{}, err
 	}
-	return err
+	if expenseBill.Status == expenses.ParsedBill {
+		return expenses.ExpenseBill{}, ungerr.Unknownf("expense bill ID: %s already parsed", expenseBill.GroupExpenseID)
+	}
+	return expenseBill, nil
 }
 
-func (ges *groupExpenseServiceImpl) processAndGetStatus(ctx context.Context, expenseBill expenses.ExpenseBill) (expenses.BillStatus, error) {
-	request, err := ges.parseExpenseBillTextToExpenseRequest(ctx, expenseBill.ExtractedText)
+func (ges *groupExpenseServiceImpl) callLLMForParsedBillRequest(ctx context.Context, extractedText string) (dto.NewGroupExpenseRequest, expenses.BillStatus, error) {
+	request, err := ges.parseExpenseBillTextToExpenseRequest(ctx, extractedText)
 	if err != nil {
 		if errors.Is(err, expenses.ErrExpenseNotDetected) {
-			return expenses.NotDetectedBill, nil
+			return dto.NewGroupExpenseRequest{}, expenses.NotDetectedBill, nil
 		}
-		return expenses.FailedParsingBill, err
+		return dto.NewGroupExpenseRequest{}, expenses.FailedParsingBill, err
 	}
 
 	request.Items = slices.DeleteFunc(request.Items, func(item dto.NewExpenseItemRequest) bool { return item.Amount.Equal(decimal.Zero) })
 	request.OtherFees = slices.DeleteFunc(request.OtherFees, func(fee dto.NewOtherFeeRequest) bool { return fee.Amount.Equal(decimal.Zero) })
 
-	expense, err := ges.GetUnconfirmedForUpdate(ctx, uuid.Nil, expenseBill.GroupExpenseID)
+	return request, expenses.ParsedBill, nil
+}
+
+func (ges *groupExpenseServiceImpl) applyParsedBillRequest(ctx context.Context, groupExpenseID uuid.UUID, status expenses.BillStatus, request dto.NewGroupExpenseRequest) (expenses.BillStatus, error) {
+	if status != expenses.ParsedBill {
+		return status, nil
+	}
+
+	expense, err := ges.GetUnconfirmedForUpdate(ctx, uuid.Nil, groupExpenseID)
 	if err != nil {
 		return expenses.FailedParsingBill, err
 	}
@@ -628,20 +658,6 @@ func (ges *groupExpenseServiceImpl) parseExpenseBillTextToExpenseRequest(
 	}
 
 	return p.ParseResponse(raw)
-}
-
-func (ges *groupExpenseServiceImpl) getPendingForProcessingExpenseBill(ctx context.Context, id uuid.UUID) (expenses.ExpenseBill, error) {
-	spec := crud.Specification[expenses.ExpenseBill]{}
-	spec.Model.ID = id
-	spec.ForUpdate = true
-	expenseBill, err := ges.billRepo.FindFirst(ctx, spec)
-	if err != nil {
-		return expenses.ExpenseBill{}, err
-	}
-	if expenseBill.Status == expenses.ParsedBill {
-		return expenses.ExpenseBill{}, ungerr.Unknownf("expense bill ID: %s already parsed", expenseBill.GroupExpenseID)
-	}
-	return expenseBill, nil
 }
 
 func (ges *groupExpenseServiceImpl) GetByID(ctx context.Context, id uuid.UUID, forUpdate bool) (expenses.GroupExpense, error) {

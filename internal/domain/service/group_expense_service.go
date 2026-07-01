@@ -486,7 +486,7 @@ func (ges *groupExpenseServiceImpl) ParseFromBillText(ctx context.Context, msg m
 		}
 
 		finalStatus, applyErr := ges.applyParsedBillRequest(ctx, expenseBill.GroupExpenseID, status, request)
-		if applyErr != nil {
+		if applyErr != nil || llmErr != nil {
 			// Log error but do not return error (commit the transaction)
 			logger.Errorf("error processing bill parsing: %v", errors.Join(applyErr, llmErr))
 		}

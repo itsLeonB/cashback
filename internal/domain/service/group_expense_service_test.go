@@ -2,9 +2,11 @@ package service_test
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/itsLeonB/cashback/internal/core/logger"
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/message"
 	"github.com/itsLeonB/cashback/internal/domain/service"
@@ -14,6 +16,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+// TestMain initializes the package-level logger so code paths that call
+// logger.Errorf/Infof etc. (e.g. ParseFromBillText's error logging) don't
+// panic on a nil logger.Global. Same pattern as
+// internal/adapters/worker/subscriber and internal/adapters/worker/scheduler.
+func TestMain(m *testing.M) {
+	logger.Init("test")
+	os.Exit(m.Run())
+}
 
 func newTestGroupExpenseService(
 	t *testing.T,

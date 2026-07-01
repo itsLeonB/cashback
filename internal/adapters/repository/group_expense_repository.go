@@ -27,17 +27,23 @@ func (ger *groupExpenseRepositoryGorm) Update(ctx context.Context, model expense
 	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseRepository.Update")
 	defer span.End()
 
+	if model.IsZero() {
+		return expenses.GroupExpense{}, ungerr.Unknown("model cannot be zero value")
+	}
+
 	db, err := ger.GetGormInstance(ctx)
 	if err != nil {
 		return expenses.GroupExpense{}, err
 	}
 
-	// ponytail: Update must never cascade to preloaded associations (Bill, Items, ...).
-	// GORM's Save() upserts populated associations by default. Since callers preload
-	// Bill via GetUnconfirmedForUpdate, an un-omitted Save() here attempts to write the
+	// ponytail: only Bill is omitted from Save's association cascade. GORM's Save()
+	// upserts populated associations by default. Since callers preload Bill via
+	// GetUnconfirmedForUpdate, an un-omitted Save() here attempts to write the
 	// expense_bills row too - which is the row cashback-worker holds FOR UPDATE locked
 	// for the full duration of its LLM call, causing this Update to block for seconds.
-	if err := db.Omit(clause.Associations).Save(&model).Error; err != nil {
+	// Items/OtherFees/Participants must keep cascading: UpdateDraft relies on this Save
+	// to persist freshly-parsed items/fees, with no other repository call for them.
+	if err := db.Omit("Bill").Save(&model).Error; err != nil {
 		return expenses.GroupExpense{}, ungerr.Wrap(err, appconstant.ErrDataUpdate)
 	}
 

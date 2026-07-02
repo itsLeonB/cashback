@@ -20,3 +20,8 @@ packages:
       filename: "mock_crud.go"
     interfaces:
       Transactor:
+  github.com/itsLeonB/cashback/internal/core/service/langfuse:
+    config:
+      filename: "mock_langfuse.go"
+    interfaces:
+      Client:

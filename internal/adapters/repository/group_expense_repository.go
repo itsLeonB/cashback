@@ -23,6 +23,33 @@ func NewGroupExpenseRepository(db *gorm.DB) *groupExpenseRepositoryGorm {
 	}
 }
 
+func (ger *groupExpenseRepositoryGorm) Update(ctx context.Context, model expenses.GroupExpense) (expenses.GroupExpense, error) {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseRepository.Update")
+	defer span.End()
+
+	if model.IsZero() {
+		return expenses.GroupExpense{}, ungerr.Unknown("model cannot be zero value")
+	}
+
+	db, err := ger.GetGormInstance(ctx)
+	if err != nil {
+		return expenses.GroupExpense{}, err
+	}
+
+	// ponytail: only Bill is omitted from Save's association cascade. GORM's Save()
+	// upserts populated associations by default. Since callers preload Bill via
+	// GetUnconfirmedForUpdate, an un-omitted Save() here attempts to write the
+	// expense_bills row too - which is the row cashback-worker holds FOR UPDATE locked
+	// for the full duration of its LLM call, causing this Update to block for seconds.
+	// Items/OtherFees/Participants must keep cascading: UpdateDraft relies on this Save
+	// to persist freshly-parsed items/fees, with no other repository call for them.
+	if err := db.Omit("Bill").Save(&model).Error; err != nil {
+		return expenses.GroupExpense{}, ungerr.Wrap(err, appconstant.ErrDataUpdate)
+	}
+
+	return model, nil
+}
+
 func (ger *groupExpenseRepositoryGorm) SyncParticipants(ctx context.Context, groupExpenseID uuid.UUID, participants []expenses.ExpenseParticipant) error {
 	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseRepository.SyncParticipants")
 	defer span.End()

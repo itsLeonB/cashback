@@ -505,8 +505,8 @@ func (ges *groupExpenseServiceImpl) findExpenseBillForParsing(ctx context.Contex
 	if err != nil {
 		return expenses.ExpenseBill{}, err
 	}
-	if expenseBill.Status == expenses.ParsedBill {
-		return expenses.ExpenseBill{}, ungerr.Unknownf("expense bill ID: %s already parsed", expenseBill.GroupExpenseID)
+	if expenseBill.Status != expenses.ExtractedBill {
+		return expenses.ExpenseBill{}, ungerr.Unknownf("expense bill ID: %s is not pending for parsing", expenseBill.ID)
 	}
 	return expenseBill, nil
 }

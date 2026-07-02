@@ -64,7 +64,15 @@ func TestParseFromBillText_CallsLLMBeforeOpeningTransaction(t *testing.T) {
 	// generic mock without the mockery "_Expecter" pattern, so it's driven via the
 	// plain testify .On(...) API (see existing usage in profile_service_test.go),
 	// unlike langfuseClient/transactor below which are mockery-generated with .EXPECT().
-	billRepo.On("FindFirst", mock.Anything, mock.Anything).Return(pendingBill, nil)
+	// Pinned to ForUpdate=false/true respectively so the test fails if the
+	// pre-LLM unlocked read or the in-transaction locked re-fetch regresses.
+	billRepo.On("FindFirst", mock.Anything, mock.MatchedBy(func(spec crud.Specification[expenses.ExpenseBill]) bool {
+		return spec.Model.ID == billID && !spec.ForUpdate
+	})).Return(pendingBill, nil).Once()
+
+	billRepo.On("FindFirst", mock.Anything, mock.MatchedBy(func(spec crud.Specification[expenses.ExpenseBill]) bool {
+		return spec.Model.ID == billID && spec.ForUpdate
+	})).Return(pendingBill, nil).Once()
 
 	getPromptCall := langfuseClient.EXPECT().
 		GetPrompt(mock.Anything, mock.Anything, mock.Anything).

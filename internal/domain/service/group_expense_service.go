@@ -176,7 +176,7 @@ func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, profil
 			return err
 		}
 
-		updatedParticipants, err := ges.calculateUpdatedExpenseParticipants(ctx, groupExpense)
+		updatedParticipants, updatedOtherFees, err := ges.calculateUpdatedExpenseParticipants(ctx, groupExpense)
 		if err != nil {
 			return err
 		}
@@ -194,6 +194,7 @@ func (ges *groupExpenseServiceImpl) ConfirmDraft(ctx context.Context, id, profil
 		}
 
 		groupExpense.Participants = updatedParticipants
+		groupExpense.OtherFees = updatedOtherFees
 
 		if !dryRun {
 			if err = ges.taskQueue.Enqueue(ctx, message.ExpenseConfirmed{ID: id}); err != nil {
@@ -223,7 +224,7 @@ func validateForConfirmation(groupExpense expenses.GroupExpense) error {
 	return nil
 }
 
-func (ges *groupExpenseServiceImpl) calculateUpdatedExpenseParticipants(ctx context.Context, groupExpense expenses.GroupExpense) ([]expenses.ExpenseParticipant, error) {
+func (ges *groupExpenseServiceImpl) calculateUpdatedExpenseParticipants(ctx context.Context, groupExpense expenses.GroupExpense) ([]expenses.ExpenseParticipant, []expenses.OtherFee, error) {
 	participantsMap := make(map[uuid.UUID]*expenses.ExpenseParticipant, len(groupExpense.Participants))
 	for _, participant := range groupExpense.Participants {
 		participant.ShareAmount = decimal.Zero
@@ -232,13 +233,13 @@ func (ges *groupExpenseServiceImpl) calculateUpdatedExpenseParticipants(ctx cont
 
 	for _, item := range groupExpense.Items {
 		if len(item.Participants) < 1 {
-			return nil, ungerr.UnprocessableEntityError(fmt.Sprintf("item %s does not have participants", item.Name))
+			return nil, nil, ungerr.UnprocessableEntityError(fmt.Sprintf("item %s does not have participants", item.Name))
 		}
 		for _, participant := range item.Participants {
 			amountToAdd := participant.AllocatedAmount
 			expenseParticipant, ok := participantsMap[participant.ProfileID]
 			if !ok {
-				return nil, ungerr.Unknownf("profile ID: %s is not found in expense participants", participant.ProfileID.String())
+				return nil, nil, ungerr.Unknownf("profile ID: %s is not found in expense participants", participant.ProfileID.String())
 			}
 			expenseParticipant.ShareAmount = expenseParticipant.ShareAmount.Add(amountToAdd)
 		}
@@ -253,14 +254,14 @@ func (ges *groupExpenseServiceImpl) calculateUpdatedExpenseParticipants(ctx cont
 
 	updatedOtherFees, err := ges.calculateOtherFeeSplits(ctx, groupExpense)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	for _, fee := range updatedOtherFees {
 		for _, participant := range fee.Participants {
 			expenseParticipant, ok := participantsMap[participant.ProfileID]
 			if !ok {
-				return nil, ungerr.Unknown("missing participant profile from other fee")
+				return nil, nil, ungerr.Unknown("missing participant profile from other fee")
 			}
 			expenseParticipant.ShareAmount = expenseParticipant.ShareAmount.Add(participant.ShareAmount)
 		}
@@ -271,7 +272,7 @@ func (ges *groupExpenseServiceImpl) calculateUpdatedExpenseParticipants(ctx cont
 		finalParticipants = append(finalParticipants, *participant)
 	}
 
-	return finalParticipants, nil
+	return finalParticipants, updatedOtherFees, nil
 }
 
 func (ges *groupExpenseServiceImpl) calculateOtherFeeSplits(ctx context.Context, groupExpense expenses.GroupExpense) ([]expenses.OtherFee, error) {

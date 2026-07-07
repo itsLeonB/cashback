@@ -47,6 +47,7 @@ func (GroupExpense) coreRelations() []string {
 	return []string{
 		"Items",
 		"OtherFees",
+		"OtherFees.Participants",
 		"Payer",
 		"Creator",
 		"Items.Participants",
@@ -58,7 +59,7 @@ func (GroupExpense) coreRelations() []string {
 }
 
 func (ge GroupExpense) ForCalculationRelations() []string {
-	return append(ge.coreRelations(), "OtherFees.Participants", "OtherFees.Participants.Profile")
+	return append(ge.coreRelations(), "OtherFees.Participants.Profile")
 }
 
 func (ge GroupExpense) ForDisplayRelations() []string {

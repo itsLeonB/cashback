@@ -1,0 +1,61 @@
+# Gateway collector for all cashback services (http, job, worker).
+# All telemetry volume/batching/retry policy lives here, not in the Go apps.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: "[::]:4318" # IPv6: Railway private networking is v6-only
+
+processors:
+  memory_limiter: # must be first in every pipeline
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 15
+
+  filter/drop_gcs_noise:
+    # cloud.google.com/go/storage pulls in otelhttp, which emits high-volume
+    # http.client.* histograms nobody reads. Matching metrics are DROPPED.
+    error_mode: ignore
+    metrics:
+      metric:
+        - 'IsMatch(name, "^http\\.client\\.")'
+
+  interval:
+    interval: 60s # downsample before batching
+
+  batch:
+    timeout: 10s
+    send_batch_size: 2000
+    send_batch_max_size: 4000 # caps burst against Mimir's 15k ceiling
+
+exporters:
+  otlphttp/grafana:
+    endpoint: ${env:GRAFANA_OTLP_ENDPOINT}
+    headers:
+      Authorization: "Basic ${env:GRAFANA_OTLP_TOKEN}"
+    sending_queue:
+      enabled: true
+      queue_size: 200 # bounded: drops rather than growing unbounded
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 60s # give up and drop — this is the circuit breaker
+
+service:
+  telemetry:
+    metrics:
+      level: none # collector self-metrics are not free
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/drop_gcs_noise, interval, batch]
+      exporters: [otlphttp/grafana]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/grafana]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/grafana]

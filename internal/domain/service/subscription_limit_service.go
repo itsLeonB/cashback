@@ -31,7 +31,7 @@ func NewSubscriptionLimitService(
 func (sls *subscriptionLimitService) GetCurrent(ctx context.Context, profileID uuid.UUID) (dto.SubscriptionResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "SubscriptionLimitService.GetCurrent")
 	defer span.End()
-	
+
 	currentSubs, err := sls.subscriptionSvc.GetCurrentSubscription(ctx, profileID, true)
 	if err != nil {
 		return dto.SubscriptionResponse{}, err
@@ -65,7 +65,7 @@ func (sls *subscriptionLimitService) GetCurrent(ctx context.Context, profileID u
 func (sls *subscriptionLimitService) CheckUploadLimit(ctx context.Context, profileID uuid.UUID) error {
 	ctx, span := otel.Tracer.Start(ctx, "SubscriptionLimitService.CheckUploadLimit")
 	defer span.End()
-	
+
 	subscription, err := sls.subscriptionSvc.GetCurrentSubscription(ctx, profileID, true)
 	if err != nil {
 		return err

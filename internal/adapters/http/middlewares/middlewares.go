@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/itsLeonB/cashback/internal/core/config"
 	"github.com/itsLeonB/cashback/internal/core/logger"
-	"github.com/itsLeonB/go-authkit"
 	"github.com/itsLeonB/ginkgo/pkg/middleware"
+	"github.com/itsLeonB/go-authkit"
 )
 
 type Middlewares struct {

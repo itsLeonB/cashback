@@ -5,6 +5,7 @@ worker \
 worker-hot \
 job \
 lint \
+vulncheck \
 test \
 test-verbose \
 test-coverage \
@@ -24,6 +25,7 @@ help:
 	@echo "  make worker-hot              - Start the worker with hot reload (requires air)"
 	@echo "  make job                     - Run migrations + asset sync (production)"
 	@echo "  make lint                    - Run golangci-lint on the codebase"
+	@echo "  make vulncheck               - Run govulncheck for known vulnerabilities"
 	@echo "  make test                    - Run all tests"
 	@echo "  make test-verbose            - Run all tests with verbose output"
 	@echo "  make test-coverage           - Run all tests with coverage report"
@@ -51,29 +53,33 @@ job:
 	go run -tags job ./cmd/job
 
 lint:
+	go vet ./...
 	golangci-lint run ./...
+
+vulncheck:
+	go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 
 test:
 	@echo "Running all tests..."
-	go test ./internal/...; \
+	go test -race ./internal/...; \
 
 test-verbose:
 	@echo "Running all tests with verbose output..."
-	go test -v ./internal/...; \
+	go test -race -v ./internal/...; \
 
 test-coverage:
 	@echo "Running all tests with coverage report..."
-	go test -v -coverprofile=coverage.out -covermode=atomic ./internal/...; \
+	go test -race -v -coverprofile=coverage.out -covermode=atomic ./internal/...; \
 
 test-coverage-html:
 	@echo "Running all tests and generating HTML coverage report..."
-	go test -v -coverprofile=coverage.out ./internal/... && \
+	go test -race -v -coverprofile=coverage.out -covermode=atomic ./internal/... && \
 	go tool cover -html=coverage.out -o coverage.html && \
 	echo "Coverage report generated: coverage.html"; \
 
 test-clean:
 	@echo "Cleaning test cache and running tests..."
-	go clean -testcache && go test -v ./internal/...; \
+	go clean -testcache && go test -race -v ./internal/...; \
 
 build:
 	@echo "Building HTTP server..."

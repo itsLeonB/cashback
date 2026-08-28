@@ -13,20 +13,20 @@ import (
 )
 
 type FriendshipHandler struct {
-	friendshipService service.FriendshipService
-	friendDetailsSvc  service.FriendDetailsService
-	debtService       service.DebtService
+	friendshipService        service.FriendshipService
+	friendDetailsSvc         service.FriendDetailsService
+	friendshipBalanceService service.FriendshipBalanceService
 }
 
 func NewFriendshipHandler(
 	friendshipService service.FriendshipService,
 	friendDetailsSvc service.FriendDetailsService,
-	debtService service.DebtService,
+	friendshipBalanceService service.FriendshipBalanceService,
 ) *FriendshipHandler {
 	return &FriendshipHandler{
 		friendshipService,
 		friendDetailsSvc,
-		debtService,
+		friendshipBalanceService,
 	}
 }
 
@@ -79,7 +79,7 @@ func (fh *FriendshipHandler) HandleGetAll() gin.HandlerFunc {
 			return nil, err
 		}
 
-		balances, err := fh.debtService.GetNetBalancesByFriend(ctx.Request.Context(), profileID)
+		balances, err := fh.friendshipBalanceService.GetNetBalancesForProfile(ctx.Request.Context(), profileID)
 		if err != nil {
 			return nil, err
 		}

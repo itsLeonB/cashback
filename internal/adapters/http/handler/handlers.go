@@ -44,7 +44,7 @@ func ProvideHandlers(services *provider.Services, transport *authgin.CookieTrans
 
 	return &Handlers{
 		Auth:                  authHandler,
-		Friendship:            NewFriendshipHandler(services.Friendship, services.FriendDetails, services.Debt),
+		Friendship:            NewFriendshipHandler(services.Friendship, services.FriendDetails, services.FriendshipBalance),
 		FriendshipRequest:     NewFriendshipRequestHandler(services.FriendshipRequest),
 		Profile:               NewProfileHandler(services.Profile),
 		TransferMethod:        NewTransferMethodHandler(services.TransferMethod),

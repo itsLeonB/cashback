@@ -8,6 +8,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/expenses"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 	"github.com/itsLeonB/go-crud"
+	"github.com/shopspring/decimal"
 )
 
 type DebtTransactionRepository interface {
@@ -65,6 +66,33 @@ type FriendshipRepository interface {
 	// realProfileID. If realProfileID already has a friendship with the same counterparty, the
 	// anonymous row is dropped instead of violating the unique(profile_id1, profile_id2) constraint.
 	RepointFriendships(ctx context.Context, anonProfileID, realProfileID uuid.UUID) error
+	// FindByProfileIDsForUpdate is FindByProfileIDs with SELECT ... FOR UPDATE, so a balance
+	// recalculation for this pair serializes against a concurrent one instead of both reading a
+	// stale transaction set and racing to overwrite friendship_balances with a stale value.
+	FindByProfileIDsForUpdate(ctx context.Context, profileID1, profileID2 uuid.UUID) (users.Friendship, error)
+	// FindAllByProfileIDForUpdate is the bulk equivalent of FindByProfileIDsForUpdate, locking
+	// every friendship row profileID is party to (used by whole-profile balance recalculation).
+	FindAllByProfileIDForUpdate(ctx context.Context, profileID uuid.UUID) ([]users.Friendship, error)
+}
+
+// FriendshipBalanceRow is a join-result shape (friendship_balances x friendships), not a
+// domain entity - just enough to resolve sign/counterparty per row without a second query.
+type FriendshipBalanceRow struct {
+	ProfileID1 uuid.UUID
+	ProfileID2 uuid.UUID
+	Currency   string
+	NetBalance decimal.Decimal
+}
+
+type FriendshipBalanceRepository interface {
+	crud.Repository[users.FriendshipBalance]
+	// UpsertMany always overwrites (friendship_id, currency) with a freshly computed value,
+	// never an increment, so it self-corrects regardless of call order.
+	UpsertMany(ctx context.Context, balances []users.FriendshipBalance) error
+	FindAllByFriendshipID(ctx context.Context, friendshipID uuid.UUID) ([]users.FriendshipBalance, error)
+	// FindAllByProfileID returns every non-zero balance row for a friendship profileID is party
+	// to, joined against friendships to resolve the pair's profile IDs in one query.
+	FindAllByProfileID(ctx context.Context, profileID uuid.UUID) ([]FriendshipBalanceRow, error)
 }
 
 type TransferMethodRepository interface {

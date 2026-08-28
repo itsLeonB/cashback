@@ -34,6 +34,7 @@ type profileServiceImpl struct {
 	pushSubscriptionRepo      repository.PushSubscriptionRepository
 	subscriptionSvc           monetizationSvc.SubscriptionService
 	subscriptionLimitSvc      SubscriptionLimitService
+	friendshipBalanceService  FriendshipBalanceService
 }
 
 func NewProfileService(
@@ -51,6 +52,7 @@ func NewProfileService(
 	pushSubscriptionRepo repository.PushSubscriptionRepository,
 	subscriptionSvc monetizationSvc.SubscriptionService,
 	subscriptionLimitSvc SubscriptionLimitService,
+	friendshipBalanceService FriendshipBalanceService,
 ) ProfileService {
 	return &profileServiceImpl{
 		transactor,
@@ -67,6 +69,7 @@ func NewProfileService(
 		pushSubscriptionRepo,
 		subscriptionSvc,
 		subscriptionLimitSvc,
+		friendshipBalanceService,
 	}
 }
 
@@ -392,6 +395,12 @@ func (ps *profileServiceImpl) MergeAnonymousProfile(ctx context.Context, ownerPr
 			return err
 		}
 		if err := ps.debtTransactionRepo.RepointProfile(ctx, anonProfileID, realProfileID); err != nil {
+			return err
+		}
+		// Recalculates every friendship_balances row for realProfileID's whole friend graph in
+		// one pass, since RepointProfile above can fold a former anon-counterparty's
+		// transactions into a pair that already had independent history with realProfileID.
+		if err := ps.friendshipBalanceService.RecalculateAllForProfile(ctx, realProfileID); err != nil {
 			return err
 		}
 		if err := ps.groupExpenseRepo.RepointProfile(ctx, anonProfileID, realProfileID); err != nil {

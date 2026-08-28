@@ -32,6 +32,7 @@ type Services struct {
 
 	// Debts
 	Debt                  service.DebtService
+	FriendshipBalance     service.FriendshipBalanceService
 	TransferMethod        service.TransferMethodService
 	ProfileTransferMethod service.ProfileTransferMethodService
 
@@ -74,6 +75,8 @@ func ProvideServices(
 	payment := monetization.NewPaymentService(paymentGateway, repos.Transactor, repos.Payment, coreSvc.Queue, subs)
 	subsLimit := service.NewSubscriptionLimitService(subs, repos.ExpenseBill)
 
+	friendshipBalance := service.NewFriendshipBalanceService(repos.DebtTransaction, repos.Friendship, repos.FriendshipBalance)
+
 	profile := service.NewProfileService(
 		repos.Transactor,
 		repos.Profile,
@@ -89,6 +92,7 @@ func ProvideServices(
 		repos.PushSubscription,
 		subs,
 		subsLimit,
+		friendshipBalance,
 	)
 	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken, coreSvc.Mail)
 	friendship := service.NewFriendshipService(repos.Transactor, repos.Friendship, profile)
@@ -136,7 +140,7 @@ func ProvideServices(
 	groupExpense := service.NewGroupExpenseService(friendship, repos.GroupExpense, repos.Transactor, fee.NewFeeCalculatorRegistry(), repos.OtherFee, repos.ExpenseBill, coreSvc.LLM, coreSvc.Image, coreSvc.Queue, coreSvc.Langfuse, profile)
 
 	transferMethod := service.NewTransferMethodService(repos.TransferMethod, coreSvc.Storage, appConfig.BucketNameTransferMethods, appembed.TransferMethodAssets)
-	debt := service.NewDebtService(repos.DebtTransaction, transferMethod, friendship, profile, groupExpense, coreSvc.Queue)
+	debt := service.NewDebtService(repos.DebtTransaction, transferMethod, friendship, profile, groupExpense, coreSvc.Queue, repos.Transactor, friendshipBalance)
 
 	return &Services{
 		AuthKit: mustNewAuthKit(authKitCfg, authKitDeps, hooks),
@@ -149,6 +153,7 @@ func ProvideServices(
 		FriendDetails:     service.NewFriendDetailsService(debt, profile, friendship),
 
 		Debt:                  debt,
+		FriendshipBalance:     friendshipBalance,
 		TransferMethod:        transferMethod,
 		ProfileTransferMethod: service.NewProfileTransferMethodService(profile, repos.ProfileTransferMethod, transferMethod, friendship),
 

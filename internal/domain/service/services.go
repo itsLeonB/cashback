@@ -72,11 +72,27 @@ type DebtService interface {
 	GetTransactions(ctx context.Context, userProfileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
 	GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]debts.DebtTransaction, []uuid.UUID, error)
 	GetTransactionSummary(ctx context.Context, profileID uuid.UUID) (map[string]dto.FriendBalance, error)
-	GetNetBalancesByFriend(ctx context.Context, profileID uuid.UUID) (map[uuid.UUID]map[string]decimal.Decimal, error)
 	GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error)
 
 	ConstructNotification(ctx context.Context, msg message.DebtCreated) (entity.Notification, error)
 	ProcessConfirmedGroupExpense(ctx context.Context, groupExpense expenses.GroupExpense) error
+}
+
+type FriendshipBalanceService interface {
+	// RecalculatePair recomputes and upserts friendship_balances for one profile pair from
+	// their full transaction history. No-op if no Friendship row exists for the pair. Caller
+	// must already be inside transactor.WithinTransaction, alongside the write being cached.
+	RecalculatePair(ctx context.Context, profileID1, profileID2 uuid.UUID) error
+
+	// RecalculateAllForProfile recomputes every friendship_balances row for every friendship
+	// profileID is party to, in one pass over profileID's full transaction set. Used after a
+	// profile merge/repoint, where the whole graph can shift in one write. Caller must already
+	// be inside transactor.WithinTransaction.
+	RecalculateAllForProfile(ctx context.Context, profileID uuid.UUID) error
+
+	// GetNetBalancesForProfile serves GET /friendships: net balance per currency per
+	// counterparty, signed so positive = profileID is net lender, zero balances omitted.
+	GetNetBalancesForProfile(ctx context.Context, profileID uuid.UUID) (map[uuid.UUID]map[string]decimal.Decimal, error)
 }
 
 type TransferMethodService interface {

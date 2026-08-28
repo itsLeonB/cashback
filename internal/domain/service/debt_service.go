@@ -19,7 +19,6 @@ import (
 	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
-	"github.com/shopspring/decimal"
 	"gorm.io/datatypes"
 )
 
@@ -30,6 +29,8 @@ type debtServiceImpl struct {
 	profileService            ProfileService
 	expenseService            GroupExpenseService
 	taskQueue                 queue.TaskQueue
+	transactor                crud.Transactor
+	friendshipBalanceService  FriendshipBalanceService
 }
 
 func NewDebtService(
@@ -39,6 +40,8 @@ func NewDebtService(
 	profileService ProfileService,
 	expenseService GroupExpenseService,
 	taskQueue queue.TaskQueue,
+	transactor crud.Transactor,
+	friendshipBalanceService FriendshipBalanceService,
 ) DebtService {
 	return &debtServiceImpl{
 		debtTransactionRepository,
@@ -47,6 +50,8 @@ func NewDebtService(
 		profileService,
 		expenseService,
 		taskQueue,
+		transactor,
+		friendshipBalanceService,
 	}
 }
 
@@ -88,13 +93,21 @@ func (ds *debtServiceImpl) RecordNewTransaction(ctx context.Context, req dto.New
 		currency = userProfile.HomeCurrency
 	}
 
-	insertedDebt, err := ds.debtTransactionRepository.Insert(ctx, debts.DebtTransaction{
-		LenderProfileID:   lenderID,
-		BorrowerProfileID: borrowerID,
-		Amount:            req.Amount,
-		TransferMethodID:  req.TransferMethodID,
-		Description:       req.Description,
-		Currency:          currency,
+	var insertedDebt debts.DebtTransaction
+	err = ds.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		insertedDebt, err = ds.debtTransactionRepository.Insert(ctx, debts.DebtTransaction{
+			LenderProfileID:   lenderID,
+			BorrowerProfileID: borrowerID,
+			Amount:            req.Amount,
+			TransferMethodID:  req.TransferMethodID,
+			Description:       req.Description,
+			Currency:          currency,
+		})
+		if err != nil {
+			return err
+		}
+
+		return ds.friendshipBalanceService.RecalculatePair(ctx, lenderID, borrowerID)
 	})
 	if err != nil {
 		return dto.DebtTransactionResponse{}, err
@@ -155,8 +168,27 @@ func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, gro
 
 	debtTransactions := mapper.GroupExpenseToDebtTransactions(groupExpense, transferMethod.ID)
 
-	_, err = ds.debtTransactionRepository.InsertMany(ctx, debtTransactions)
-	return err
+	if _, err = ds.debtTransactionRepository.InsertMany(ctx, debtTransactions); err != nil {
+		return err
+	}
+
+	// A proxy-profile chain can touch 2 distinct pairs (payer<->proxy, proxy<->participant) in
+	// one call - dedupe before recalculating so a pair isn't recomputed twice.
+	type pair struct{ a, b uuid.UUID }
+	seen := make(map[pair]struct{}, len(debtTransactions))
+	for _, tx := range debtTransactions {
+		p := pair{tx.LenderProfileID, tx.BorrowerProfileID}
+		if _, ok := seen[p]; ok {
+			continue
+		}
+		seen[p] = struct{}{}
+
+		if err := ds.friendshipBalanceService.RecalculatePair(ctx, tx.LenderProfileID, tx.BorrowerProfileID); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (ds *debtServiceImpl) GetAllByProfileIDs(ctx context.Context, userProfileID, friendProfileID uuid.UUID) ([]debts.DebtTransaction, []uuid.UUID, error) {
@@ -166,32 +198,6 @@ func (ds *debtServiceImpl) GetAllByProfileIDs(ctx context.Context, userProfileID
 	userIDs := []uuid.UUID{userProfileID}
 	transactions, err := ds.debtTransactionRepository.FindAllByMultipleProfileIDs(ctx, userIDs, []uuid.UUID{friendProfileID})
 	return transactions, userIDs, err
-}
-
-func (ds *debtServiceImpl) GetNetBalancesByFriend(ctx context.Context, profileID uuid.UUID) (map[uuid.UUID]map[string]decimal.Decimal, error) {
-	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetNetBalancesByFriend")
-	defer span.End()
-
-	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, []uuid.UUID{profileID}, -1, false)
-	if err != nil {
-		return nil, err
-	}
-
-	raw := mapper.NetBalanceByFriend(transactions, []uuid.UUID{profileID})
-
-	// Remove zero-balance currencies
-	for id, currencies := range raw {
-		for cur, amt := range currencies {
-			if amt.IsZero() {
-				delete(raw[id], cur)
-			}
-		}
-		if len(currencies) == 0 {
-			delete(raw, id)
-		}
-	}
-
-	return raw, nil
 }
 
 func (ds *debtServiceImpl) GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {

@@ -63,6 +63,7 @@ func (r *pushSubscriptionRepositoryGorm) RepointProfile(ctx context.Context, ano
 	}
 
 	moved := make([]entity.PushSubscription, len(anonRows))
+	anonRowIDs := make([]uuid.UUID, len(anonRows))
 	for i, s := range anonRows {
 		moved[i] = entity.PushSubscription{
 			ProfileID: realProfileID,
@@ -71,6 +72,7 @@ func (r *pushSubscriptionRepositoryGorm) RepointProfile(ctx context.Context, ano
 			Keys:      s.Keys,
 			UserAgent: s.UserAgent,
 		}
+		anonRowIDs[i] = s.ID
 	}
 
 	// Anon profiles never log in, so in practice there's nothing to merge here; if the real
@@ -83,7 +85,10 @@ func (r *pushSubscriptionRepositoryGorm) RepointProfile(ctx context.Context, ano
 		return ungerr.Wrap(err, "failed to repoint push subscriptions")
 	}
 
-	if err := db.Where("profile_id = ?", anonProfileID).Delete(&entity.PushSubscription{}).Error; err != nil {
+	// Restricted to the exact rows read above so a row inserted concurrently after the
+	// SELECT - and never merged into realProfileID - survives instead of being silently
+	// dropped.
+	if err := db.Where("id IN ?", anonRowIDs).Delete(&entity.PushSubscription{}).Error; err != nil {
 		return ungerr.Wrap(err, "error deleting merged push subscriptions")
 	}
 

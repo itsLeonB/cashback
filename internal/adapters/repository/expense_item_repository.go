@@ -81,6 +81,7 @@ func (ger *expenseItemRepositoryGorm) RepointParticipants(ctx context.Context, a
 	}
 
 	merged := make([]expenses.ItemParticipant, len(anonRows))
+	anonRowIDs := make([]uuid.UUID, len(anonRows))
 	for i, row := range anonRows {
 		merged[i] = expenses.ItemParticipant{
 			ExpenseItemID:   row.ExpenseItemID,
@@ -88,6 +89,7 @@ func (ger *expenseItemRepositoryGorm) RepointParticipants(ctx context.Context, a
 			Weight:          row.Weight,
 			AllocatedAmount: row.AllocatedAmount,
 		}
+		anonRowIDs[i] = row.ID
 	}
 
 	if err := db.Clauses(clause.OnConflict{
@@ -100,7 +102,10 @@ func (ger *expenseItemRepositoryGorm) RepointParticipants(ctx context.Context, a
 		return ungerr.Wrap(err, appconstant.ErrDataUpdate)
 	}
 
-	if err := db.Where("profile_id = ?", anonProfileID).Delete(&expenses.ItemParticipant{}).Error; err != nil {
+	// Restricted to the exact rows read above so a row inserted concurrently after the
+	// SELECT - and never merged into realProfileID - survives instead of being silently
+	// dropped.
+	if err := db.Where("id IN ?", anonRowIDs).Delete(&expenses.ItemParticipant{}).Error; err != nil {
 		return ungerr.Wrap(err, "error deleting merged item participants")
 	}
 

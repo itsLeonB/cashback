@@ -123,9 +123,11 @@ func (ger *groupExpenseRepositoryGorm) RepointProfile(ctx context.Context, anonP
 
 	if len(anonRows) > 0 {
 		groupExpenseIDs := make([]uuid.UUID, len(anonRows))
+		anonRowIDs := make([]uuid.UUID, len(anonRows))
 		anonProxyByExpense := make(map[uuid.UUID]uuid.NullUUID, len(anonRows))
 		for i, row := range anonRows {
 			groupExpenseIDs[i] = row.GroupExpenseID
+			anonRowIDs[i] = row.ID
 			anonProxyByExpense[row.GroupExpenseID] = row.ProxyProfileID
 		}
 
@@ -164,7 +166,10 @@ func (ger *groupExpenseRepositoryGorm) RepointProfile(ctx context.Context, anonP
 			return ungerr.Wrap(err, appconstant.ErrDataUpdate)
 		}
 
-		if err := db.Where("participant_profile_id = ?", anonProfileID).Delete(&expenses.ExpenseParticipant{}).Error; err != nil {
+		// Restricted to the exact rows read above (not a broad participant_profile_id
+		// match) so a row inserted concurrently after the SELECT - and never merged into
+		// realProfileID - survives instead of being silently dropped.
+		if err := db.Where("id IN ?", anonRowIDs).Delete(&expenses.ExpenseParticipant{}).Error; err != nil {
 			return ungerr.Wrap(err, "error deleting merged expense participants")
 		}
 	}

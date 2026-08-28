@@ -150,6 +150,7 @@ func (nr *notificationRepositoryGorm) RepointProfile(ctx context.Context, anonPr
 	}
 
 	moved := make([]entity.Notification, len(anonRows))
+	anonRowIDs := make([]uuid.UUID, len(anonRows))
 	for i, n := range anonRows {
 		moved[i] = entity.Notification{
 			ProfileID:  realProfileID,
@@ -160,6 +161,7 @@ func (nr *notificationRepositoryGorm) RepointProfile(ctx context.Context, anonPr
 			ReadAt:     n.ReadAt,
 			PushedAt:   n.PushedAt,
 		}
+		anonRowIDs[i] = n.ID
 	}
 
 	// If the real profile already has a matching (type, entity_type, entity_id)
@@ -171,7 +173,10 @@ func (nr *notificationRepositoryGorm) RepointProfile(ctx context.Context, anonPr
 		return ungerr.Wrap(err, appconstant.ErrDataInsert)
 	}
 
-	if err := db.Where("profile_id = ?", anonProfileID).Delete(&entity.Notification{}).Error; err != nil {
+	// Restricted to the exact rows read above so a row inserted concurrently after the
+	// SELECT - and never merged into realProfileID - survives instead of being silently
+	// dropped.
+	if err := db.Where("id IN ?", anonRowIDs).Delete(&entity.Notification{}).Error; err != nil {
 		return ungerr.Wrap(err, "error deleting merged notifications")
 	}
 

@@ -93,6 +93,10 @@ type FriendshipBalanceRepository interface {
 	// FindAllByProfileID returns every non-zero balance row for a friendship profileID is party
 	// to, joined against friendships to resolve the pair's profile IDs in one query.
 	FindAllByProfileID(ctx context.Context, profileID uuid.UUID) ([]FriendshipBalanceRow, error)
+	// DeleteZeroBalances removes rows that have settled to exactly 0 for the given friendships.
+	// Called after UpsertMany, which must still write the 0 first to correct any stale nonzero
+	// row - this only sweeps away what's left at 0, keeping the table free of dead weight.
+	DeleteZeroBalances(ctx context.Context, friendshipIDs []uuid.UUID) error
 }
 
 type TransferMethodRepository interface {

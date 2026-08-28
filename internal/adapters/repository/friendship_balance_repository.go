@@ -87,3 +87,24 @@ func (fbr *friendshipBalanceRepositoryGorm) FindAllByProfileID(ctx context.Conte
 
 	return rows, nil
 }
+
+func (fbr *friendshipBalanceRepositoryGorm) DeleteZeroBalances(ctx context.Context, friendshipIDs []uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipBalanceRepository.DeleteZeroBalances")
+	defer span.End()
+
+	if len(friendshipIDs) == 0 {
+		return nil
+	}
+
+	db, err := fbr.GetGormInstance(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err := db.Where("friendship_id IN ? AND net_balance = 0", friendshipIDs).
+		Delete(&users.FriendshipBalance{}).Error; err != nil {
+		return ungerr.Wrap(err, "error deleting settled friendship balance rows")
+	}
+
+	return nil
+}

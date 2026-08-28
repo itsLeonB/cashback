@@ -24,7 +24,8 @@ FROM friendships f
 JOIN debt_transactions dt
   ON (dt.lender_profile_id = f.profile_id1 AND dt.borrower_profile_id = f.profile_id2)
   OR (dt.lender_profile_id = f.profile_id2 AND dt.borrower_profile_id = f.profile_id1)
-GROUP BY f.id, dt.currency;
+GROUP BY f.id, dt.currency
+HAVING SUM(CASE WHEN dt.lender_profile_id = f.profile_id1 THEN dt.amount ELSE -dt.amount END) <> 0;
 -- +goose StatementEnd
 
 -- +goose Down

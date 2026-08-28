@@ -67,7 +67,14 @@ func (fbs *friendshipBalanceServiceImpl) RecalculatePair(ctx context.Context, pr
 		})
 	}
 
-	return fbs.balanceRepository.UpsertMany(ctx, balances)
+	if err := fbs.balanceRepository.UpsertMany(ctx, balances); err != nil {
+		return err
+	}
+
+	// A currency that nets to exactly 0 (e.g. a debt fully settled) is still upserted above so
+	// any previously-nonzero row gets corrected first, then swept away here so the table only
+	// ever holds nonzero balances - readers rely on that (see FindAllByProfileID).
+	return fbs.balanceRepository.DeleteZeroBalances(ctx, []uuid.UUID{friendship.ID})
 }
 
 func (fbs *friendshipBalanceServiceImpl) RecalculateAllForProfile(ctx context.Context, profileID uuid.UUID) error {
@@ -89,8 +96,11 @@ func (fbs *friendshipBalanceServiceImpl) RecalculateAllForProfile(ctx context.Co
 
 	netByCounterparty := mapper.NetBalanceByFriend(transactions, []uuid.UUID{profileID})
 
+	friendshipIDs := make([]uuid.UUID, len(friendships))
 	var balances []users.FriendshipBalance
-	for _, f := range friendships {
+	for i, f := range friendships {
+		friendshipIDs[i] = f.ID
+
 		counterpartyID := f.ProfileID1
 		if counterpartyID == profileID {
 			counterpartyID = f.ProfileID2
@@ -111,7 +121,13 @@ func (fbs *friendshipBalanceServiceImpl) RecalculateAllForProfile(ctx context.Co
 		}
 	}
 
-	return fbs.balanceRepository.UpsertMany(ctx, balances)
+	if err := fbs.balanceRepository.UpsertMany(ctx, balances); err != nil {
+		return err
+	}
+
+	// Same zero-balance sweep as RecalculatePair, batched across every friendship touched by
+	// this profile-wide recalculation.
+	return fbs.balanceRepository.DeleteZeroBalances(ctx, friendshipIDs)
 }
 
 func (fbs *friendshipBalanceServiceImpl) GetNetBalancesForProfile(ctx context.Context, profileID uuid.UUID) (map[uuid.UUID]map[string]decimal.Decimal, error) {
@@ -125,6 +141,12 @@ func (fbs *friendshipBalanceServiceImpl) GetNetBalancesForProfile(ctx context.Co
 
 	result := make(map[uuid.UUID]map[string]decimal.Decimal)
 	for _, row := range rows {
+		if row.NetBalance.IsZero() {
+			// Defensive: FindAllByProfileID already filters net_balance <> 0 in SQL, this just
+			// guards against that filter ever drifting.
+			continue
+		}
+
 		counterpartyID := row.ProfileID2
 		netBalance := row.NetBalance
 		if row.ProfileID1 != profileID {

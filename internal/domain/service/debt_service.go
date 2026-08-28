@@ -113,12 +113,7 @@ func (ds *debtServiceImpl) GetTransactions(ctx context.Context, profileID uuid.U
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetTransactions")
 	defer span.End()
 
-	profileIDs, err := ds.profileService.GetAssociatedIDs(ctx, profileID)
-	if err != nil {
-		return nil, err
-	}
-
-	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs, -1, false)
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, []uuid.UUID{profileID}, -1, false)
 	if err != nil {
 		return nil, err
 	}
@@ -141,17 +136,12 @@ func (ds *debtServiceImpl) GetTransactionSummary(ctx context.Context, profileID 
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetTransactionSummary")
 	defer span.End()
 
-	profileIDs, err := ds.profileService.GetAssociatedIDs(ctx, profileID)
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, []uuid.UUID{profileID}, -1, false)
 	if err != nil {
 		return nil, err
 	}
 
-	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs, -1, false)
-	if err != nil {
-		return nil, err
-	}
-
-	return mapper.SummarizePerCurrency(transactions, profileIDs), nil
+	return mapper.SummarizePerCurrency(transactions, []uuid.UUID{profileID}), nil
 }
 
 func (ds *debtServiceImpl) ProcessConfirmedGroupExpense(ctx context.Context, groupExpense expenses.GroupExpense) error {
@@ -173,15 +163,8 @@ func (ds *debtServiceImpl) GetAllByProfileIDs(ctx context.Context, userProfileID
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetAllByProfileIDs")
 	defer span.End()
 
-	profiles, err := ds.profileService.GetByIDs(ctx, []uuid.UUID{userProfileID, friendProfileID})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	userIDs := ds.getAssociatedIDs(profiles[userProfileID])
-	friendIDs := ds.getAssociatedIDs(profiles[friendProfileID])
-
-	transactions, err := ds.debtTransactionRepository.FindAllByMultipleProfileIDs(ctx, userIDs, friendIDs)
+	userIDs := []uuid.UUID{userProfileID}
+	transactions, err := ds.debtTransactionRepository.FindAllByMultipleProfileIDs(ctx, userIDs, []uuid.UUID{friendProfileID})
 	return transactions, userIDs, err
 }
 
@@ -189,71 +172,33 @@ func (ds *debtServiceImpl) GetNetBalancesByFriend(ctx context.Context, profileID
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetNetBalancesByFriend")
 	defer span.End()
 
-	profileIDs, err := ds.profileService.GetAssociatedIDs(ctx, profileID)
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, []uuid.UUID{profileID}, -1, false)
 	if err != nil {
 		return nil, err
 	}
 
-	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs, -1, false)
-	if err != nil {
-		return nil, err
-	}
-
-	raw := mapper.NetBalanceByFriend(transactions, profileIDs)
-
-	// Consolidate anon profile IDs to their real profiles
-	counterpartyIDs := make([]uuid.UUID, 0, len(raw))
-	for id := range raw {
-		counterpartyIDs = append(counterpartyIDs, id)
-	}
-	if len(counterpartyIDs) == 0 {
-		return raw, nil
-	}
-
-	profiles, err := ds.profileService.GetByIDs(ctx, counterpartyIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	consolidated := make(map[uuid.UUID]map[string]decimal.Decimal, len(raw))
-	for cpID, currencies := range raw {
-		canonicalID := cpID
-		if p, ok := profiles[cpID]; ok && p.RealProfileID != uuid.Nil {
-			canonicalID = p.RealProfileID
-		}
-		if consolidated[canonicalID] == nil {
-			consolidated[canonicalID] = make(map[string]decimal.Decimal)
-		}
-		for cur, amt := range currencies {
-			consolidated[canonicalID][cur] = consolidated[canonicalID][cur].Add(amt)
-		}
-	}
+	raw := mapper.NetBalanceByFriend(transactions, []uuid.UUID{profileID})
 
 	// Remove zero-balance currencies
-	for id, currencies := range consolidated {
+	for id, currencies := range raw {
 		for cur, amt := range currencies {
 			if amt.IsZero() {
-				delete(consolidated[id], cur)
+				delete(raw[id], cur)
 			}
 		}
 		if len(currencies) == 0 {
-			delete(consolidated, id)
+			delete(raw, id)
 		}
 	}
 
-	return consolidated, nil
+	return raw, nil
 }
 
 func (ds *debtServiceImpl) GetRecent(ctx context.Context, profileID uuid.UUID) ([]dto.DebtTransactionResponse, error) {
 	ctx, span := otel.Tracer.Start(ctx, "DebtService.GetRecent")
 	defer span.End()
 
-	profileIDs, err := ds.profileService.GetAssociatedIDs(ctx, profileID)
-	if err != nil {
-		return nil, err
-	}
-
-	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, profileIDs, 5, true)
+	transactions, err := ds.debtTransactionRepository.FindAllByProfileIDs(ctx, []uuid.UUID{profileID}, 5, true)
 	if err != nil {
 		return nil, err
 	}
@@ -318,16 +263,4 @@ func (ds *debtServiceImpl) ConstructNotification(ctx context.Context, msg messag
 		EntityID:   msg.ID,
 		Metadata:   datatypes.JSON(metadata),
 	}, nil
-}
-
-func (ds *debtServiceImpl) getAssociatedIDs(profile dto.ProfileResponse) []uuid.UUID {
-	ids := []uuid.UUID{profile.ID}
-	if profile.IsAnonymous {
-		if profile.RealProfileID != uuid.Nil {
-			ids = append(ids, profile.RealProfileID)
-		}
-	} else {
-		ids = append(ids, profile.AssociatedAnonProfileIDs...)
-	}
-	return ids
 }

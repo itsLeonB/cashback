@@ -66,7 +66,7 @@ type MockProfileRepository_Delete_Call struct {
 // Delete is a helper method to define mock.On call
 //   - ctx context.Context
 //   - model users.UserProfile
-func (_e *MockProfileRepository_Expecter) Delete(ctx interface{}, model interface{}) *MockProfileRepository_Delete_Call {
+func (_e *MockProfileRepository_Expecter) Delete(ctx any, model any) *MockProfileRepository_Delete_Call {
 	return &MockProfileRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, model)}
 }
 
@@ -123,7 +123,7 @@ type MockProfileRepository_DeleteMany_Call struct {
 // DeleteMany is a helper method to define mock.On call
 //   - ctx context.Context
 //   - models []users.UserProfile
-func (_e *MockProfileRepository_Expecter) DeleteMany(ctx interface{}, models interface{}) *MockProfileRepository_DeleteMany_Call {
+func (_e *MockProfileRepository_Expecter) DeleteMany(ctx any, models any) *MockProfileRepository_DeleteMany_Call {
 	return &MockProfileRepository_DeleteMany_Call{Call: _e.mock.On("DeleteMany", ctx, models)}
 }
 
@@ -191,7 +191,7 @@ type MockProfileRepository_FindAll_Call struct {
 // FindAll is a helper method to define mock.On call
 //   - ctx context.Context
 //   - spec crud.Specification[users.UserProfile]
-func (_e *MockProfileRepository_Expecter) FindAll(ctx interface{}, spec interface{}) *MockProfileRepository_FindAll_Call {
+func (_e *MockProfileRepository_Expecter) FindAll(ctx any, spec any) *MockProfileRepository_FindAll_Call {
 	return &MockProfileRepository_FindAll_Call{Call: _e.mock.On("FindAll", ctx, spec)}
 }
 
@@ -259,7 +259,7 @@ type MockProfileRepository_FindByIDs_Call struct {
 // FindByIDs is a helper method to define mock.On call
 //   - ctx context.Context
 //   - ids []uuid.UUID
-func (_e *MockProfileRepository_Expecter) FindByIDs(ctx interface{}, ids interface{}) *MockProfileRepository_FindByIDs_Call {
+func (_e *MockProfileRepository_Expecter) FindByIDs(ctx any, ids any) *MockProfileRepository_FindByIDs_Call {
 	return &MockProfileRepository_FindByIDs_Call{Call: _e.mock.On("FindByIDs", ctx, ids)}
 }
 
@@ -325,7 +325,7 @@ type MockProfileRepository_FindFirst_Call struct {
 // FindFirst is a helper method to define mock.On call
 //   - ctx context.Context
 //   - spec crud.Specification[users.UserProfile]
-func (_e *MockProfileRepository_Expecter) FindFirst(ctx interface{}, spec interface{}) *MockProfileRepository_FindFirst_Call {
+func (_e *MockProfileRepository_Expecter) FindFirst(ctx any, spec any) *MockProfileRepository_FindFirst_Call {
 	return &MockProfileRepository_FindFirst_Call{Call: _e.mock.On("FindFirst", ctx, spec)}
 }
 
@@ -392,7 +392,7 @@ type MockProfileRepository_FindRealProfiles_Call struct {
 
 // FindRealProfiles is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockProfileRepository_Expecter) FindRealProfiles(ctx interface{}) *MockProfileRepository_FindRealProfiles_Call {
+func (_e *MockProfileRepository_Expecter) FindRealProfiles(ctx any) *MockProfileRepository_FindRealProfiles_Call {
 	return &MockProfileRepository_FindRealProfiles_Call{Call: _e.mock.On("FindRealProfiles", ctx)}
 }
 
@@ -454,7 +454,7 @@ type MockProfileRepository_GetGormInstance_Call struct {
 
 // GetGormInstance is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockProfileRepository_Expecter) GetGormInstance(ctx interface{}) *MockProfileRepository_GetGormInstance_Call {
+func (_e *MockProfileRepository_Expecter) GetGormInstance(ctx any) *MockProfileRepository_GetGormInstance_Call {
 	return &MockProfileRepository_GetGormInstance_Call{Call: _e.mock.On("GetGormInstance", ctx)}
 }
 
@@ -515,7 +515,7 @@ type MockProfileRepository_Insert_Call struct {
 // Insert is a helper method to define mock.On call
 //   - ctx context.Context
 //   - model users.UserProfile
-func (_e *MockProfileRepository_Expecter) Insert(ctx interface{}, model interface{}) *MockProfileRepository_Insert_Call {
+func (_e *MockProfileRepository_Expecter) Insert(ctx any, model any) *MockProfileRepository_Insert_Call {
 	return &MockProfileRepository_Insert_Call{Call: _e.mock.On("Insert", ctx, model)}
 }
 
@@ -583,7 +583,7 @@ type MockProfileRepository_InsertMany_Call struct {
 // InsertMany is a helper method to define mock.On call
 //   - ctx context.Context
 //   - models []users.UserProfile
-func (_e *MockProfileRepository_Expecter) InsertMany(ctx interface{}, models interface{}) *MockProfileRepository_InsertMany_Call {
+func (_e *MockProfileRepository_Expecter) InsertMany(ctx any, models any) *MockProfileRepository_InsertMany_Call {
 	return &MockProfileRepository_InsertMany_Call{Call: _e.mock.On("InsertMany", ctx, models)}
 }
 
@@ -651,7 +651,7 @@ type MockProfileRepository_SaveMany_Call struct {
 // SaveMany is a helper method to define mock.On call
 //   - ctx context.Context
 //   - models []users.UserProfile
-func (_e *MockProfileRepository_Expecter) SaveMany(ctx interface{}, models interface{}) *MockProfileRepository_SaveMany_Call {
+func (_e *MockProfileRepository_Expecter) SaveMany(ctx any, models any) *MockProfileRepository_SaveMany_Call {
 	return &MockProfileRepository_SaveMany_Call{Call: _e.mock.On("SaveMany", ctx, models)}
 }
 
@@ -720,7 +720,7 @@ type MockProfileRepository_SearchByName_Call struct {
 //   - ctx context.Context
 //   - query string
 //   - limit int
-func (_e *MockProfileRepository_Expecter) SearchByName(ctx interface{}, query interface{}, limit interface{}) *MockProfileRepository_SearchByName_Call {
+func (_e *MockProfileRepository_Expecter) SearchByName(ctx any, query any, limit any) *MockProfileRepository_SearchByName_Call {
 	return &MockProfileRepository_SearchByName_Call{Call: _e.mock.On("SearchByName", ctx, query, limit)}
 }
 
@@ -791,7 +791,7 @@ type MockProfileRepository_Update_Call struct {
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
 //   - model users.UserProfile
-func (_e *MockProfileRepository_Expecter) Update(ctx interface{}, model interface{}) *MockProfileRepository_Update_Call {
+func (_e *MockProfileRepository_Expecter) Update(ctx any, model any) *MockProfileRepository_Update_Call {
 	return &MockProfileRepository_Update_Call{Call: _e.mock.On("Update", ctx, model)}
 }
 
@@ -875,7 +875,7 @@ type MockFriendshipRepository_Delete_Call struct {
 // Delete is a helper method to define mock.On call
 //   - ctx context.Context
 //   - model users.Friendship
-func (_e *MockFriendshipRepository_Expecter) Delete(ctx interface{}, model interface{}) *MockFriendshipRepository_Delete_Call {
+func (_e *MockFriendshipRepository_Expecter) Delete(ctx any, model any) *MockFriendshipRepository_Delete_Call {
 	return &MockFriendshipRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, model)}
 }
 
@@ -932,7 +932,7 @@ type MockFriendshipRepository_DeleteMany_Call struct {
 // DeleteMany is a helper method to define mock.On call
 //   - ctx context.Context
 //   - models []users.Friendship
-func (_e *MockFriendshipRepository_Expecter) DeleteMany(ctx interface{}, models interface{}) *MockFriendshipRepository_DeleteMany_Call {
+func (_e *MockFriendshipRepository_Expecter) DeleteMany(ctx any, models any) *MockFriendshipRepository_DeleteMany_Call {
 	return &MockFriendshipRepository_DeleteMany_Call{Call: _e.mock.On("DeleteMany", ctx, models)}
 }
 
@@ -1000,7 +1000,7 @@ type MockFriendshipRepository_FindAll_Call struct {
 // FindAll is a helper method to define mock.On call
 //   - ctx context.Context
 //   - spec crud.Specification[users.Friendship]
-func (_e *MockFriendshipRepository_Expecter) FindAll(ctx interface{}, spec interface{}) *MockFriendshipRepository_FindAll_Call {
+func (_e *MockFriendshipRepository_Expecter) FindAll(ctx any, spec any) *MockFriendshipRepository_FindAll_Call {
 	return &MockFriendshipRepository_FindAll_Call{Call: _e.mock.On("FindAll", ctx, spec)}
 }
 
@@ -1068,7 +1068,7 @@ type MockFriendshipRepository_FindAllBySpec_Call struct {
 // FindAllBySpec is a helper method to define mock.On call
 //   - ctx context.Context
 //   - spec users.FriendshipSpecification
-func (_e *MockFriendshipRepository_Expecter) FindAllBySpec(ctx interface{}, spec interface{}) *MockFriendshipRepository_FindAllBySpec_Call {
+func (_e *MockFriendshipRepository_Expecter) FindAllBySpec(ctx any, spec any) *MockFriendshipRepository_FindAllBySpec_Call {
 	return &MockFriendshipRepository_FindAllBySpec_Call{Call: _e.mock.On("FindAllBySpec", ctx, spec)}
 }
 
@@ -1135,7 +1135,7 @@ type MockFriendshipRepository_FindByProfileIDs_Call struct {
 //   - ctx context.Context
 //   - profileID1 uuid.UUID
 //   - profileID2 uuid.UUID
-func (_e *MockFriendshipRepository_Expecter) FindByProfileIDs(ctx interface{}, profileID1 interface{}, profileID2 interface{}) *MockFriendshipRepository_FindByProfileIDs_Call {
+func (_e *MockFriendshipRepository_Expecter) FindByProfileIDs(ctx any, profileID1 any, profileID2 any) *MockFriendshipRepository_FindByProfileIDs_Call {
 	return &MockFriendshipRepository_FindByProfileIDs_Call{Call: _e.mock.On("FindByProfileIDs", ctx, profileID1, profileID2)}
 }
 
@@ -1206,7 +1206,7 @@ type MockFriendshipRepository_FindFirst_Call struct {
 // FindFirst is a helper method to define mock.On call
 //   - ctx context.Context
 //   - spec crud.Specification[users.Friendship]
-func (_e *MockFriendshipRepository_Expecter) FindFirst(ctx interface{}, spec interface{}) *MockFriendshipRepository_FindFirst_Call {
+func (_e *MockFriendshipRepository_Expecter) FindFirst(ctx any, spec any) *MockFriendshipRepository_FindFirst_Call {
 	return &MockFriendshipRepository_FindFirst_Call{Call: _e.mock.On("FindFirst", ctx, spec)}
 }
 
@@ -1272,7 +1272,7 @@ type MockFriendshipRepository_FindFirstBySpec_Call struct {
 // FindFirstBySpec is a helper method to define mock.On call
 //   - ctx context.Context
 //   - spec users.FriendshipSpecification
-func (_e *MockFriendshipRepository_Expecter) FindFirstBySpec(ctx interface{}, spec interface{}) *MockFriendshipRepository_FindFirstBySpec_Call {
+func (_e *MockFriendshipRepository_Expecter) FindFirstBySpec(ctx any, spec any) *MockFriendshipRepository_FindFirstBySpec_Call {
 	return &MockFriendshipRepository_FindFirstBySpec_Call{Call: _e.mock.On("FindFirstBySpec", ctx, spec)}
 }
 
@@ -1339,7 +1339,7 @@ type MockFriendshipRepository_GetGormInstance_Call struct {
 
 // GetGormInstance is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockFriendshipRepository_Expecter) GetGormInstance(ctx interface{}) *MockFriendshipRepository_GetGormInstance_Call {
+func (_e *MockFriendshipRepository_Expecter) GetGormInstance(ctx any) *MockFriendshipRepository_GetGormInstance_Call {
 	return &MockFriendshipRepository_GetGormInstance_Call{Call: _e.mock.On("GetGormInstance", ctx)}
 }
 
@@ -1400,7 +1400,7 @@ type MockFriendshipRepository_Insert_Call struct {
 // Insert is a helper method to define mock.On call
 //   - ctx context.Context
 //   - friendship users.Friendship
-func (_e *MockFriendshipRepository_Expecter) Insert(ctx interface{}, friendship interface{}) *MockFriendshipRepository_Insert_Call {
+func (_e *MockFriendshipRepository_Expecter) Insert(ctx any, friendship any) *MockFriendshipRepository_Insert_Call {
 	return &MockFriendshipRepository_Insert_Call{Call: _e.mock.On("Insert", ctx, friendship)}
 }
 
@@ -1468,7 +1468,7 @@ type MockFriendshipRepository_InsertMany_Call struct {
 // InsertMany is a helper method to define mock.On call
 //   - ctx context.Context
 //   - models []users.Friendship
-func (_e *MockFriendshipRepository_Expecter) InsertMany(ctx interface{}, models interface{}) *MockFriendshipRepository_InsertMany_Call {
+func (_e *MockFriendshipRepository_Expecter) InsertMany(ctx any, models any) *MockFriendshipRepository_InsertMany_Call {
 	return &MockFriendshipRepository_InsertMany_Call{Call: _e.mock.On("InsertMany", ctx, models)}
 }
 
@@ -1496,6 +1496,69 @@ func (_c *MockFriendshipRepository_InsertMany_Call) Return(friendships []users.F
 }
 
 func (_c *MockFriendshipRepository_InsertMany_Call) RunAndReturn(run func(ctx context.Context, models []users.Friendship) ([]users.Friendship, error)) *MockFriendshipRepository_InsertMany_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RepointFriendships provides a mock function for the type MockFriendshipRepository
+func (_mock *MockFriendshipRepository) RepointFriendships(ctx context.Context, anonProfileID uuid.UUID, realProfileID uuid.UUID) error {
+	ret := _mock.Called(ctx, anonProfileID, realProfileID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RepointFriendships")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, anonProfileID, realProfileID)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockFriendshipRepository_RepointFriendships_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RepointFriendships'
+type MockFriendshipRepository_RepointFriendships_Call struct {
+	*mock.Call
+}
+
+// RepointFriendships is a helper method to define mock.On call
+//   - ctx context.Context
+//   - anonProfileID uuid.UUID
+//   - realProfileID uuid.UUID
+func (_e *MockFriendshipRepository_Expecter) RepointFriendships(ctx any, anonProfileID any, realProfileID any) *MockFriendshipRepository_RepointFriendships_Call {
+	return &MockFriendshipRepository_RepointFriendships_Call{Call: _e.mock.On("RepointFriendships", ctx, anonProfileID, realProfileID)}
+}
+
+func (_c *MockFriendshipRepository_RepointFriendships_Call) Run(run func(ctx context.Context, anonProfileID uuid.UUID, realProfileID uuid.UUID)) *MockFriendshipRepository_RepointFriendships_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 uuid.UUID
+		if args[1] != nil {
+			arg1 = args[1].(uuid.UUID)
+		}
+		var arg2 uuid.UUID
+		if args[2] != nil {
+			arg2 = args[2].(uuid.UUID)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockFriendshipRepository_RepointFriendships_Call) Return(err error) *MockFriendshipRepository_RepointFriendships_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockFriendshipRepository_RepointFriendships_Call) RunAndReturn(run func(ctx context.Context, anonProfileID uuid.UUID, realProfileID uuid.UUID) error) *MockFriendshipRepository_RepointFriendships_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1536,7 +1599,7 @@ type MockFriendshipRepository_SaveMany_Call struct {
 // SaveMany is a helper method to define mock.On call
 //   - ctx context.Context
 //   - models []users.Friendship
-func (_e *MockFriendshipRepository_Expecter) SaveMany(ctx interface{}, models interface{}) *MockFriendshipRepository_SaveMany_Call {
+func (_e *MockFriendshipRepository_Expecter) SaveMany(ctx any, models any) *MockFriendshipRepository_SaveMany_Call {
 	return &MockFriendshipRepository_SaveMany_Call{Call: _e.mock.On("SaveMany", ctx, models)}
 }
 
@@ -1602,7 +1665,7 @@ type MockFriendshipRepository_Update_Call struct {
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
 //   - model users.Friendship
-func (_e *MockFriendshipRepository_Expecter) Update(ctx interface{}, model interface{}) *MockFriendshipRepository_Update_Call {
+func (_e *MockFriendshipRepository_Expecter) Update(ctx any, model any) *MockFriendshipRepository_Update_Call {
 	return &MockFriendshipRepository_Update_Call{Call: _e.mock.On("Update", ctx, model)}
 }
 

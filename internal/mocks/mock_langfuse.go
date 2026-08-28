@@ -81,9 +81,9 @@ type MockClient_GetPrompt_Call struct {
 //   - ctx context.Context
 //   - name string
 //   - opts ...langfuse.GetPromptOptions
-func (_e *MockClient_Expecter) GetPrompt(ctx interface{}, name interface{}, opts ...interface{}) *MockClient_GetPrompt_Call {
+func (_e *MockClient_Expecter) GetPrompt(ctx any, name any, opts ...any) *MockClient_GetPrompt_Call {
 	return &MockClient_GetPrompt_Call{Call: _e.mock.On("GetPrompt",
-		append([]interface{}{ctx, name}, opts...)...)}
+		append([]any{ctx, name}, opts...)...)}
 }
 
 func (_c *MockClient_GetPrompt_Call) Run(run func(ctx context.Context, name string, opts ...langfuse.GetPromptOptions)) *MockClient_GetPrompt_Call {

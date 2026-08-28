@@ -7,6 +7,7 @@ import (
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/core/otel"
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
+	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 	"gorm.io/gorm"
@@ -127,4 +128,77 @@ func (fr *friendshipRepositoryGorm) FindByProfileIDs(ctx context.Context, profil
 	}
 
 	return friendship, nil
+}
+
+// RepointFriendships repoints every friendship row involving anonProfileID onto realProfileID.
+// If realProfileID already has a friendship with the same counterparty, the anonymous row is
+// simply dropped (deduplicated) instead of violating unique_friendship.
+func (fr *friendshipRepositoryGorm) RepointFriendships(ctx context.Context, anonProfileID, realProfileID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRepository.RepointFriendships")
+	defer span.End()
+
+	db, err := fr.GetGormInstance(ctx)
+	if err != nil {
+		return err
+	}
+
+	var friendships []users.Friendship
+	if err := db.Where("profile_id1 = ? OR profile_id2 = ?", anonProfileID, anonProfileID).Find(&friendships).Error; err != nil {
+		return ungerr.Wrap(err, appconstant.ErrDataSelect)
+	}
+
+	for _, f := range friendships {
+		counterpartyID := f.ProfileID1
+		if counterpartyID == anonProfileID {
+			counterpartyID = f.ProfileID2
+		}
+
+		// The anon profile's counterparty is the very profile being merged in: a
+		// friendship with yourself is meaningless (and would violate the profile_order
+		// CHECK constraint), so just drop the stale row.
+		if counterpartyID == realProfileID {
+			if err := db.Delete(&f).Error; err != nil {
+				return ungerr.Wrap(err, "error deleting anonymous friendship row")
+			}
+			continue
+		}
+
+		// The new friendship is only ever meaningful between two real profiles: verify
+		// the counterparty actually is one instead of assuming it (anon profiles are
+		// normally only ever friended by their real creator, but that's an app-level
+		// invariant, not a DB constraint).
+		var counterpartyProfile users.UserProfile
+		found, err := findOptional(db.Select("id", "user_id").Where("id = ?", counterpartyID), &counterpartyProfile)
+		if err != nil {
+			return err
+		}
+		if !found || !counterpartyProfile.IsReal() {
+			return ungerr.ConflictError("cannot merge: anonymous profile's friendship counterparty is not a real profile")
+		}
+
+		existing, err := fr.FindByProfileIDs(ctx, counterpartyID, realProfileID)
+		if err != nil {
+			return err
+		}
+
+		if err := db.Delete(&f).Error; err != nil {
+			return ungerr.Wrap(err, "error deleting anonymous friendship row")
+		}
+
+		if !existing.IsZero() {
+			continue
+		}
+
+		id1, id2 := counterpartyID, realProfileID
+		if ezutil.CompareUUID(id2, id1) < 0 {
+			id1, id2 = id2, id1
+		}
+
+		newFriendship := users.Friendship{ProfileID1: id1, ProfileID2: id2, Type: users.Real}
+		if _, err := fr.Insert(ctx, newFriendship); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -118,6 +118,6 @@ func (ph *ProfileHandler) HandleAssociate() gin.HandlerFunc {
 			return nil, err
 		}
 
-		return nil, ph.profileService.Associate(ctx.Request.Context(), profileID, request.RealProfileID, request.AnonProfileID)
+		return nil, ph.profileService.MergeAnonymousProfile(ctx.Request.Context(), profileID, request.RealProfileID, request.AnonProfileID)
 	})
 }

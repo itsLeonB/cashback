@@ -6,30 +6,17 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/entity/users"
 )
 
-func ProfileToResponse(profile users.UserProfile, email string, anonProfileIDs []uuid.UUID, realProfileID uuid.UUID, subscription dto.SubscriptionResponse) dto.ProfileResponse {
-	associatedAnonProfileIDs := anonProfileIDs
-	if len(associatedAnonProfileIDs) < 1 {
-		for _, anonProfile := range profile.RelatedAnonProfiles {
-			associatedAnonProfileIDs = append(associatedAnonProfileIDs, anonProfile.AnonProfileID)
-		}
-	}
-
-	if realProfileID == uuid.Nil {
-		realProfileID = profile.RelatedRealProfile.RealProfileID
-	}
-
+func ProfileToResponse(profile users.UserProfile, email string, subscription dto.SubscriptionResponse) dto.ProfileResponse {
 	return dto.ProfileResponse{
-		BaseDTO:                  BaseToDTO(profile.BaseEntity),
-		UserID:                   profile.UserID.UUID,
-		Name:                     profile.Name,
-		Avatar:                   profile.Avatar,
-		Email:                    email,
-		HomeCurrency:             profile.HomeCurrency,
-		IsAnonymous:              !profile.UserID.Valid,
-		AssociatedAnonProfileIDs: associatedAnonProfileIDs,
-		RealProfileID:            realProfileID,
-		CurrentSubscription:      subscription,
-		IsOnboarded:              profile.OnboardedAt.Valid,
+		BaseDTO:             BaseToDTO(profile.BaseEntity),
+		UserID:              profile.UserID.UUID,
+		Name:                profile.Name,
+		Avatar:              profile.Avatar,
+		Email:               email,
+		HomeCurrency:        profile.HomeCurrency,
+		IsAnonymous:         !profile.UserID.Valid,
+		CurrentSubscription: subscription,
+		IsOnboarded:         profile.OnboardedAt.Valid,
 	}
 }
 

@@ -58,3 +58,51 @@ func (ger *expenseItemRepositoryGorm) SyncParticipants(ctx context.Context, expe
 
 	return nil
 }
+
+// RepointParticipants merges group_expense_item_participants rows referencing anonProfileID
+// onto realProfileID. If realProfileID already has a row for the same expense item, weight and
+// allocated_amount are summed and the anonymous row is dropped instead of violating
+// unique_expense_item_profile.
+func (ger *expenseItemRepositoryGorm) RepointParticipants(ctx context.Context, anonProfileID, realProfileID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "ExpenseItemRepository.RepointParticipants")
+	defer span.End()
+
+	db, err := ger.GetGormInstance(ctx)
+	if err != nil {
+		return err
+	}
+
+	var anonRows []expenses.ItemParticipant
+	if err := db.Where("profile_id = ?", anonProfileID).Find(&anonRows).Error; err != nil {
+		return ungerr.Wrap(err, appconstant.ErrDataSelect)
+	}
+	if len(anonRows) == 0 {
+		return nil
+	}
+
+	merged := make([]expenses.ItemParticipant, len(anonRows))
+	for i, row := range anonRows {
+		merged[i] = expenses.ItemParticipant{
+			ExpenseItemID:   row.ExpenseItemID,
+			ProfileID:       realProfileID,
+			Weight:          row.Weight,
+			AllocatedAmount: row.AllocatedAmount,
+		}
+	}
+
+	if err := db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "expense_item_id"}, {Name: "profile_id"}},
+		DoUpdates: clause.Assignments(map[string]any{
+			"weight":           gorm.Expr("group_expense_item_participants.weight + excluded.weight"),
+			"allocated_amount": gorm.Expr("group_expense_item_participants.allocated_amount + excluded.allocated_amount"),
+		}),
+	}).Create(&merged).Error; err != nil {
+		return ungerr.Wrap(err, appconstant.ErrDataUpdate)
+	}
+
+	if err := db.Where("profile_id = ?", anonProfileID).Delete(&expenses.ItemParticipant{}).Error; err != nil {
+		return ungerr.Wrap(err, "error deleting merged item participants")
+	}
+
+	return nil
+}

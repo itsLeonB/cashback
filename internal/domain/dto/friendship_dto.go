@@ -54,7 +54,6 @@ type FriendTransactionItem struct {
 }
 
 type FriendDetailsResponse struct {
-	Friend                   FriendDetails            `json:"friend"`
-	RedirectToRealFriendship uuid.UUID                `json:"redirectToRealFriendship,omitzero"`
-	BalancesPerCurrency      map[string]FriendBalance `json:"balancesPerCurrency"`
+	Friend              FriendDetails            `json:"friend"`
+	BalancesPerCurrency map[string]FriendBalance `json:"balancesPerCurrency"`
 }

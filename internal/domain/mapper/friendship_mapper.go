@@ -71,8 +71,8 @@ func MapToFriendshipWithProfile(userProfileID uuid.UUID, friendship users.Friend
 
 	return dto.FriendshipWithProfile{
 		Friendship:    friendshipResponse,
-		UserProfile:   ProfileToResponse(userProfile, "", nil, uuid.Nil, dto.SubscriptionResponse{}),
-		FriendProfile: ProfileToResponse(friendProfile, "", nil, uuid.Nil, dto.SubscriptionResponse{}),
+		UserProfile:   ProfileToResponse(userProfile, "", dto.SubscriptionResponse{}),
+		FriendProfile: ProfileToResponse(friendProfile, "", dto.SubscriptionResponse{}),
 	}, nil
 }
 

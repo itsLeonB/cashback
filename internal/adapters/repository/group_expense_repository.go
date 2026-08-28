@@ -92,6 +92,93 @@ func (ger *groupExpenseRepositoryGorm) SyncParticipants(ctx context.Context, gro
 	return nil
 }
 
+// RepointProfile repoints group_expenses.payer/creator and group_expense_participants
+// referencing anonProfileID onto realProfileID. If realProfileID is already a participant in
+// the same group expense as anonProfileID, their share amounts are summed and the anonymous
+// row is dropped instead of violating unique_expense_profile.
+func (ger *groupExpenseRepositoryGorm) RepointProfile(ctx context.Context, anonProfileID, realProfileID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseRepository.RepointProfile")
+	defer span.End()
+
+	db, err := ger.GetGormInstance(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err := db.Model(&expenses.GroupExpense{}).
+		Where("payer_profile_id = ?", anonProfileID).
+		Update("payer_profile_id", realProfileID).Error; err != nil {
+		return ungerr.Wrap(err, appconstant.ErrDataUpdate)
+	}
+	if err := db.Model(&expenses.GroupExpense{}).
+		Where("creator_profile_id = ?", anonProfileID).
+		Update("creator_profile_id", realProfileID).Error; err != nil {
+		return ungerr.Wrap(err, appconstant.ErrDataUpdate)
+	}
+
+	var anonRows []expenses.ExpenseParticipant
+	if err := db.Where("participant_profile_id = ?", anonProfileID).Find(&anonRows).Error; err != nil {
+		return ungerr.Wrap(err, appconstant.ErrDataSelect)
+	}
+
+	if len(anonRows) > 0 {
+		groupExpenseIDs := make([]uuid.UUID, len(anonRows))
+		anonProxyByExpense := make(map[uuid.UUID]uuid.NullUUID, len(anonRows))
+		for i, row := range anonRows {
+			groupExpenseIDs[i] = row.GroupExpenseID
+			anonProxyByExpense[row.GroupExpenseID] = row.ProxyProfileID
+		}
+
+		// Reject up front if any colliding real row already names a different proxy —
+		// summing share amounts is safe, but silently picking one side's proxy is not
+		// (ProxyProfileID determines who owes whom, see GroupExpenseToDebtTransactions).
+		var existingRealRows []expenses.ExpenseParticipant
+		if err := db.Where("participant_profile_id = ? AND group_expense_id IN ?", realProfileID, groupExpenseIDs).
+			Find(&existingRealRows).Error; err != nil {
+			return ungerr.Wrap(err, appconstant.ErrDataSelect)
+		}
+		for _, realRow := range existingRealRows {
+			anonProxy := anonProxyByExpense[realRow.GroupExpenseID]
+			if anonProxy.Valid && realRow.ProxyProfileID.Valid && realRow.ProxyProfileID.UUID != anonProxy.UUID {
+				return ungerr.ConflictError("cannot merge: colliding group expense participants have different proxy profiles")
+			}
+		}
+
+		merged := make([]expenses.ExpenseParticipant, len(anonRows))
+		for i, row := range anonRows {
+			merged[i] = expenses.ExpenseParticipant{
+				GroupExpenseID:       row.GroupExpenseID,
+				ParticipantProfileID: realProfileID,
+				ProxyProfileID:       row.ProxyProfileID,
+				ShareAmount:          row.ShareAmount,
+			}
+		}
+
+		if err := db.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "group_expense_id"}, {Name: "participant_profile_id"}},
+			DoUpdates: clause.Assignments(map[string]any{
+				"share_amount":     gorm.Expr("group_expense_participants.share_amount + excluded.share_amount"),
+				"proxy_profile_id": gorm.Expr("COALESCE(group_expense_participants.proxy_profile_id, excluded.proxy_profile_id)"),
+			}),
+		}).Create(&merged).Error; err != nil {
+			return ungerr.Wrap(err, appconstant.ErrDataUpdate)
+		}
+
+		if err := db.Where("participant_profile_id = ?", anonProfileID).Delete(&expenses.ExpenseParticipant{}).Error; err != nil {
+			return ungerr.Wrap(err, "error deleting merged expense participants")
+		}
+	}
+
+	// proxy_profile_id carries no uniqueness constraint, so a plain update is safe
+	if err := db.Model(&expenses.ExpenseParticipant{}).
+		Where("proxy_profile_id = ?", anonProfileID).
+		Update("proxy_profile_id", realProfileID).Error; err != nil {
+		return ungerr.Wrap(err, appconstant.ErrDataUpdate)
+	}
+
+	return nil
+}
+
 func (ger *groupExpenseRepositoryGorm) DeleteItemParticipants(ctx context.Context, expenseID uuid.UUID, newParticipantProfileIDs []uuid.UUID) error {
 	ctx, span := otel.Tracer.Start(ctx, "GroupExpenseRepository.DeleteItemParticipants")
 	defer span.End()

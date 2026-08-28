@@ -18,12 +18,11 @@ import (
 
 func newTestProfileService(
 	t *testing.T,
-) (service.ProfileService, *mocks.MockProfileRepository, *mocks.MockRepository[users.User], *mocks.MockRepository[users.RelatedProfile]) {
+) (service.ProfileService, *mocks.MockProfileRepository, *mocks.MockRepository[users.User]) {
 	profileRepo := mocks.NewMockProfileRepository(t)
 	userRepo := mocks.NewMockRepository[users.User](t)
 	transactor := mocks.NewMockTransactor(t)
 	friendshipRepo := mocks.NewMockFriendshipRepository(t)
-	relatedProfileRepo := mocks.NewMockRepository[users.RelatedProfile](t)
 	subLimitSvc := mocks.NewMockSubscriptionLimitService(t)
 
 	svc := service.NewProfileService(
@@ -31,16 +30,23 @@ func newTestProfileService(
 		profileRepo,
 		userRepo,
 		friendshipRepo,
-		relatedProfileRepo,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
 		nil,
 		subLimitSvc,
 	)
 
-	return svc, profileRepo, userRepo, relatedProfileRepo
+	return svc, profileRepo, userRepo
 }
 
 func TestSearch_ByName_ReturnsOnlyMinimalFields(t *testing.T) {
-	svc, profileRepo, _, _ := newTestProfileService(t)
+	svc, profileRepo, _ := newTestProfileService(t)
 
 	callerID := uuid.New()
 	friendID := uuid.New()
@@ -67,7 +73,7 @@ func TestSearch_ByName_ReturnsOnlyMinimalFields(t *testing.T) {
 }
 
 func TestSearch_ByName_ExcludesSelf(t *testing.T) {
-	svc, profileRepo, _, _ := newTestProfileService(t)
+	svc, profileRepo, _ := newTestProfileService(t)
 
 	callerID := uuid.New()
 
@@ -86,7 +92,7 @@ func TestSearch_ByName_ExcludesSelf(t *testing.T) {
 }
 
 func TestSearch_ByEmail_ReturnsOnlyMinimalFields(t *testing.T) {
-	svc, _, userRepo, relatedProfileRepo := newTestProfileService(t)
+	svc, _, userRepo := newTestProfileService(t)
 
 	callerID := uuid.New()
 	friendID := uuid.New()
@@ -105,8 +111,6 @@ func TestSearch_ByEmail_ReturnsOnlyMinimalFields(t *testing.T) {
 		},
 	}, nil)
 
-	relatedProfileRepo.On("FindAll", mock.Anything, mock.Anything).Return([]users.RelatedProfile{}, nil)
-
 	results, err := svc.Search(context.Background(), callerID, "alice@example.com")
 
 	assert.NoError(t, err)
@@ -119,7 +123,7 @@ func TestSearch_ByEmail_ReturnsOnlyMinimalFields(t *testing.T) {
 }
 
 func TestSearch_ByEmail_ExcludesSelf(t *testing.T) {
-	svc, _, userRepo, relatedProfileRepo := newTestProfileService(t)
+	svc, _, userRepo := newTestProfileService(t)
 
 	callerID := uuid.New()
 	userID := uuid.New()
@@ -135,8 +139,6 @@ func TestSearch_ByEmail_ExcludesSelf(t *testing.T) {
 			Avatar:     "me.png",
 		},
 	}, nil)
-
-	relatedProfileRepo.On("FindAll", mock.Anything, mock.Anything).Return([]users.RelatedProfile{}, nil)
 
 	results, err := svc.Search(context.Background(), callerID, "me@example.com")
 

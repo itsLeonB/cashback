@@ -75,7 +75,7 @@ type MockUserService_CreateNew_Call struct {
 // CreateNew is a helper method to define mock.On call
 //   - ctx context.Context
 //   - request dto.NewUserRequest
-func (_e *MockUserService_Expecter) CreateNew(ctx interface{}, request interface{}) *MockUserService_CreateNew_Call {
+func (_e *MockUserService_Expecter) CreateNew(ctx any, request any) *MockUserService_CreateNew_Call {
 	return &MockUserService_CreateNew_Call{Call: _e.mock.On("CreateNew", ctx, request)}
 }
 
@@ -141,7 +141,7 @@ type MockUserService_FindByEmail_Call struct {
 // FindByEmail is a helper method to define mock.On call
 //   - ctx context.Context
 //   - email string
-func (_e *MockUserService_Expecter) FindByEmail(ctx interface{}, email interface{}) *MockUserService_FindByEmail_Call {
+func (_e *MockUserService_Expecter) FindByEmail(ctx any, email any) *MockUserService_FindByEmail_Call {
 	return &MockUserService_FindByEmail_Call{Call: _e.mock.On("FindByEmail", ctx, email)}
 }
 
@@ -207,7 +207,7 @@ type MockUserService_GeneratePasswordResetToken_Call struct {
 // GeneratePasswordResetToken is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID uuid.UUID
-func (_e *MockUserService_Expecter) GeneratePasswordResetToken(ctx interface{}, userID interface{}) *MockUserService_GeneratePasswordResetToken_Call {
+func (_e *MockUserService_Expecter) GeneratePasswordResetToken(ctx any, userID any) *MockUserService_GeneratePasswordResetToken_Call {
 	return &MockUserService_GeneratePasswordResetToken_Call{Call: _e.mock.On("GeneratePasswordResetToken", ctx, userID)}
 }
 
@@ -273,7 +273,7 @@ type MockUserService_GetByID_Call struct {
 // GetByID is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id uuid.UUID
-func (_e *MockUserService_Expecter) GetByID(ctx interface{}, id interface{}) *MockUserService_GetByID_Call {
+func (_e *MockUserService_Expecter) GetByID(ctx any, id any) *MockUserService_GetByID_Call {
 	return &MockUserService_GetByID_Call{Call: _e.mock.On("GetByID", ctx, id)}
 }
 
@@ -342,7 +342,7 @@ type MockUserService_ResetPassword_Call struct {
 //   - email string
 //   - resetToken string
 //   - password string
-func (_e *MockUserService_Expecter) ResetPassword(ctx interface{}, userID interface{}, email interface{}, resetToken interface{}, password interface{}) *MockUserService_ResetPassword_Call {
+func (_e *MockUserService_Expecter) ResetPassword(ctx any, userID any, email any, resetToken any, password any) *MockUserService_ResetPassword_Call {
 	return &MockUserService_ResetPassword_Call{Call: _e.mock.On("ResetPassword", ctx, userID, email, resetToken, password)}
 }
 
@@ -414,7 +414,7 @@ type MockUserService_SendSubscriptionNearingDueDateMail_Call struct {
 // SendSubscriptionNearingDueDateMail is a helper method to define mock.On call
 //   - ctx context.Context
 //   - msg message.SubscriptionNearingDue
-func (_e *MockUserService_Expecter) SendSubscriptionNearingDueDateMail(ctx interface{}, msg interface{}) *MockUserService_SendSubscriptionNearingDueDateMail_Call {
+func (_e *MockUserService_Expecter) SendSubscriptionNearingDueDateMail(ctx any, msg any) *MockUserService_SendSubscriptionNearingDueDateMail_Call {
 	return &MockUserService_SendSubscriptionNearingDueDateMail_Call{Call: _e.mock.On("SendSubscriptionNearingDueDateMail", ctx, msg)}
 }
 
@@ -483,7 +483,7 @@ type MockUserService_Verify_Call struct {
 //   - email string
 //   - name string
 //   - avatar string
-func (_e *MockUserService_Expecter) Verify(ctx interface{}, id interface{}, email interface{}, name interface{}, avatar interface{}) *MockUserService_Verify_Call {
+func (_e *MockUserService_Expecter) Verify(ctx any, id any, email any, name any, avatar any) *MockUserService_Verify_Call {
 	return &MockUserService_Verify_Call{Call: _e.mock.On("Verify", ctx, id, email, name, avatar)}
 }
 
@@ -557,75 +557,6 @@ func (_m *MockProfileService) EXPECT() *MockProfileService_Expecter {
 	return &MockProfileService_Expecter{mock: &_m.Mock}
 }
 
-// Associate provides a mock function for the type MockProfileService
-func (_mock *MockProfileService) Associate(ctx context.Context, userProfileID uuid.UUID, realProfileID uuid.UUID, anonProfileID uuid.UUID) error {
-	ret := _mock.Called(ctx, userProfileID, realProfileID, anonProfileID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Associate")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error); ok {
-		r0 = returnFunc(ctx, userProfileID, realProfileID, anonProfileID)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockProfileService_Associate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Associate'
-type MockProfileService_Associate_Call struct {
-	*mock.Call
-}
-
-// Associate is a helper method to define mock.On call
-//   - ctx context.Context
-//   - userProfileID uuid.UUID
-//   - realProfileID uuid.UUID
-//   - anonProfileID uuid.UUID
-func (_e *MockProfileService_Expecter) Associate(ctx interface{}, userProfileID interface{}, realProfileID interface{}, anonProfileID interface{}) *MockProfileService_Associate_Call {
-	return &MockProfileService_Associate_Call{Call: _e.mock.On("Associate", ctx, userProfileID, realProfileID, anonProfileID)}
-}
-
-func (_c *MockProfileService_Associate_Call) Run(run func(ctx context.Context, userProfileID uuid.UUID, realProfileID uuid.UUID, anonProfileID uuid.UUID)) *MockProfileService_Associate_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		var arg2 uuid.UUID
-		if args[2] != nil {
-			arg2 = args[2].(uuid.UUID)
-		}
-		var arg3 uuid.UUID
-		if args[3] != nil {
-			arg3 = args[3].(uuid.UUID)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-			arg3,
-		)
-	})
-	return _c
-}
-
-func (_c *MockProfileService_Associate_Call) Return(err error) *MockProfileService_Associate_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockProfileService_Associate_Call) RunAndReturn(run func(ctx context.Context, userProfileID uuid.UUID, realProfileID uuid.UUID, anonProfileID uuid.UUID) error) *MockProfileService_Associate_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Create provides a mock function for the type MockProfileService
 func (_mock *MockProfileService) Create(ctx context.Context, request dto.NewProfileRequest) (dto.ProfileResponse, error) {
 	ret := _mock.Called(ctx, request)
@@ -660,7 +591,7 @@ type MockProfileService_Create_Call struct {
 // Create is a helper method to define mock.On call
 //   - ctx context.Context
 //   - request dto.NewProfileRequest
-func (_e *MockProfileService_Expecter) Create(ctx interface{}, request interface{}) *MockProfileService_Create_Call {
+func (_e *MockProfileService_Expecter) Create(ctx any, request any) *MockProfileService_Create_Call {
 	return &MockProfileService_Create_Call{Call: _e.mock.On("Create", ctx, request)}
 }
 
@@ -726,7 +657,7 @@ type MockProfileService_FindBySlug_Call struct {
 // FindBySlug is a helper method to define mock.On call
 //   - ctx context.Context
 //   - slug string
-func (_e *MockProfileService_Expecter) FindBySlug(ctx interface{}, slug interface{}) *MockProfileService_FindBySlug_Call {
+func (_e *MockProfileService_Expecter) FindBySlug(ctx any, slug any) *MockProfileService_FindBySlug_Call {
 	return &MockProfileService_FindBySlug_Call{Call: _e.mock.On("FindBySlug", ctx, slug)}
 }
 
@@ -793,7 +724,7 @@ type MockProfileService_GetAll_Call struct {
 
 // GetAll is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockProfileService_Expecter) GetAll(ctx interface{}) *MockProfileService_GetAll_Call {
+func (_e *MockProfileService_Expecter) GetAll(ctx any) *MockProfileService_GetAll_Call {
 	return &MockProfileService_GetAll_Call{Call: _e.mock.On("GetAll", ctx)}
 }
 
@@ -855,7 +786,7 @@ type MockProfileService_GetAllReal_Call struct {
 
 // GetAllReal is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockProfileService_Expecter) GetAllReal(ctx interface{}) *MockProfileService_GetAllReal_Call {
+func (_e *MockProfileService_Expecter) GetAllReal(ctx any) *MockProfileService_GetAllReal_Call {
 	return &MockProfileService_GetAllReal_Call{Call: _e.mock.On("GetAllReal", ctx)}
 }
 
@@ -878,74 +809,6 @@ func (_c *MockProfileService_GetAllReal_Call) Return(profileResponses []dto.Prof
 }
 
 func (_c *MockProfileService_GetAllReal_Call) RunAndReturn(run func(ctx context.Context) ([]dto.ProfileResponse, error)) *MockProfileService_GetAllReal_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetAssociatedIDs provides a mock function for the type MockProfileService
-func (_mock *MockProfileService) GetAssociatedIDs(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error) {
-	ret := _mock.Called(ctx, id)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetAssociatedIDs")
-	}
-
-	var r0 []uuid.UUID
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) ([]uuid.UUID, error)); ok {
-		return returnFunc(ctx, id)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) []uuid.UUID); ok {
-		r0 = returnFunc(ctx, id)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]uuid.UUID)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = returnFunc(ctx, id)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockProfileService_GetAssociatedIDs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAssociatedIDs'
-type MockProfileService_GetAssociatedIDs_Call struct {
-	*mock.Call
-}
-
-// GetAssociatedIDs is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id uuid.UUID
-func (_e *MockProfileService_Expecter) GetAssociatedIDs(ctx interface{}, id interface{}) *MockProfileService_GetAssociatedIDs_Call {
-	return &MockProfileService_GetAssociatedIDs_Call{Call: _e.mock.On("GetAssociatedIDs", ctx, id)}
-}
-
-func (_c *MockProfileService_GetAssociatedIDs_Call) Run(run func(ctx context.Context, id uuid.UUID)) *MockProfileService_GetAssociatedIDs_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 uuid.UUID
-		if args[1] != nil {
-			arg1 = args[1].(uuid.UUID)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *MockProfileService_GetAssociatedIDs_Call) Return(uUIDs []uuid.UUID, err error) *MockProfileService_GetAssociatedIDs_Call {
-	_c.Call.Return(uUIDs, err)
-	return _c
-}
-
-func (_c *MockProfileService_GetAssociatedIDs_Call) RunAndReturn(run func(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error)) *MockProfileService_GetAssociatedIDs_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -984,7 +847,7 @@ type MockProfileService_GetByID_Call struct {
 // GetByID is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id uuid.UUID
-func (_e *MockProfileService_Expecter) GetByID(ctx interface{}, id interface{}) *MockProfileService_GetByID_Call {
+func (_e *MockProfileService_Expecter) GetByID(ctx any, id any) *MockProfileService_GetByID_Call {
 	return &MockProfileService_GetByID_Call{Call: _e.mock.On("GetByID", ctx, id)}
 }
 
@@ -1052,7 +915,7 @@ type MockProfileService_GetByIDs_Call struct {
 // GetByIDs is a helper method to define mock.On call
 //   - ctx context.Context
 //   - ids []uuid.UUID
-func (_e *MockProfileService_Expecter) GetByIDs(ctx interface{}, ids interface{}) *MockProfileService_GetByIDs_Call {
+func (_e *MockProfileService_Expecter) GetByIDs(ctx any, ids any) *MockProfileService_GetByIDs_Call {
 	return &MockProfileService_GetByIDs_Call{Call: _e.mock.On("GetByIDs", ctx, ids)}
 }
 
@@ -1118,7 +981,7 @@ type MockProfileService_GetEntityByID_Call struct {
 // GetEntityByID is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id uuid.UUID
-func (_e *MockProfileService_Expecter) GetEntityByID(ctx interface{}, id interface{}) *MockProfileService_GetEntityByID_Call {
+func (_e *MockProfileService_Expecter) GetEntityByID(ctx any, id any) *MockProfileService_GetEntityByID_Call {
 	return &MockProfileService_GetEntityByID_Call{Call: _e.mock.On("GetEntityByID", ctx, id)}
 }
 
@@ -1186,7 +1049,7 @@ type MockProfileService_GetProfileIDByUserID_Call struct {
 // GetProfileIDByUserID is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID uuid.UUID
-func (_e *MockProfileService_Expecter) GetProfileIDByUserID(ctx interface{}, userID interface{}) *MockProfileService_GetProfileIDByUserID_Call {
+func (_e *MockProfileService_Expecter) GetProfileIDByUserID(ctx any, userID any) *MockProfileService_GetProfileIDByUserID_Call {
 	return &MockProfileService_GetProfileIDByUserID_Call{Call: _e.mock.On("GetProfileIDByUserID", ctx, userID)}
 }
 
@@ -1218,47 +1081,38 @@ func (_c *MockProfileService_GetProfileIDByUserID_Call) RunAndReturn(run func(ct
 	return _c
 }
 
-// GetRealProfileID provides a mock function for the type MockProfileService
-func (_mock *MockProfileService) GetRealProfileID(ctx context.Context, anonProfileID uuid.UUID) (uuid.UUID, error) {
-	ret := _mock.Called(ctx, anonProfileID)
+// MergeAnonymousProfile provides a mock function for the type MockProfileService
+func (_mock *MockProfileService) MergeAnonymousProfile(ctx context.Context, ownerProfileID uuid.UUID, realProfileID uuid.UUID, anonProfileID uuid.UUID) error {
+	ret := _mock.Called(ctx, ownerProfileID, realProfileID, anonProfileID)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetRealProfileID")
+		panic("no return value specified for MergeAnonymousProfile")
 	}
 
-	var r0 uuid.UUID
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) (uuid.UUID, error)); ok {
-		return returnFunc(ctx, anonProfileID)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID) uuid.UUID); ok {
-		r0 = returnFunc(ctx, anonProfileID)
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error); ok {
+		r0 = returnFunc(ctx, ownerProfileID, realProfileID, anonProfileID)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(uuid.UUID)
-		}
+		r0 = ret.Error(0)
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, uuid.UUID) error); ok {
-		r1 = returnFunc(ctx, anonProfileID)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
+	return r0
 }
 
-// MockProfileService_GetRealProfileID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRealProfileID'
-type MockProfileService_GetRealProfileID_Call struct {
+// MockProfileService_MergeAnonymousProfile_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MergeAnonymousProfile'
+type MockProfileService_MergeAnonymousProfile_Call struct {
 	*mock.Call
 }
 
-// GetRealProfileID is a helper method to define mock.On call
+// MergeAnonymousProfile is a helper method to define mock.On call
 //   - ctx context.Context
+//   - ownerProfileID uuid.UUID
+//   - realProfileID uuid.UUID
 //   - anonProfileID uuid.UUID
-func (_e *MockProfileService_Expecter) GetRealProfileID(ctx interface{}, anonProfileID interface{}) *MockProfileService_GetRealProfileID_Call {
-	return &MockProfileService_GetRealProfileID_Call{Call: _e.mock.On("GetRealProfileID", ctx, anonProfileID)}
+func (_e *MockProfileService_Expecter) MergeAnonymousProfile(ctx any, ownerProfileID any, realProfileID any, anonProfileID any) *MockProfileService_MergeAnonymousProfile_Call {
+	return &MockProfileService_MergeAnonymousProfile_Call{Call: _e.mock.On("MergeAnonymousProfile", ctx, ownerProfileID, realProfileID, anonProfileID)}
 }
 
-func (_c *MockProfileService_GetRealProfileID_Call) Run(run func(ctx context.Context, anonProfileID uuid.UUID)) *MockProfileService_GetRealProfileID_Call {
+func (_c *MockProfileService_MergeAnonymousProfile_Call) Run(run func(ctx context.Context, ownerProfileID uuid.UUID, realProfileID uuid.UUID, anonProfileID uuid.UUID)) *MockProfileService_MergeAnonymousProfile_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -1268,20 +1122,30 @@ func (_c *MockProfileService_GetRealProfileID_Call) Run(run func(ctx context.Con
 		if args[1] != nil {
 			arg1 = args[1].(uuid.UUID)
 		}
+		var arg2 uuid.UUID
+		if args[2] != nil {
+			arg2 = args[2].(uuid.UUID)
+		}
+		var arg3 uuid.UUID
+		if args[3] != nil {
+			arg3 = args[3].(uuid.UUID)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
+			arg3,
 		)
 	})
 	return _c
 }
 
-func (_c *MockProfileService_GetRealProfileID_Call) Return(uUID uuid.UUID, err error) *MockProfileService_GetRealProfileID_Call {
-	_c.Call.Return(uUID, err)
+func (_c *MockProfileService_MergeAnonymousProfile_Call) Return(err error) *MockProfileService_MergeAnonymousProfile_Call {
+	_c.Call.Return(err)
 	return _c
 }
 
-func (_c *MockProfileService_GetRealProfileID_Call) RunAndReturn(run func(ctx context.Context, anonProfileID uuid.UUID) (uuid.UUID, error)) *MockProfileService_GetRealProfileID_Call {
+func (_c *MockProfileService_MergeAnonymousProfile_Call) RunAndReturn(run func(ctx context.Context, ownerProfileID uuid.UUID, realProfileID uuid.UUID, anonProfileID uuid.UUID) error) *MockProfileService_MergeAnonymousProfile_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1323,7 +1187,7 @@ type MockProfileService_Search_Call struct {
 //   - ctx context.Context
 //   - profileID uuid.UUID
 //   - input string
-func (_e *MockProfileService_Expecter) Search(ctx interface{}, profileID interface{}, input interface{}) *MockProfileService_Search_Call {
+func (_e *MockProfileService_Expecter) Search(ctx any, profileID any, input any) *MockProfileService_Search_Call {
 	return &MockProfileService_Search_Call{Call: _e.mock.On("Search", ctx, profileID, input)}
 }
 
@@ -1394,7 +1258,7 @@ type MockProfileService_Update_Call struct {
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
 //   - req dto.UpdateProfileRequest
-func (_e *MockProfileService_Expecter) Update(ctx interface{}, req interface{}) *MockProfileService_Update_Call {
+func (_e *MockProfileService_Expecter) Update(ctx any, req any) *MockProfileService_Update_Call {
 	return &MockProfileService_Update_Call{Call: _e.mock.On("Update", ctx, req)}
 }
 
@@ -1478,7 +1342,7 @@ type MockSubscriptionLimitService_CheckUploadLimit_Call struct {
 // CheckUploadLimit is a helper method to define mock.On call
 //   - ctx context.Context
 //   - profileID uuid.UUID
-func (_e *MockSubscriptionLimitService_Expecter) CheckUploadLimit(ctx interface{}, profileID interface{}) *MockSubscriptionLimitService_CheckUploadLimit_Call {
+func (_e *MockSubscriptionLimitService_Expecter) CheckUploadLimit(ctx any, profileID any) *MockSubscriptionLimitService_CheckUploadLimit_Call {
 	return &MockSubscriptionLimitService_CheckUploadLimit_Call{Call: _e.mock.On("CheckUploadLimit", ctx, profileID)}
 }
 
@@ -1544,7 +1408,7 @@ type MockSubscriptionLimitService_GetCurrent_Call struct {
 // GetCurrent is a helper method to define mock.On call
 //   - ctx context.Context
 //   - profileID uuid.UUID
-func (_e *MockSubscriptionLimitService_Expecter) GetCurrent(ctx interface{}, profileID interface{}) *MockSubscriptionLimitService_GetCurrent_Call {
+func (_e *MockSubscriptionLimitService_Expecter) GetCurrent(ctx any, profileID any) *MockSubscriptionLimitService_GetCurrent_Call {
 	return &MockSubscriptionLimitService_GetCurrent_Call{Call: _e.mock.On("GetCurrent", ctx, profileID)}
 }
 

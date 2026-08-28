@@ -74,7 +74,22 @@ func ProvideServices(
 	payment := monetization.NewPaymentService(paymentGateway, repos.Transactor, repos.Payment, coreSvc.Queue, subs)
 	subsLimit := service.NewSubscriptionLimitService(subs, repos.ExpenseBill)
 
-	profile := service.NewProfileService(repos.Transactor, repos.Profile, repos.User, repos.Friendship, repos.RelatedProfile, subs, subsLimit)
+	profile := service.NewProfileService(
+		repos.Transactor,
+		repos.Profile,
+		repos.User,
+		repos.Friendship,
+		repos.FriendshipRequest,
+		repos.DebtTransaction,
+		repos.ProfileTransferMethod,
+		repos.GroupExpense,
+		repos.ExpenseItem,
+		repos.OtherFee,
+		repos.Notification,
+		repos.PushSubscription,
+		subs,
+		subsLimit,
+	)
 	user := service.NewUserService(repos.Transactor, repos.User, profile, repos.PasswordResetToken, coreSvc.Mail)
 	friendship := service.NewFriendshipService(repos.Transactor, repos.Friendship, profile)
 	pushNotification := service.NewPushNotificationService(repos.PushSubscription, repos.Notification, repos.Transactor, coreSvc.WebPush)
@@ -89,7 +104,7 @@ func ProvideServices(
 	sessionCache := cache.NewInMemoryCache[uuid.UUID](authConfig.TokenDuration)
 	cacheAdapter := authadapter.NewSessionCacheAdapter(sessionCache)
 
-	hooks := newAuthKitHooks(pushNotification, profile, friendship)
+	hooks := newAuthKitHooks(repos.Transactor, pushNotification, profile, friendship)
 
 	authKitCfg := authkit.Config{
 		VerificationURL:  appConfig.RegisterVerificationUrl,

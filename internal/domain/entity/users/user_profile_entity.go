@@ -18,9 +18,7 @@ type UserProfile struct {
 	Slug         sql.NullString
 
 	// Relationships
-	RelatedRealProfile  RelatedProfile                `gorm:"foreignKey:AnonProfileID"`
-	RelatedAnonProfiles []RelatedProfile              `gorm:"foreignKey:RealProfileID"`
-	TransferMethods     []debts.ProfileTransferMethod `gorm:"foreignKey:ProfileID"`
+	TransferMethods []debts.ProfileTransferMethod `gorm:"foreignKey:ProfileID"`
 }
 
 func (up UserProfile) IsReal() bool {

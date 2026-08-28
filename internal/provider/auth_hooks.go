@@ -8,11 +8,13 @@ import (
 	"github.com/itsLeonB/cashback/internal/appconstant"
 	"github.com/itsLeonB/cashback/internal/domain/service"
 	"github.com/itsLeonB/go-authkit"
+	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 )
 
 // newAuthKitHooks builds authkit.Hooks wiring Cashus business logic.
 func newAuthKitHooks(
+	transactor crud.Transactor,
 	pushNotification service.PushNotificationService,
 	profileService service.ProfileService,
 	friendshipService service.FriendshipService,
@@ -37,7 +39,7 @@ func newAuthKitHooks(
 			if !ok || slug == "" {
 				return nil
 			}
-			return associateBySlug(ctx, profileService, friendshipService, pid, slug)
+			return associateBySlug(ctx, transactor, profileService, friendshipService, pid, slug)
 		},
 		ClaimsBuilder: func(ctx context.Context, userID string, baseClaims map[string]any) (map[string]any, error) {
 			uid, err := uuid.Parse(userID)
@@ -56,6 +58,7 @@ func newAuthKitHooks(
 
 func associateBySlug(
 	ctx context.Context,
+	transactor crud.Transactor,
 	profileSvc service.ProfileService,
 	friendshipSvc service.FriendshipService,
 	newProfileID uuid.UUID,
@@ -76,10 +79,16 @@ func associateBySlug(
 
 	ownerProfileID := friendships[0].ProfileID
 
-	_, err = friendshipSvc.CreateReal(ctx, ownerProfileID, newProfileID)
-	if err != nil {
-		return err
-	}
+	return transactor.WithinTransaction(ctx, func(ctx context.Context) error {
+		// Create the owner<->real friendship first so MergeAnonymousProfile's authorization check
+		// (owner must already be friends with the real profile) passes; its own friendship-repoint
+		// step then finds this row and simply drops the now-redundant owner<->anon row instead of
+		// duplicating it. Wrapped in one transaction so a failure partway through doesn't leave the
+		// friendship created but the anon profile un-merged.
+		if _, err := friendshipSvc.CreateReal(ctx, ownerProfileID, newProfileID); err != nil {
+			return err
+		}
 
-	return profileSvc.Associate(ctx, ownerProfileID, newProfileID, anonProfile.ID)
+		return profileSvc.MergeAnonymousProfile(ctx, ownerProfileID, newProfileID, anonProfile.ID)
+	})
 }

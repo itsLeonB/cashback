@@ -93,3 +93,47 @@ func (dtr *debtTransactionRepositoryGorm) FindAllByProfileIDs(
 
 	return transactions, nil
 }
+
+// RepointProfile repoints every debt transaction referencing anonProfileID (as lender or
+// borrower) onto realProfileID. No unique constraint on these columns, so this is a plain update.
+func (dtr *debtTransactionRepositoryGorm) RepointProfile(ctx context.Context, anonProfileID, realProfileID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "DebtTransactionRepository.RepointProfile")
+	defer span.End()
+
+	db, err := dtr.GetGormInstance(ctx)
+	if err != nil {
+		return err
+	}
+
+	// A debt transaction directly between the anon and real profile would become a
+	// self-referencing (lender == borrower) row if repointed, which has no sensible
+	// resolution (unlike a share amount, a directional debt can't just be summed).
+	// Refuse the merge instead of corrupting the ledger. This check isn't locked against a
+	// concurrent insert landing between it and the updates below, but the no_self_debt CHECK
+	// constraint (see migrations) is the real backstop: it makes any such race fail the
+	// UPDATE below with a constraint violation instead of silently corrupting the row.
+	var conflicting int64
+	if err := db.Model(&debts.DebtTransaction{}).
+		Where("(lender_profile_id = ? AND borrower_profile_id = ?) OR (lender_profile_id = ? AND borrower_profile_id = ?)",
+			anonProfileID, realProfileID, realProfileID, anonProfileID).
+		Count(&conflicting).Error; err != nil {
+		return ungerr.Wrap(err, appconstant.ErrDataSelect)
+	}
+	if conflicting > 0 {
+		return ungerr.ConflictError("cannot merge: a debt transaction already exists directly between the anonymous and real profile")
+	}
+
+	if err := db.Model(&debts.DebtTransaction{}).
+		Where("lender_profile_id = ?", anonProfileID).
+		Update("lender_profile_id", realProfileID).Error; err != nil {
+		return ungerr.Wrap(err, appconstant.ErrDataUpdate)
+	}
+
+	if err := db.Model(&debts.DebtTransaction{}).
+		Where("borrower_profile_id = ?", anonProfileID).
+		Update("borrower_profile_id", realProfileID).Error; err != nil {
+		return ungerr.Wrap(err, appconstant.ErrDataUpdate)
+	}
+
+	return nil
+}

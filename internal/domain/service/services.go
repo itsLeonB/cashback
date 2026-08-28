@@ -32,11 +32,9 @@ type ProfileService interface {
 	GetProfileIDByUserID(ctx context.Context, userID uuid.UUID) (uuid.UUID, error)
 	Update(ctx context.Context, req dto.UpdateProfileRequest) (dto.ProfileResponse, error)
 	Search(ctx context.Context, profileID uuid.UUID, input string) ([]dto.SearchProfileResponse, error)
-	Associate(ctx context.Context, userProfileID, realProfileID, anonProfileID uuid.UUID) error
+	MergeAnonymousProfile(ctx context.Context, ownerProfileID, realProfileID, anonProfileID uuid.UUID) error
 	GetByIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]dto.ProfileResponse, error)
-	GetRealProfileID(ctx context.Context, anonProfileID uuid.UUID) (uuid.UUID, error)
 	GetEntityByID(ctx context.Context, id uuid.UUID) (users.UserProfile, error)
-	GetAssociatedIDs(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error)
 	FindBySlug(ctx context.Context, slug string) (users.UserProfile, error)
 }
 

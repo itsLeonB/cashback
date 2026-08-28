@@ -15,19 +15,25 @@ import (
 	"github.com/itsLeonB/cashback/internal/domain/mapper"
 	"github.com/itsLeonB/cashback/internal/domain/repository"
 	monetizationSvc "github.com/itsLeonB/cashback/internal/domain/service/monetization"
-	"github.com/itsLeonB/ezutil/v2"
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 )
 
 type profileServiceImpl struct {
-	transactor           crud.Transactor
-	profileRepo          repository.ProfileRepository
-	userRepo             crud.Repository[users.User]
-	friendshipRepo       repository.FriendshipRepository
-	relatedProfileRepo   crud.Repository[users.RelatedProfile]
-	subscriptionSvc      monetizationSvc.SubscriptionService
-	subscriptionLimitSvc SubscriptionLimitService
+	transactor                crud.Transactor
+	profileRepo               repository.ProfileRepository
+	userRepo                  crud.Repository[users.User]
+	friendshipRepo            repository.FriendshipRepository
+	friendshipRequestRepo     repository.FriendshipRequestRepository
+	debtTransactionRepo       repository.DebtTransactionRepository
+	profileTransferMethodRepo repository.ProfileTransferMethodRepository
+	groupExpenseRepo          repository.GroupExpenseRepository
+	expenseItemRepo           repository.ExpenseItemRepository
+	otherFeeRepo              repository.OtherFeeRepository
+	notificationRepo          repository.NotificationRepository
+	pushSubscriptionRepo      repository.PushSubscriptionRepository
+	subscriptionSvc           monetizationSvc.SubscriptionService
+	subscriptionLimitSvc      SubscriptionLimitService
 }
 
 func NewProfileService(
@@ -35,7 +41,14 @@ func NewProfileService(
 	profileRepo repository.ProfileRepository,
 	userRepo crud.Repository[users.User],
 	friendshipRepo repository.FriendshipRepository,
-	relatedProfileRepo crud.Repository[users.RelatedProfile],
+	friendshipRequestRepo repository.FriendshipRequestRepository,
+	debtTransactionRepo repository.DebtTransactionRepository,
+	profileTransferMethodRepo repository.ProfileTransferMethodRepository,
+	groupExpenseRepo repository.GroupExpenseRepository,
+	expenseItemRepo repository.ExpenseItemRepository,
+	otherFeeRepo repository.OtherFeeRepository,
+	notificationRepo repository.NotificationRepository,
+	pushSubscriptionRepo repository.PushSubscriptionRepository,
 	subscriptionSvc monetizationSvc.SubscriptionService,
 	subscriptionLimitSvc SubscriptionLimitService,
 ) ProfileService {
@@ -44,7 +57,14 @@ func NewProfileService(
 		profileRepo,
 		userRepo,
 		friendshipRepo,
-		relatedProfileRepo,
+		friendshipRequestRepo,
+		debtTransactionRepo,
+		profileTransferMethodRepo,
+		groupExpenseRepo,
+		expenseItemRepo,
+		otherFeeRepo,
+		notificationRepo,
+		pushSubscriptionRepo,
 		subscriptionSvc,
 		subscriptionLimitSvc,
 	}
@@ -65,7 +85,7 @@ func (ps *profileServiceImpl) Create(ctx context.Context, request dto.NewProfile
 				return err
 			}
 			if !existing.IsZero() {
-				response = mapper.ProfileToResponse(existing, "", nil, uuid.Nil, dto.SubscriptionResponse{})
+				response = mapper.ProfileToResponse(existing, "", dto.SubscriptionResponse{})
 				return nil
 			}
 		}
@@ -99,7 +119,7 @@ func (ps *profileServiceImpl) Create(ctx context.Context, request dto.NewProfile
 			}
 		}
 
-		response = mapper.ProfileToResponse(insertedProfile, "", nil, uuid.Nil, dto.SubscriptionResponse{})
+		response = mapper.ProfileToResponse(insertedProfile, "", dto.SubscriptionResponse{})
 
 		return nil
 	})
@@ -127,17 +147,12 @@ func (ps *profileServiceImpl) GetByID(ctx context.Context, id uuid.UUID) (dto.Pr
 		email = user.Email
 	}
 
-	anonProfileIDs, realProfileID, err := ps.getAssociations(ctx, profile)
-	if err != nil {
-		return dto.ProfileResponse{}, err
-	}
-
 	subs, err := ps.subscriptionLimitSvc.GetCurrent(ctx, id)
 	if err != nil {
 		return dto.ProfileResponse{}, err
 	}
 
-	return mapper.ProfileToResponse(profile, email, anonProfileIDs, realProfileID, subs), nil
+	return mapper.ProfileToResponse(profile, email, subs), nil
 }
 
 func (ps *profileServiceImpl) GetAll(ctx context.Context) ([]dto.ProfileResponse, error) {
@@ -164,13 +179,7 @@ func (ps *profileServiceImpl) GetAll(ctx context.Context) ([]dto.ProfileResponse
 			email = user.Email
 		}
 
-		anonProfileIDs, realProfileID, err := ps.getAssociations(ctx, profile)
-		if err != nil {
-			logger.Error(err)
-			continue
-		}
-
-		responses = append(responses, mapper.ProfileToResponse(profile, email, anonProfileIDs, realProfileID, dto.SubscriptionResponse{}))
+		responses = append(responses, mapper.ProfileToResponse(profile, email, dto.SubscriptionResponse{}))
 	}
 
 	return responses, nil
@@ -195,78 +204,10 @@ func (ps *profileServiceImpl) GetAllReal(ctx context.Context) ([]dto.ProfileResp
 			continue
 		}
 
-		anonProfileIDs, realProfileID, err := ps.getAssociations(ctx, profile)
-		if err != nil {
-			logger.Error(err)
-			continue
-		}
-
-		responses = append(responses, mapper.ProfileToResponse(profile, user.Email, anonProfileIDs, realProfileID, dto.SubscriptionResponse{}))
+		responses = append(responses, mapper.ProfileToResponse(profile, user.Email, dto.SubscriptionResponse{}))
 	}
 
 	return responses, nil
-}
-
-func (ps *profileServiceImpl) GetAssociatedIDs(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error) {
-	ctx, span := otel.Tracer.Start(ctx, "ProfileService.GetAssociatedIDs")
-	defer span.End()
-
-	profile, err := ps.GetEntityByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	anonProfileIDs, realProfileID, err := ps.getAssociations(ctx, profile)
-	if err != nil {
-		return nil, err
-	}
-
-	ids := []uuid.UUID{id}
-	if profile.UserID.Valid {
-		ids = append(ids, anonProfileIDs...)
-	} else {
-		if realProfileID != uuid.Nil {
-			ids = append(ids, realProfileID)
-		}
-	}
-
-	return ids, nil
-}
-
-func (ps *profileServiceImpl) getAssociations(ctx context.Context, profile users.UserProfile) ([]uuid.UUID, uuid.UUID, error) {
-	if profile.IsReal() {
-		anonProfileIDs, err := ps.getAssociatedProfileIDs(ctx, profile.ID)
-		if err != nil {
-			return nil, uuid.Nil, err
-		}
-		return anonProfileIDs, uuid.Nil, nil
-	} else {
-		profileID, err := ps.GetRealProfileID(ctx, profile.ID)
-		if err != nil {
-			return nil, uuid.Nil, err
-		}
-		return nil, profileID, nil
-	}
-}
-
-func (ps *profileServiceImpl) getAssociatedProfileIDs(ctx context.Context, realProfileID uuid.UUID) ([]uuid.UUID, error) {
-	spec := crud.Specification[users.RelatedProfile]{}
-	spec.Model.RealProfileID = realProfileID
-	relations, err := ps.relatedProfileRepo.FindAll(ctx, spec)
-	if err != nil {
-		return nil, err
-	}
-	return ezutil.MapSlice(relations, func(r users.RelatedProfile) uuid.UUID { return r.AnonProfileID }), nil
-}
-
-func (ps *profileServiceImpl) GetRealProfileID(ctx context.Context, anonProfileID uuid.UUID) (uuid.UUID, error) {
-	ctx, span := otel.Tracer.Start(ctx, "ProfileService.GetRealProfileID")
-	defer span.End()
-
-	spec := crud.Specification[users.RelatedProfile]{}
-	spec.Model.AnonProfileID = anonProfileID
-	relation, err := ps.relatedProfileRepo.FindFirst(ctx, spec)
-	return relation.RealProfileID, err
 }
 
 func (ps *profileServiceImpl) GetEntityByID(ctx context.Context, id uuid.UUID) (users.UserProfile, error) {
@@ -336,7 +277,7 @@ func (ps *profileServiceImpl) Update(ctx context.Context, req dto.UpdateProfileR
 			return err
 		}
 
-		response = mapper.ProfileToResponse(updatedProfile, "", nil, uuid.Nil, dto.SubscriptionResponse{})
+		response = mapper.ProfileToResponse(updatedProfile, "", dto.SubscriptionResponse{})
 		return nil
 	})
 	return response, err
@@ -395,61 +336,82 @@ func (ps *profileServiceImpl) GetByEmail(ctx context.Context, email string) (dto
 		return dto.ProfileResponse{}, ungerr.NotFoundError("user is not found")
 	}
 
-	anonProfileIDs, realProfileID, err := ps.getAssociations(ctx, user.Profile)
-	if err != nil {
-		return dto.ProfileResponse{}, err
-	}
-
-	return mapper.ProfileToResponse(user.Profile, user.Email, anonProfileIDs, realProfileID, dto.SubscriptionResponse{}), nil
+	return mapper.ProfileToResponse(user.Profile, user.Email, dto.SubscriptionResponse{}), nil
 }
 
-func (ps *profileServiceImpl) Associate(ctx context.Context, userProfileID, realProfileID, anonProfileID uuid.UUID) error {
-	ctx, span := otel.Tracer.Start(ctx, "ProfileService.Associate")
+// MergeAnonymousProfile physically merges an anonymous placeholder profile into a real,
+// registered profile: every row that references anonProfileID is repointed (or merged, for
+// tables where the real profile might already have a colliding row) onto realProfileID, then
+// the now-unreferenced anonymous profile row is deleted.
+//
+// ownerProfileID is the profile that vouches for the merge: it must already be friends with
+// both the anonymous placeholder (proving it owns/created it) and the real profile (proving
+// the two are already connected). For the slug-based auto-merge flow (see auth_hooks.go), the
+// caller creates the owner<->real friendship immediately before calling this method, which is
+// what satisfies the second check; MergeAnonymousProfile's own friendship repoint step then
+// simply drops the now-redundant owner<->anon row instead of duplicating it.
+func (ps *profileServiceImpl) MergeAnonymousProfile(ctx context.Context, ownerProfileID, realProfileID, anonProfileID uuid.UUID) error {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileService.MergeAnonymousProfile")
 	defer span.End()
 
 	return ps.transactor.WithinTransaction(ctx, func(ctx context.Context) error {
-		if realProfileID == uuid.Nil || anonProfileID == uuid.Nil || userProfileID == uuid.Nil {
-			return ungerr.BadRequestError("userProfileID / realProfileID / anonProfileID cannot be nil")
+		if ownerProfileID == uuid.Nil || realProfileID == uuid.Nil || anonProfileID == uuid.Nil {
+			return ungerr.BadRequestError("ownerProfileID / realProfileID / anonProfileID cannot be nil")
 		}
 
-		if _, err := ps.GetEntityByID(ctx, realProfileID); err != nil {
+		realProfile, err := ps.GetEntityByID(ctx, realProfileID)
+		if err != nil {
 			return err
 		}
-		if _, err := ps.GetEntityByID(ctx, anonProfileID); err != nil {
+		if !realProfile.IsReal() {
+			return ungerr.BadRequestError("realProfileID must belong to a real profile")
+		}
+
+		anonProfile, err := ps.GetEntityByID(ctx, anonProfileID)
+		if err != nil {
+			return err
+		}
+		if anonProfile.IsReal() {
+			return ungerr.BadRequestError("anonProfileID must belong to an anonymous profile")
+		}
+
+		if err := ps.checkFriendship(ctx, ownerProfileID, realProfileID, "real"); err != nil {
+			return err
+		}
+		if err := ps.checkFriendship(ctx, ownerProfileID, anonProfileID, "anonymous"); err != nil {
 			return err
 		}
 
-		if err := ps.validateAssociation(ctx, userProfileID, realProfileID, anonProfileID); err != nil {
+		if err := ps.friendshipRepo.RepointFriendships(ctx, anonProfileID, realProfileID); err != nil {
+			return err
+		}
+		if err := ps.friendshipRequestRepo.RepointProfile(ctx, anonProfileID, realProfileID); err != nil {
+			return err
+		}
+		if err := ps.profileTransferMethodRepo.RepointProfile(ctx, anonProfileID, realProfileID); err != nil {
+			return err
+		}
+		if err := ps.debtTransactionRepo.RepointProfile(ctx, anonProfileID, realProfileID); err != nil {
+			return err
+		}
+		if err := ps.groupExpenseRepo.RepointProfile(ctx, anonProfileID, realProfileID); err != nil {
+			return err
+		}
+		if err := ps.expenseItemRepo.RepointParticipants(ctx, anonProfileID, realProfileID); err != nil {
+			return err
+		}
+		if err := ps.otherFeeRepo.RepointParticipants(ctx, anonProfileID, realProfileID); err != nil {
+			return err
+		}
+		if err := ps.notificationRepo.RepointProfile(ctx, anonProfileID, realProfileID); err != nil {
+			return err
+		}
+		if err := ps.pushSubscriptionRepo.RepointProfile(ctx, anonProfileID, realProfileID); err != nil {
 			return err
 		}
 
-		newRelated := users.RelatedProfile{
-			RealProfileID: realProfileID,
-			AnonProfileID: anonProfileID,
-		}
-		_, err := ps.relatedProfileRepo.Insert(ctx, newRelated)
-		return err
+		return ps.profileRepo.Delete(ctx, anonProfile)
 	})
-}
-
-func (ps *profileServiceImpl) validateAssociation(ctx context.Context, userProfileID, realProfileID, anonProfileID uuid.UUID) error {
-	relatedSpec := crud.Specification[users.RelatedProfile]{}
-	relatedSpec.Model.AnonProfileID = anonProfileID
-	existingRelated, err := ps.relatedProfileRepo.FindFirst(ctx, relatedSpec)
-	if err != nil {
-		return err
-	}
-	if !existingRelated.IsZero() {
-		return ungerr.ConflictError("anonProfileID is already associated with a real profile")
-	}
-
-	if err := ps.checkFriendship(ctx, userProfileID, realProfileID, "real"); err != nil {
-		return err
-	}
-	if err := ps.checkFriendship(ctx, userProfileID, anonProfileID, "anonymous"); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (ps *profileServiceImpl) checkFriendship(ctx context.Context, userProfileID, friendProfileID uuid.UUID, typeStr string) error {
@@ -474,7 +436,7 @@ func (ps *profileServiceImpl) GetByIDs(ctx context.Context, ids []uuid.UUID) (ma
 
 	profileMap := make(map[uuid.UUID]dto.ProfileResponse, len(profiles))
 	for _, profile := range profiles {
-		profileMap[profile.ID] = mapper.ProfileToResponse(profile, "", nil, uuid.Nil, dto.SubscriptionResponse{})
+		profileMap[profile.ID] = mapper.ProfileToResponse(profile, "", dto.SubscriptionResponse{})
 	}
 
 	// ensure all requested IDs exist

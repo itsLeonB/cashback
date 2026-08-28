@@ -22,6 +22,34 @@ func NewProfileRepository(db *gorm.DB) *profileRepositoryGorm {
 	}
 }
 
+// Delete removes a profile row. Before doing so it purges any leftover related_profiles row
+// referencing it as the anon side: that table is retired (the old pre-physical-merge anon
+// linking model), but its anon_profile_id FK has no ON DELETE behavior, so a legacy row left
+// over from before the merge refactor would otherwise block this delete.
+func (pr *profileRepositoryGorm) Delete(ctx context.Context, model users.UserProfile) error {
+	ctx, span := otel.Tracer.Start(ctx, "ProfileRepository.Delete")
+	defer span.End()
+
+	if model.IsZero() {
+		return ungerr.Unknown("model cannot be zero value")
+	}
+
+	db, err := pr.GetGormInstance(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err := db.Exec("DELETE FROM related_profiles WHERE anon_profile_id = ?", model.ID).Error; err != nil {
+		return ungerr.Wrap(err, "error deleting legacy related_profiles row")
+	}
+
+	if err := db.Unscoped().Delete(&model).Error; err != nil {
+		return ungerr.Wrap(err, "error deleting data")
+	}
+
+	return nil
+}
+
 func (pr *profileRepositoryGorm) FindByIDs(ctx context.Context, ids []uuid.UUID) ([]users.UserProfile, error) {
 	ctx, span := otel.Tracer.Start(ctx, "ProfileRepository.FindByIDs")
 	defer span.End()
@@ -34,10 +62,6 @@ func (pr *profileRepositoryGorm) FindByIDs(ctx context.Context, ids []uuid.UUID)
 	}
 
 	if err = db.
-		Scopes(crud.PreloadRelations([]string{
-			"RelatedRealProfile",
-			"RelatedAnonProfiles",
-		})).
 		Where("id IN ?", ids).
 		Find(&profiles).
 		Error; err != nil {

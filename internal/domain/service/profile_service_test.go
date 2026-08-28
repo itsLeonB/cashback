@@ -40,6 +40,7 @@ func newTestProfileService(
 		nil,
 		nil,
 		subLimitSvc,
+		nil,
 	)
 
 	return svc, profileRepo, userRepo

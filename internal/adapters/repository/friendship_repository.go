@@ -11,6 +11,7 @@ import (
 	"github.com/itsLeonB/go-crud"
 	"github.com/itsLeonB/ungerr"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type friendshipRepositoryGorm struct {
@@ -113,10 +114,29 @@ func (fr *friendshipRepositoryGorm) FindByProfileIDs(ctx context.Context, profil
 		return users.Friendship{}, err
 	}
 
+	return fr.findByProfileIDsQuery(db.Preload("Profile1").Preload("Profile2"), profileID1, profileID2)
+}
+
+// FindByProfileIDsForUpdate is FindByProfileIDs with SELECT ... FOR UPDATE, used to serialize
+// concurrent balance recalculations for the same pair.
+func (fr *friendshipRepositoryGorm) FindByProfileIDsForUpdate(ctx context.Context, profileID1, profileID2 uuid.UUID) (users.Friendship, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRepository.FindByProfileIDsForUpdate")
+	defer span.End()
+
+	db, err := fr.GetGormInstance(ctx)
+	if err != nil {
+		return users.Friendship{}, err
+	}
+
+	return fr.findByProfileIDsQuery(db.Clauses(clause.Locking{Strength: "UPDATE"}), profileID1, profileID2)
+}
+
+// findByProfileIDsQuery applies the pair lookup shared by FindByProfileIDs and
+// FindByProfileIDsForUpdate onto an already-configured query (preloads, locking, ...).
+func (fr *friendshipRepositoryGorm) findByProfileIDsQuery(query *gorm.DB, profileID1, profileID2 uuid.UUID) (users.Friendship, error) {
 	var friendship users.Friendship
-	err = db.Where("(profile_id1 = ? AND profile_id2 = ?) OR (profile_id1 = ? AND profile_id2 = ?)", profileID1, profileID2, profileID2, profileID1).
-		Preload("Profile1").
-		Preload("Profile2").
+	err := query.
+		Where("(profile_id1 = ? AND profile_id2 = ?) OR (profile_id1 = ? AND profile_id2 = ?)", profileID1, profileID2, profileID2, profileID1).
 		First(&friendship).
 		Error
 
@@ -128,6 +148,30 @@ func (fr *friendshipRepositoryGorm) FindByProfileIDs(ctx context.Context, profil
 	}
 
 	return friendship, nil
+}
+
+// FindAllByProfileIDForUpdate is the bulk equivalent of FindByProfileIDsForUpdate, locking every
+// friendship row profileID is party to.
+func (fr *friendshipRepositoryGorm) FindAllByProfileIDForUpdate(ctx context.Context, profileID uuid.UUID) ([]users.Friendship, error) {
+	ctx, span := otel.Tracer.Start(ctx, "FriendshipRepository.FindAllByProfileIDForUpdate")
+	defer span.End()
+
+	db, err := fr.GetGormInstance(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var friendships []users.Friendship
+	err = db.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("profile_id1 = ? OR profile_id2 = ?", profileID, profileID).
+		Find(&friendships).
+		Error
+
+	if err != nil {
+		return nil, ungerr.Wrap(err, appconstant.ErrDataSelect)
+	}
+
+	return friendships, nil
 }
 
 // RepointFriendships repoints every friendship row involving anonProfileID onto realProfileID.
